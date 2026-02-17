@@ -1,0 +1,94 @@
+{
+  "name": "Detection",
+  "type": "object",
+  "properties": {
+    "image_url": {
+      "type": "string",
+      "description": "URL of the uploaded image"
+    },
+    "detections_data": {
+      "type": "string",
+      "description": "JSON string of detection results"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "low",
+        "moderate",
+        "severe"
+      ],
+      "description": "Severity level of infestation"
+    },
+    "total_detections": {
+      "type": "number",
+      "description": "Total number of detections"
+    },
+    "avg_confidence": {
+      "type": "number",
+      "description": "Average confidence score"
+    },
+    "processing_time": {
+      "type": "number",
+      "description": "Processing time in ms"
+    },
+    "feedback": {
+      "type": "string",
+      "enum": [
+        "accurate",
+        "partially_accurate",
+        "inaccurate",
+        ""
+      ],
+      "description": "User feedback on detection accuracy"
+    },
+    "feedback_notes": {
+      "type": "string",
+      "description": "Additional feedback notes from user"
+    },
+    "latitude": {
+      "type": "number",
+      "description": "GPS latitude coordinate"
+    },
+    "longitude": {
+      "type": "number",
+      "description": "GPS longitude coordinate"
+    },
+    "province": {
+      "type": "string",
+      "description": "Philippine province"
+    },
+    "municipality": {
+      "type": "string",
+      "description": "Municipality"
+    },
+    "barangay": {
+      "type": "string",
+      "description": "Barangay"
+    },
+    "farmName": {
+      "type": "string",
+      "description": "Farm name"
+    },
+    "farmOwner": {
+      "type": "string",
+      "description": "Farm owner name"
+    },
+    "locationMethod": {
+      "type": "string",
+      "enum": [
+        "gps",
+        "manual"
+      ],
+      "description": "Method used to capture location"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes about the detection"
+    }
+  },
+  "required": [
+    "image_url",
+    "severity",
+    "total_detections"
+  ]
+}
