@@ -65,10 +65,11 @@ const AuthenticatedApp = () => {
 
 
 function App() {
+
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
-        <Router basename="/CocolisapDetector">
+        <Router>
           <NavigationTracker />
           <AuthenticatedApp />
         </Router>

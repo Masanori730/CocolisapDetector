@@ -172,7 +172,7 @@ export default function MapDashboard() {
                             {showAnalytics ? 'Hide' : 'Show'} Advanced Analytics
                         </Button>
                     </div>
-                    <p className="text-stone-600">Philippine Coconut Authority - Cocolisap Monitoring System</p>
+                    <p className="text-stone-600">Cocolisap Monitoring System</p>
                 </div>
 
                 {/* Statistics Cards */}

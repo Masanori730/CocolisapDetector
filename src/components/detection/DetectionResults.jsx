@@ -3,6 +3,23 @@ import { motion } from 'framer-motion';
 import { Download, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 
+
+
+function mapFromLetterbox640(x, y, w, h, origW, origH) {
+    const MODEL = 640;
+    const r = Math.min(MODEL / origW, MODEL / origH);
+    const newW = origW * r;
+    const newH = origH * r;
+    const padX = (MODEL - newW) / 2;
+    const padY = (MODEL - newH) / 2;
+
+    x -= padX; y -= padY;
+    x /= r; y /= r;
+    w /= r; h /= r;
+
+    return { x, y, w, h };
+}
+
 export default function DetectionResults({ originalImage, detections }) {
     const canvasRef = useRef(null);
     const containerRef = useRef(null);
@@ -15,90 +32,81 @@ export default function DetectionResults({ originalImage, detections }) {
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
         const img = new Image();
+        img.crossOrigin = 'anonymous';
         
         img.onload = () => {
             // Set canvas size to match image
             canvas.width = img.width;
             canvas.height = img.height;
+            canvas.style.aspectRatio = `${img.width} / ${img.height}`;
             
             // Draw original image
             ctx.drawImage(img, 0, 0);
             
-            // Draw detections
-            detections.forEach((detection, index) => {
-                const { bbox, confidence, label } = detection;
-                const [x, y, width, height] = bbox;
-                
-                // Box styling
-                ctx.strokeStyle = '#F59E0B';
-                ctx.lineWidth = Math.max(3, img.width * 0.004);
-                ctx.setLineDash([]);
-                
-                // Draw bounding box
-                ctx.strokeRect(x, y, width, height);
-                
-                // Draw corner accents
-                const cornerLength = Math.min(width, height) * 0.2;
-                ctx.strokeStyle = '#F59E0B';
-                ctx.lineWidth = Math.max(4, img.width * 0.005);
-                
-                // Top-left corner
+            // Debug
+            console.log('img:', img.width, img.height, 'bbox:', detections?.[0]?.bbox);
+
+            // Sort by confidence descending; label only the top N to reduce clutter
+            const MAX_LABELS = 30;
+            const sorted = [...detections].sort((a, b) => b.confidence - a.confidence);
+            const labelSet = new Set(sorted.slice(0, MAX_LABELS).map((_, i) => i));
+            // Map original detection to its rank so we know which to label
+            const detectionRankMap = new Map();
+            sorted.forEach((det, rank) => detectionRankMap.set(det, rank));
+
+            // Pass 1: draw all masks/boxes first (no labels)
+            detections.forEach((detection) => {
+                const [x, y, width, height] = detection.bbox;
+
+                if (detection.points && detection.points.length > 0) {
+                    ctx.beginPath();
+                    ctx.moveTo(detection.points[0].x, detection.points[0].y);
+                    detection.points.forEach((point) => ctx.lineTo(point.x, point.y));
+                    ctx.closePath();
+                    ctx.fillStyle = 'rgba(245, 158, 11, 0.25)';
+                    ctx.fill();
+                    ctx.strokeStyle = '#f59e0b';
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+                } else {
+                    ctx.strokeStyle = '#f59e0b';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(x, y, width, height);
+                }
+            });
+
+            // Pass 2: draw labels only for top MAX_LABELS detections
+            const fontSize = Math.max(9, Math.min(img.width * 0.013, 14));
+            ctx.font = `bold ${fontSize}px Inter, system-ui, sans-serif`;
+
+            sorted.slice(0, MAX_LABELS).forEach((detection) => {
+                const [x, y, width, height] = detection.bbox;
+                const labelText = `${detection.label} ${(detection.confidence * 100).toFixed(0)}%`;
+                const padding = fontSize * 0.35;
+                const labelW = ctx.measureText(labelText).width + padding * 2;
+                const labelH = fontSize + padding * 2;
+
+                let labelX, labelY;
+
+                if (detection.points && detection.points.length > 0) {
+                    // Center label on polygon centroid
+                    const cx = detection.points.reduce((sum, p) => sum + p.x, 0) / detection.points.length;
+                    const cy = detection.points.reduce((sum, p) => sum + p.y, 0) / detection.points.length;
+                    labelX = cx - labelW / 2;
+                    labelY = cy - labelH / 2;
+                } else {
+                    // Above bounding box
+                    labelX = x;
+                    labelY = y - labelH - 2;
+                    if (labelY < 0) labelY = y + 2;
+                }
+
+                ctx.fillStyle = '#f59e0b';
                 ctx.beginPath();
-                ctx.moveTo(x, y + cornerLength);
-                ctx.lineTo(x, y);
-                ctx.lineTo(x + cornerLength, y);
-                ctx.stroke();
-                
-                // Top-right corner
-                ctx.beginPath();
-                ctx.moveTo(x + width - cornerLength, y);
-                ctx.lineTo(x + width, y);
-                ctx.lineTo(x + width, y + cornerLength);
-                ctx.stroke();
-                
-                // Bottom-left corner
-                ctx.beginPath();
-                ctx.moveTo(x, y + height - cornerLength);
-                ctx.lineTo(x, y + height);
-                ctx.lineTo(x + cornerLength, y + height);
-                ctx.stroke();
-                
-                // Bottom-right corner
-                ctx.beginPath();
-                ctx.moveTo(x + width - cornerLength, y + height);
-                ctx.lineTo(x + width, y + height);
-                ctx.lineTo(x + width, y + height - cornerLength);
-                ctx.stroke();
-                
-                // Label background
-                const fontSize = Math.max(14, img.width * 0.02);
-                ctx.font = `bold ${fontSize}px Inter, system-ui, sans-serif`;
-                const labelText = `${label} ${(confidence * 100).toFixed(0)}%`;
-                const textMetrics = ctx.measureText(labelText);
-                const padding = fontSize * 0.4;
-                const labelHeight = fontSize + padding * 2;
-                const labelWidth = textMetrics.width + padding * 2;
-                
-                // Position label above box, or below if not enough space
-                let labelY = y - labelHeight - 4;
-                if (labelY < 0) labelY = y + height + 4;
-                
-                // Draw label background
-                ctx.fillStyle = '#F59E0B';
-                ctx.beginPath();
-                ctx.roundRect(x, labelY, labelWidth, labelHeight, 4);
+                ctx.roundRect(labelX, labelY, labelW, labelH, 3);
                 ctx.fill();
-                
-                // Draw label text
-                ctx.fillStyle = '#FFFFFF';
-                ctx.fillText(labelText, x + padding, labelY + fontSize + padding * 0.5);
-                
-                // Draw detection number
-                const numSize = Math.max(12, img.width * 0.015);
-                ctx.font = `bold ${numSize}px Inter, system-ui, sans-serif`;
-                const numText = `#${index + 1}`;
-                ctx.fillStyle = 'rgba(0,0,0,0.6)';
-                ctx.fillText(numText, x + 4, y + height - 4);
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(labelText, labelX + padding, labelY + fontSize + padding * 0.5);
             });
             
             setImageLoaded(true);
@@ -171,24 +179,20 @@ export default function DetectionResults({ originalImage, detections }) {
             
             <div 
                 ref={containerRef}
-                className="relative rounded-2xl overflow-auto bg-stone-900 shadow-xl p-4"
-                style={{ maxHeight: '600px' }}
+                className="relative rounded-2xl overflow-hidden shadow-2xl bg-stone-900"
+                style={{ width: '100%' }}
             >
-                <div 
-                    style={{ 
+                <canvas
+                    ref={canvasRef}
+                    style={{
+                        display: imageLoaded ? 'block' : 'none',
+                        width: '100%',
+                        height: 'auto',
                         transform: `scale(${zoom})`,
-                        transformOrigin: 'top left',
-                        transition: 'transform 0.2s ease-out'
+                        transformOrigin: 'top center',
+                        transition: 'transform 0.2s ease-out',
                     }}
-                >
-                    <canvas
-                        ref={canvasRef}
-                        className="rounded-lg"
-                        style={{ 
-                            display: imageLoaded ? 'block' : 'none',
-                        }}
-                    />
-                </div>
+                />
             </div>
             
             {detections.length > 0 && (

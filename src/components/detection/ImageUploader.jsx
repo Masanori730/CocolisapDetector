@@ -13,9 +13,22 @@ export default function ImageUploader({ onImageSelect, isProcessing }) {
         if (file && file.type.startsWith('image/')) {
             const reader = new FileReader();
             reader.onload = (e) => {
-                setPreview(e.target.result);
-                setFileName(file.name);
-                onImageSelect(file, e.target.result);
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 640;
+                    canvas.height = 640;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, 640, 640);
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+                    canvas.toBlob((blob) => {
+                        const resizedFile = new File([blob], file.name, { type: 'image/jpeg' });
+                        setPreview(dataUrl);
+                        setFileName(file.name);
+                        onImageSelect(resizedFile, dataUrl);
+                    }, 'image/jpeg', 0.92);
+                };
+                img.src = e.target.result;
             };
             reader.readAsDataURL(file);
         }

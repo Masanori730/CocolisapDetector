@@ -6,7 +6,7 @@ export default function ProcessingOverlay({ stage }) {
     const stages = [
         { key: 'uploading', label: 'Uploading image...', icon: Loader2 },
         { key: 'preprocessing', label: 'Preprocessing...', icon: Cpu },
-        { key: 'detecting', label: 'Running YOLOv8 detection...', icon: Search },
+        { key: 'detecting', label: 'Running YOLOv11 detection...', icon: Search },
         { key: 'analyzing', label: 'Analyzing results...', icon: BarChart3 },
     ];
 
