@@ -1,13 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from './utils';
-import { Home, Map, Download, Leaf } from 'lucide-react';
+import { Home, Map, Leaf } from 'lucide-react';
 
 export default function Layout({ children, currentPageName }) {
     const navItems = [
         { name: 'Home', icon: Home, path: createPageUrl('Home') },
-        { name: 'Map Dashboard', icon: Map, path: createPageUrl('MapDashboard') },
-        { name: 'Data Export', icon: Download, path: createPageUrl('DataExport') }
+        { name: 'Map Dashboard', icon: Map, path: createPageUrl('MapDashboard') }
     ];
 
     return (
