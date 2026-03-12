@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import React, { useState, useMemo, useEffect } from 'react';
+import { db } from '../firebase';
+import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { Map, TrendingUp, AlertTriangle, BarChart3, MapPin, Calendar } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -22,14 +22,13 @@ L.Icon.Default.mergeOptions({
     shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-// Custom marker icons by severity
 const createCustomIcon = (severity) => {
     const colors = {
         severe: '#dc2626',
         moderate: '#f59e0b',
         low: '#059669'
     };
-    
+
     return L.divIcon({
         className: 'custom-marker',
         html: `<div style="
@@ -68,11 +67,25 @@ export default function MapDashboard() {
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');
     const [showAnalytics, setShowAnalytics] = useState(false);
+    const [allDetections, setAllDetections] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
 
-    const { data: allDetections = [], isLoading } = useQuery({
-        queryKey: ['detections'],
-        queryFn: () => base44.entities.Detection.list('-created_date', 500),
-    });
+    // Fetch detections from Firebase
+    useEffect(() => {
+        const fetchDetections = async () => {
+            try {
+                const q = query(collection(db, 'detections'), orderBy('created_date', 'desc'), limit(500));
+                const snapshot = await getDocs(q);
+                const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                setAllDetections(data);
+            } catch (e) {
+                console.error('Failed to fetch detections:', e);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchDetections();
+    }, []);
 
     const filteredDetections = useMemo(() => {
         let filtered = allDetections;
@@ -98,7 +111,6 @@ export default function MapDashboard() {
             filtered = filtered.filter(d => {
                 const detectionDate = new Date(d.created_date);
                 const diffDays = Math.floor((now - detectionDate) / (1000 * 60 * 60 * 24));
-                
                 if (dateFilter === 'today') return diffDays === 0;
                 if (dateFilter === 'week') return diffDays <= 7;
                 if (dateFilter === 'month') return diffDays <= 30;
@@ -116,10 +128,9 @@ export default function MapDashboard() {
         const severe = filteredDetections.filter(d => d.severity === 'severe').length;
         const moderate = filteredDetections.filter(d => d.severity === 'moderate').length;
         const low = filteredDetections.filter(d => d.severity === 'low').length;
-        const avgInsects = total > 0 
+        const avgInsects = total > 0
             ? (filteredDetections.reduce((sum, d) => sum + (d.total_detections || 0), 0) / total).toFixed(1)
             : 0;
-
         return { total, severe, moderate, low, avgInsects };
     }, [filteredDetections]);
 
@@ -130,28 +141,29 @@ export default function MapDashboard() {
                 provinceCounts[d.province] = (provinceCounts[d.province] || 0) + 1;
             }
         });
-        return Object.entries(provinceCounts)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 5);
+        return Object.entries(provinceCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
     }, [filteredDetections]);
 
-    const recentDetections = useMemo(() => {
-        return filteredDetections.slice(0, 5);
-    }, [filteredDetections]);
+    const recentDetections = useMemo(() => filteredDetections.slice(0, 5), [filteredDetections]);
 
     const detectionsWithGPS = useMemo(() => {
         return filteredDetections.filter(d => d.latitude && d.longitude);
     }, [filteredDetections]);
 
-    // Calculate map center based on detections
     const mapCenter = useMemo(() => {
-        if (detectionsWithGPS.length === 0) {
-            return [12.8797, 121.7740]; // Philippines center
-        }
+        if (detectionsWithGPS.length === 0) return [12.8797, 121.7740];
         const avgLat = detectionsWithGPS.reduce((sum, d) => sum + d.latitude, 0) / detectionsWithGPS.length;
         const avgLng = detectionsWithGPS.reduce((sum, d) => sum + d.longitude, 0) / detectionsWithGPS.length;
         return [avgLat, avgLng];
     }, [detectionsWithGPS]);
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <p className="text-stone-500">Loading detections...</p>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-emerald-50 to-stone-50">
@@ -188,7 +200,6 @@ export default function MapDashboard() {
                             </div>
                         </div>
                     </div>
-
                     <div className="bg-white rounded-xl p-5 border border-red-200 shadow-sm">
                         <div className="flex items-center gap-3">
                             <div className="p-3 bg-red-100 rounded-lg">
@@ -200,7 +211,6 @@ export default function MapDashboard() {
                             </div>
                         </div>
                     </div>
-
                     <div className="bg-white rounded-xl p-5 border border-amber-200 shadow-sm">
                         <div className="flex items-center gap-3">
                             <div className="p-3 bg-amber-100 rounded-lg">
@@ -212,7 +222,6 @@ export default function MapDashboard() {
                             </div>
                         </div>
                     </div>
-
                     <div className="bg-white rounded-xl p-5 border border-stone-200 shadow-sm">
                         <div className="flex items-center gap-3">
                             <div className="p-3 bg-emerald-100 rounded-lg">
@@ -233,9 +242,7 @@ export default function MapDashboard() {
                         <div>
                             <label className="text-sm text-stone-600 mb-2 block">Severity Level</label>
                             <Select value={severityFilter} onValueChange={setSeverityFilter}>
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All Levels</SelectItem>
                                     <SelectItem value="severe">Severe Only</SelectItem>
@@ -244,13 +251,10 @@ export default function MapDashboard() {
                                 </SelectContent>
                             </Select>
                         </div>
-
                         <div>
                             <label className="text-sm text-stone-600 mb-2 block">Date Range</label>
                             <Select value={dateFilter} onValueChange={setDateFilter}>
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All Time</SelectItem>
                                     <SelectItem value="today">Today</SelectItem>
@@ -262,13 +266,10 @@ export default function MapDashboard() {
                                 </SelectContent>
                             </Select>
                         </div>
-
                         <div>
                             <label className="text-sm text-stone-600 mb-2 block">Province</label>
                             <Select value={provinceFilter} onValueChange={setProvinceFilter}>
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent className="max-h-[300px]">
                                     <SelectItem value="all">All Provinces</SelectItem>
                                     {PHILIPPINE_PROVINCES.map(province => (
@@ -278,115 +279,66 @@ export default function MapDashboard() {
                             </Select>
                         </div>
                     </div>
-
                     {dateFilter === 'custom' && (
                         <div className="grid md:grid-cols-2 gap-4 mt-4">
                             <div>
                                 <label className="text-sm text-stone-600 mb-2 block">Start Date</label>
-                                <input
-                                    type="date"
-                                    value={customStartDate}
-                                    onChange={(e) => setCustomStartDate(e.target.value)}
-                                    className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm"
-                                />
+                                <input type="date" value={customStartDate} onChange={(e) => setCustomStartDate(e.target.value)} className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm" />
                             </div>
                             <div>
                                 <label className="text-sm text-stone-600 mb-2 block">End Date</label>
-                                <input
-                                    type="date"
-                                    value={customEndDate}
-                                    onChange={(e) => setCustomEndDate(e.target.value)}
-                                    className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm"
-                                />
+                                <input type="date" value={customEndDate} onChange={(e) => setCustomEndDate(e.target.value)} className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm" />
                             </div>
                         </div>
                     )}
                 </div>
 
-                {/* Advanced Analytics Section */}
+                {/* Advanced Analytics */}
                 {showAnalytics && (
                     <div className="space-y-6 mb-6">
                         <TrendChart detections={filteredDetections} dateRange={dateFilter} />
-                        
                         <div className="grid lg:grid-cols-3 gap-6">
                             <div className="lg:col-span-2">
                                 <ProvinceAnalysis detections={filteredDetections} />
                             </div>
                             <div>
-                                <AnalyticsExport 
-                                    detections={filteredDetections} 
-                                    stats={stats}
-                                    topProvinces={topProvinces}
-                                />
+                                <AnalyticsExport detections={filteredDetections} stats={stats} topProvinces={topProvinces} />
                             </div>
                         </div>
                     </div>
                 )}
 
                 <div className="grid lg:grid-cols-3 gap-6">
-                    {/* Interactive Map */}
+                    {/* Map */}
                     <div className="lg:col-span-2">
                         <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
                             <div className="bg-emerald-600 text-white p-4">
                                 <h3 className="font-semibold flex items-center gap-2">
                                     <MapPin className="w-5 h-5" />
                                     Interactive Map View
-                                    <span className="ml-auto text-sm font-normal">
-                                        {detectionsWithGPS.length} locations
-                                    </span>
+                                    <span className="ml-auto text-sm font-normal">{detectionsWithGPS.length} locations</span>
                                 </h3>
                             </div>
                             <div className="aspect-video relative">
                                 {detectionsWithGPS.length > 0 ? (
-                                    <MapContainer
-                                        center={mapCenter}
-                                        zoom={6}
-                                        style={{ height: '100%', width: '100%' }}
-                                        scrollWheelZoom={true}
-                                    >
-                                        <TileLayer
-                                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                                        />
+                                    <MapContainer center={mapCenter} zoom={6} style={{ height: '100%', width: '100%' }} scrollWheelZoom={true}>
+                                        <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                                         {detectionsWithGPS.map((detection) => (
-                                            <Marker
-                                                key={detection.id}
-                                                position={[detection.latitude, detection.longitude]}
-                                                icon={createCustomIcon(detection.severity)}
-                                            >
+                                            <Marker key={detection.id} position={[detection.latitude, detection.longitude]} icon={createCustomIcon(detection.severity)}>
                                                 <Popup>
                                                     <div className="p-2 min-w-[200px]">
                                                         <div className="mb-2">
-                                                            <Badge className={
-                                                                detection.severity === 'severe' ? 'bg-red-600' :
-                                                                detection.severity === 'moderate' ? 'bg-amber-500' :
-                                                                'bg-green-600'
-                                                            }>
+                                                            <Badge className={detection.severity === 'severe' ? 'bg-red-600' : detection.severity === 'moderate' ? 'bg-amber-500' : 'bg-green-600'}>
                                                                 {detection.severity.toUpperCase()}
                                                             </Badge>
                                                         </div>
-                                                        {detection.province && (
-                                                            <p className="font-semibold text-stone-800 mb-1">
-                                                                {detection.province}
-                                                            </p>
-                                                        )}
-                                                        {detection.municipality && (
-                                                            <p className="text-sm text-stone-600 mb-1">
-                                                                {detection.municipality}
-                                                                {detection.barangay && `, ${detection.barangay}`}
-                                                            </p>
-                                                        )}
+                                                        {detection.province && <p className="font-semibold text-stone-800 mb-1">{detection.province}</p>}
+                                                        {detection.municipality && <p className="text-sm text-stone-600 mb-1">{detection.municipality}{detection.barangay && `, ${detection.barangay}`}</p>}
                                                         <div className="text-sm text-stone-700 mt-2">
                                                             <p><strong>{detection.total_detections}</strong> insects detected</p>
-                                                            <p className="text-xs text-stone-500 mt-1">
-                                                                {format(new Date(detection.created_date), 'MMM d, yyyy • h:mm a')}
-                                                            </p>
+                                                            <p className="text-xs text-stone-500 mt-1">{format(new Date(detection.created_date), 'MMM d, yyyy • h:mm a')}</p>
                                                         </div>
-                                                        {detection.farmName && (
-                                                            <p className="text-xs text-stone-500 mt-2 border-t pt-1">
-                                                                Farm: {detection.farmName}
-                                                            </p>
-                                                        )}
+                                                        {detection.farmName && <p className="text-xs text-stone-500 mt-2 border-t pt-1">Farm: {detection.farmName}</p>}
                                                     </div>
                                                 </Popup>
                                             </Marker>
@@ -397,31 +349,17 @@ export default function MapDashboard() {
                                         <div className="text-center">
                                             <Map className="w-16 h-16 text-emerald-600 mx-auto mb-4" />
                                             <h4 className="text-lg font-semibold text-stone-800 mb-2">No GPS Data Available</h4>
-                                            <p className="text-sm text-stone-600 max-w-md">
-                                                No detections with GPS coordinates found for the current filters.
-                                                Try adjusting your filters or ensure location data is captured during detection.
-                                            </p>
+                                            <p className="text-sm text-stone-600 max-w-md">No detections with GPS coordinates found for the current filters.</p>
                                         </div>
                                     </div>
                                 )}
                             </div>
-
-                            {/* Severity Legend */}
                             <div className="p-4 border-t border-stone-200 bg-stone-50">
                                 <h4 className="text-sm font-semibold text-stone-700 mb-3">Severity Legend</h4>
                                 <div className="flex flex-wrap gap-4">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-4 h-4 rounded-full bg-red-600" />
-                                        <span className="text-sm text-stone-600">Severe (10+ insects)</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-4 h-4 rounded-full bg-amber-500" />
-                                        <span className="text-sm text-stone-600">Moderate (5-9 insects)</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-4 h-4 rounded-full bg-green-600" />
-                                        <span className="text-sm text-stone-600">Low (1-4 insects)</span>
-                                    </div>
+                                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-red-600" /><span className="text-sm text-stone-600">Severe (10+ insects)</span></div>
+                                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-amber-500" /><span className="text-sm text-stone-600">Moderate (5-9 insects)</span></div>
+                                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-green-600" /><span className="text-sm text-stone-600">Low (1-4 insects)</span></div>
                                 </div>
                             </div>
                         </div>
@@ -429,7 +367,6 @@ export default function MapDashboard() {
 
                     {/* Side Panel */}
                     <div className="space-y-6">
-                        {/* Top Affected Provinces */}
                         <div className="bg-white rounded-xl border border-stone-200 p-5">
                             <h3 className="font-semibold text-stone-800 mb-4">Top Affected Provinces</h3>
                             {topProvinces.length > 0 ? (
@@ -437,9 +374,7 @@ export default function MapDashboard() {
                                     {topProvinces.map(([province, count], idx) => (
                                         <div key={province} className="flex items-center justify-between">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold flex items-center justify-center">
-                                                    {idx + 1}
-                                                </div>
+                                                <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold flex items-center justify-center">{idx + 1}</div>
                                                 <span className="text-sm text-stone-700">{province}</span>
                                             </div>
                                             <Badge variant="secondary">{count}</Badge>
@@ -451,30 +386,19 @@ export default function MapDashboard() {
                             )}
                         </div>
 
-                        {/* Recent Detections */}
                         <div className="bg-white rounded-xl border border-stone-200 p-5">
                             <h3 className="font-semibold text-stone-800 mb-4">Recent Detections</h3>
                             {recentDetections.length > 0 ? (
                                 <div className="space-y-3">
                                     {recentDetections.map(detection => {
-                                        const severityColors = {
-                                            severe: 'bg-red-100 text-red-700',
-                                            moderate: 'bg-amber-100 text-amber-700',
-                                            low: 'bg-green-100 text-green-700'
-                                        };
+                                        const severityColors = { severe: 'bg-red-100 text-red-700', moderate: 'bg-amber-100 text-amber-700', low: 'bg-green-100 text-green-700' };
                                         return (
                                             <div key={detection.id} className="border-b border-stone-100 pb-3 last:border-0">
                                                 <div className="flex items-start justify-between mb-1">
-                                                    <Badge className={severityColors[detection.severity]}>
-                                                        {detection.severity}
-                                                    </Badge>
-                                                    <span className="text-xs text-stone-500">
-                                                        {format(new Date(detection.created_date), 'MMM d')}
-                                                    </span>
+                                                    <Badge className={severityColors[detection.severity]}>{detection.severity}</Badge>
+                                                    <span className="text-xs text-stone-500">{format(new Date(detection.created_date), 'MMM d')}</span>
                                                 </div>
-                                                <p className="text-sm text-stone-700">
-                                                    {detection.province || 'Unknown location'} • {detection.total_detections} insects
-                                                </p>
+                                                <p className="text-sm text-stone-700">{detection.province || 'Unknown location'} • {detection.total_detections} insects</p>
                                             </div>
                                         );
                                     })}
