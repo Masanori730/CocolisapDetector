@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Leaf, Info, RefreshCw, ChevronDown, ExternalLink, MessageSquare, Layers } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,9 @@ import BatchUploader from "@/components/detection/BatchUploader";
 import LocationCapture from "@/components/location/LocationCapture";
 import EnhancedDetectionResults from "@/components/detection/EnhancedDetectionResults";
 import DetectionHistory from "@/components/detection/DetectionHistory";
+
+import { db } from '../firebase';
+import { collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, limit } from 'firebase/firestore';
 
 const API_BASE_URL = 'https://cocolisap-detector-398384683490.asia-southeast1.run.app';
 
@@ -42,17 +45,26 @@ const detectWithYOLO = async (imageDataUrl) => {
     };
 };
 
-const getHistory = () => {
-    try { return JSON.parse(localStorage.getItem('cocolisap_history') || '[]'); }
-    catch { return []; }
+const getHistory = async () => {
+    try {
+        const q = query(collection(db, 'detections'), orderBy('created_date', 'desc'), limit(50));
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch (e) {
+        console.error('Failed to load history from Firebase:', e);
+        return [];
+    }
 };
 
-const saveToHistory = (detection) => {
+const saveToHistory = async (detection) => {
     try {
-        const history = getHistory();
-        history.unshift({ ...detection, id: Date.now().toString(), created_date: new Date().toISOString() });
-        localStorage.setItem('cocolisap_history', JSON.stringify(history.slice(0, 50)));
-    } catch {}
+        await addDoc(collection(db, 'detections'), {
+            ...detection,
+            created_date: new Date().toISOString()
+        });
+    } catch (e) {
+        console.error('Failed to save to Firebase:', e);
+    }
 };
 
 export default function Home() {
@@ -67,7 +79,12 @@ export default function Home() {
     const [activeTab, setActiveTab] = useState('single');
     const [locationData, setLocationData] = useState(null);
     const [currentDetectionId, setCurrentDetectionId] = useState(null);
-    const [history, setHistory] = useState(getHistory());
+    const [history, setHistory] = useState([]);
+
+    // Load history from Firebase on mount
+    useEffect(() => {
+        getHistory().then(setHistory);
+    }, []);
 
     const handleImageSelect = useCallback((file, preview) => {
         setSelectedImage(file);
@@ -92,7 +109,6 @@ export default function Home() {
             await new Promise(r => setTimeout(r, 300));
 
             const newDetection = {
-                id: Date.now().toString(),
                 image_url: imagePreview,
                 detections_data: JSON.stringify(detectionResults.detections),
                 severity: detectionResults.severity,
@@ -102,9 +118,10 @@ export default function Home() {
                 ...locationData
             };
 
-            saveToHistory(newDetection);
-            setHistory(getHistory());
-            setCurrentDetectionId(newDetection.id);
+            await saveToHistory(newDetection);
+            const updatedHistory = await getHistory();
+            setHistory(updatedHistory);
+            setCurrentDetectionId(updatedHistory[0]?.id || null);
             setResults(detectionResults);
         } catch (err) {
             setError(err.message || 'Detection failed. Please try again.');
@@ -132,7 +149,6 @@ export default function Home() {
 
                 const detectionResults = await detectWithYOLO(imageDataUrl);
                 const newDetection = {
-                    id: Date.now().toString() + i,
                     image_url: imageDataUrl,
                     detections_data: JSON.stringify(detectionResults.detections),
                     severity: detectionResults.severity,
@@ -142,7 +158,7 @@ export default function Home() {
                     ...locationData
                 };
 
-                saveToHistory(newDetection);
+                await saveToHistory(newDetection);
                 batchResults.push({
                     fileName: files[i].file.name,
                     imagePreview: imageDataUrl,
@@ -150,7 +166,8 @@ export default function Home() {
                 });
             }
 
-            setHistory(getHistory());
+            const updatedHistory = await getHistory();
+            setHistory(updatedHistory);
             setResults({ isBatch: true, batchResults });
         } catch (err) {
             setError(err.message || 'Batch processing failed.');
@@ -184,16 +201,25 @@ export default function Home() {
         setFeedbackDetectionId(null);
     };
 
-    const handleDeleteHistory = (id) => {
-        const updated = getHistory().filter(d => d.id !== id);
-        localStorage.setItem('cocolisap_history', JSON.stringify(updated));
-        setHistory(updated);
+    const handleDeleteHistory = async (id) => {
+        try {
+            await deleteDoc(doc(db, 'detections', id));
+            setHistory(await getHistory());
+        } catch (e) {
+            console.error('Failed to delete from Firebase:', e);
+        }
     };
 
-    const handleClearAllHistory = () => {
+    const handleClearAllHistory = async () => {
         if (!confirm('Are you sure you want to delete all detection history?')) return;
-        localStorage.removeItem('cocolisap_history');
-        setHistory([]);
+        try {
+            const snapshot = await getDocs(collection(db, 'detections'));
+            const deletePromises = snapshot.docs.map(d => deleteDoc(doc(db, 'detections', d.id)));
+            await Promise.all(deletePromises);
+            setHistory([]);
+        } catch (e) {
+            console.error('Failed to clear history from Firebase:', e);
+        }
     };
 
     const scrollToUpload = () => {
