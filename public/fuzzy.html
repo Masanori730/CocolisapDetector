@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Cocolisap Infestation Expert System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<style>
+:root{
+  --bg:#0b1a12;--bg2:#0f2318;--bg3:#132b1e;
+  --surface:#162d20;--surface2:#1c3828;
+  --border:rgba(80,180,100,0.15);--border2:rgba(80,180,100,0.30);
+  --green:#4caf72;--green-bright:#6ddd96;--green-dim:#2a6640;
+  --amber:#e8a440;--amber-dim:#7a4f10;
+  --red:#e05555;--red-dim:#6b2020;
+  --blue:#4a9edd;--blue-dim:#1a3f5c;--blue-bg:rgba(74,158,221,0.10);
+  --text:#d4ead9;--text-muted:#6a9475;--text-dim:#3d6b4a;
+  --mono:'DM Mono',monospace;--serif:'DM Serif Display',serif;--sans:'Outfit',sans-serif;
+  --r:12px;--rl:20px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(ellipse 80% 60% at 15% 10%,rgba(76,175,114,0.07) 0%,transparent 60%),
+    radial-gradient(ellipse 50% 40% at 85% 80%,rgba(76,175,114,0.05) 0%,transparent 55%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+}
+.page{position:relative;z-index:1;max-width:860px;margin:0 auto;padding:0 24px 80px}
+
+/* HEADER */
+header{padding:56px 0 40px;display:flex;flex-direction:column;gap:10px}
+.header-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(76,175,114,0.08);border:1px solid var(--border2);border-radius:100px;padding:5px 14px;width:fit-content;font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--green);text-transform:uppercase}
+.header-badge::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 8px var(--green)}50%{opacity:.5;box-shadow:0 0 3px var(--green)}}
+h1{font-family:var(--serif);font-size:clamp(32px,5vw,48px);font-weight:400;line-height:1.12;color:#e8f5ec;letter-spacing:-.02em}
+h1 em{font-style:italic;color:var(--green-bright)}
+.subtitle{font-size:14px;color:var(--text-muted);line-height:1.6;max-width:540px}
+.divider{height:1px;background:linear-gradient(90deg,var(--border2),transparent 80%);margin:8px 0 32px}
+
+/* MODE TOGGLE */
+.mode-toggle{display:flex;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:4px;width:fit-content;margin-bottom:24px}
+.mode-btn{display:flex;align-items:center;gap:8px;padding:10px 22px;border-radius:9px;border:none;background:transparent;color:var(--text-muted);font-family:var(--sans);font-size:13px;font-weight:500;cursor:pointer;transition:background .2s,color .2s;white-space:nowrap}
+.mode-btn svg{width:15px;height:15px;flex-shrink:0;opacity:.6;transition:opacity .2s}
+.mode-btn.active{background:var(--surface2);color:var(--green-bright);box-shadow:0 1px 6px rgba(0,0,0,.3)}
+.mode-btn.active svg{opacity:1}
+
+/* FORM CARD */
+.form-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:36px 40px;position:relative;overflow:hidden}
+.form-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--green-dim),transparent)}
+.sec-label{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--text-dim);text-transform:uppercase;margin-bottom:20px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:600px){.grid2{grid-template-columns:1fr}.form-card{padding:24px 20px}.mode-btn{padding:10px 14px;font-size:12px}}
+.ig{display:flex;flex-direction:column;gap:8px}
+.ig.full{grid-column:1/-1}
+label{font-size:12px;font-weight:500;letter-spacing:.04em;color:var(--text-muted);display:flex;align-items:center;gap:8px}
+label .unit{font-family:var(--mono);font-size:10px;color:var(--text-dim);background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:1px 6px;margin-left:auto}
+input[type="number"],input[type="text"]{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--mono);font-size:15px;padding:12px 16px;width:100%;transition:border-color .2s,box-shadow .2s,background .2s;outline:none;-moz-appearance:textfield}
+input[type="number"]::-webkit-inner-spin-button,input[type="number"]::-webkit-outer-spin-button{-webkit-appearance:none}
+input::placeholder{color:var(--text-dim);font-size:13px}
+input:focus{border-color:var(--green-dim);box-shadow:0 0 0 3px rgba(76,175,114,.10);background:var(--bg3)}
+input.error{border-color:var(--red)!important;box-shadow:0 0 0 3px rgba(224,85,85,.10)!important}
+.hint{font-size:10px;color:var(--text-dim);font-family:var(--mono)}
+.ferr{font-size:10px;color:var(--red);font-family:var(--mono);display:none}
+.ferr.on{display:block}
+.slider-row{display:flex;align-items:center;gap:12px;margin-top:4px}
+input[type="range"]{flex:1;-webkit-appearance:none;height:3px;background:var(--bg3);border-radius:10px;outline:none;cursor:pointer}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--green);box-shadow:0 0 8px rgba(76,175,114,.5);cursor:pointer;transition:transform .15s}
+input[type="range"]::-webkit-slider-thumb:hover{transform:scale(1.2)}
+.sval{font-family:var(--mono);font-size:13px;color:var(--green);min-width:40px;text-align:right}
+
+/* SECTIONS */
+.loc-sec,.man-sec{display:none}
+.loc-sec.on,.man-sec.on{display:block}
+.card-sep{height:1px;background:var(--border);margin:28px 0}
+
+/* BUTTONS */
+.fetch-btn{display:flex;align-items:center;gap:8px;padding:11px 22px;background:var(--blue-dim);border:1px solid rgba(74,158,221,.30);border-radius:var(--r);color:var(--blue);font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;transition:background .2s,border-color .2s,transform .15s;white-space:nowrap}
+.fetch-btn:hover{background:rgba(74,158,221,.20);border-color:rgba(74,158,221,.50);transform:translateY(-1px)}
+.fetch-btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.fetch-btn svg{width:15px;height:15px}
+button[type="submit"]{background:var(--green);color:#0b1a12;border:none;border-radius:var(--r);font-family:var(--sans);font-size:14px;font-weight:600;letter-spacing:.04em;padding:14px 36px;cursor:pointer;transition:background .2s,transform .15s,box-shadow .2s;position:relative;overflow:hidden}
+button[type="submit"]::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.15) 0%,transparent 60%);pointer-events:none}
+button[type="submit"]:hover{background:var(--green-bright);transform:translateY(-1px);box-shadow:0 6px 20px rgba(76,175,114,.35)}
+button[type="submit"]:active{transform:translateY(0)}
+button[type="submit"]:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.submit-row{margin-top:32px;display:flex;align-items:center;gap:16px}
+.spin{display:none;width:18px;height:18px;border:2px solid rgba(76,175,114,.3);border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin.on{display:block}
+
+/* WEATHER PREVIEW */
+.wx-preview{display:none;margin-top:20px;background:var(--blue-bg);border:1px solid rgba(74,158,221,.25);border-radius:var(--r);padding:18px 20px;animation:fadein .35s ease}
+.wx-preview.on{display:block}
+@keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.wx-label{font-family:var(--mono);font-size:9px;letter-spacing:.14em;color:var(--blue);text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.wx-label::after{content:'';flex:1;height:1px;background:rgba(74,158,221,.20)}
+.chips{display:flex;gap:12px;flex-wrap:wrap}
+.chip{display:flex;flex-direction:column;gap:3px;background:rgba(74,158,221,.08);border:1px solid rgba(74,158,221,.18);border-radius:8px;padding:10px 16px;min-width:110px}
+.chip-l{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:rgba(74,158,221,.7)}
+.chip-v{font-family:var(--mono);font-size:18px;font-weight:500;color:var(--blue)}
+.chip-v span{font-size:11px;opacity:.7}
+.loc-res{font-family:var(--mono);font-size:11px;color:var(--text-muted);margin-top:10px;line-height:1.5}
+
+/* ERROR TOAST */
+#err-toast{display:none;margin-top:16px;padding:14px 18px;background:rgba(224,85,85,.10);border:1px solid rgba(224,85,85,.30);border-radius:var(--r);color:var(--red);font-size:13px;font-family:var(--mono)}
+#err-toast.on{display:block}
+.inline-err{display:none;margin-top:14px;padding:12px 16px;background:rgba(224,85,85,.10);border:1px solid rgba(224,85,85,.25);border-radius:var(--r);color:var(--red);font-family:var(--mono);font-size:12px}
+.inline-err.on{display:block}
+
+/* RESULTS */
+#results{margin-top:32px;opacity:0;transform:translateY(16px);transition:opacity .5s,transform .5s;pointer-events:none}
+#results.on{opacity:1;transform:translateY(0);pointer-events:all}
+.score-card{border-radius:var(--rl);padding:36px 40px;position:relative;overflow:hidden;border:1px solid transparent;transition:background .6s,border-color .6s}
+.score-card.low{background:linear-gradient(135deg,rgba(76,175,114,.12),rgba(76,175,114,.05));border-color:rgba(76,175,114,.30)}
+.score-card.moderate{background:linear-gradient(135deg,rgba(232,164,64,.12),rgba(232,164,64,.05));border-color:rgba(232,164,64,.30)}
+.score-card.high{background:linear-gradient(135deg,rgba(224,85,85,.14),rgba(224,85,85,.05));border-color:rgba(224,85,85,.30)}
+.score-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;transition:background .6s}
+.score-card.low::before{background:linear-gradient(90deg,var(--green),transparent)}
+.score-card.moderate::before{background:linear-gradient(90deg,var(--amber),transparent)}
+.score-card.high::before{background:linear-gradient(90deg,var(--red),transparent)}
+.score-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.score-eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--text-dim);text-transform:uppercase}
+.score-num{font-family:var(--serif);font-size:clamp(56px,9vw,80px);line-height:1;letter-spacing:-.02em;transition:color .6s}
+.score-num.low{color:var(--green-bright)}.score-num.moderate{color:var(--amber)}.score-num.high{color:var(--red)}
+.score-num sup{font-family:var(--sans);font-size:.35em;font-weight:300;vertical-align:super;letter-spacing:0;opacity:.7}
+.badge{display:inline-flex;align-items:center;gap:6px;border-radius:100px;padding:7px 16px;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;transition:all .6s}
+.badge.low{background:rgba(76,175,114,.15);color:var(--green-bright);border:1px solid rgba(76,175,114,.35)}
+.badge.moderate{background:rgba(232,164,64,.15);color:var(--amber);border:1px solid rgba(232,164,64,.35)}
+.badge.high{background:rgba(224,85,85,.15);color:var(--red);border:1px solid rgba(224,85,85,.35)}
+.badge::before{content:'';width:6px;height:6px;border-radius:50%;transition:background .6s}
+.badge.low::before{background:var(--green-bright)}.badge.moderate::before{background:var(--amber)}.badge.high::before{background:var(--red);box-shadow:0 0 6px var(--red)}
+.progress-track{margin-top:28px;height:6px;background:rgba(255,255,255,.06);border-radius:10px;overflow:hidden}
+.progress-fill{height:100%;border-radius:10px;width:0%;transition:width 1s cubic-bezier(.4,0,.2,1),background .6s}
+.progress-fill.low{background:linear-gradient(90deg,var(--green-dim),var(--green-bright))}
+.progress-fill.moderate{background:linear-gradient(90deg,var(--amber-dim),var(--amber))}
+.progress-fill.high{background:linear-gradient(90deg,var(--red-dim),var(--red))}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:24px}
+@media(max-width:540px){.stats-row{grid-template-columns:1fr}}
+.stat-box{background:rgba(0,0,0,.20);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px}
+.stat-box-l{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px}
+.stat-box-v{font-family:var(--mono);font-size:18px;font-weight:500;color:var(--text);letter-spacing:-.02em}
+.advisory{margin-top:20px;padding:16px 20px;border-radius:var(--r);font-size:13px;line-height:1.6;border-left:3px solid transparent;transition:all .6s}
+.advisory.low{background:rgba(76,175,114,.07);border-color:var(--green)}.advisory.moderate{background:rgba(232,164,64,.07);border-color:var(--amber)}.advisory.high{background:rgba(224,85,85,.08);border-color:var(--red)}
+.advisory strong{display:block;margin-bottom:4px;font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.advisory.low strong{color:var(--green)}.advisory.moderate strong{color:var(--amber)}.advisory.high strong{color:var(--red)}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:20px}
+@media(max-width:480px){.detail-grid{grid-template-columns:1fr}}
+.drow{display:flex;justify-content:space-between;align-items:center;padding:9px 14px;background:rgba(0,0,0,.15);border:1px solid var(--border);border-radius:8px}
+.dkey{color:var(--text-dim);font-family:var(--mono);font-size:11px}
+.dval{color:var(--text);font-family:var(--mono);font-size:12px;font-weight:500}
+
+/* ── SPREAD VISUALIZATION ─────────────────────────────────────────────────── */
+#spread-section{display:none;margin-top:20px}
+#spread-section.on{display:block;animation:fadein .4s ease}
+
+.spread-trigger{
+  width:100%;display:flex;align-items:center;justify-content:center;gap:10px;
+  padding:17px 24px;background:rgba(76,175,114,.05);
+  border:1px dashed var(--border2);border-radius:var(--rl);
+  color:var(--green);font-family:var(--sans);font-size:14px;font-weight:500;
+  cursor:pointer;transition:background .2s,border-color .2s,transform .15s;
+  letter-spacing:.02em;
+}
+.spread-trigger:hover{background:rgba(76,175,114,.12);border-color:var(--green);transform:translateY(-1px)}
+.spread-trigger:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.spread-trigger svg{width:18px;height:18px;flex-shrink:0}
+
+.spread-card{display:none;margin-top:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;animation:fadein .45s ease}
+.spread-card.on{display:block}
+
+.spread-header{
+  padding:22px 28px 18px;border-bottom:1px solid var(--border);
+  display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:14px;
+}
+.spread-title{font-family:var(--serif);font-size:22px;font-weight:400;color:#e8f5ec}
+.spread-title em{font-style:italic;color:var(--green-bright)}
+.spread-sub{font-family:var(--mono);font-size:11px;color:var(--text-muted);margin-top:4px}
+.wind-chips{display:flex;gap:10px;flex-wrap:wrap}
+.wchip{display:flex;flex-direction:column;gap:3px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 14px}
+.wchip-l{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim)}
+.wchip-v{font-family:var(--mono);font-size:14px;font-weight:500;color:var(--green-bright)}
+
+#spread-map{width:100%;height:480px;background:var(--bg2)}
+.leaflet-control-attribution{background:rgba(11,26,18,.85)!important;color:var(--text-muted)!important}
+.leaflet-control-attribution a{color:var(--green)!important}
+
+.spread-legend{
+  padding:16px 28px;border-top:1px solid var(--border);
+  display:flex;gap:18px;flex-wrap:wrap;align-items:center;
+}
+.leg-item{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-muted);font-family:var(--mono)}
+.leg-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.leg-sw{width:22px;height:10px;border-radius:3px;flex-shrink:0}
+
+.spread-meta{
+  padding:18px 28px 24px;border-top:1px solid var(--border);
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;
+}
+@media(max-width:540px){.spread-meta{grid-template-columns:1fr}}
+.spread-meta .drow.wide{grid-column:1/-1}
+
+footer{margin-top:60px;padding-top:24px;border-top:1px solid var(--border);font-size:11px;color:var(--text-dim);font-family:var(--mono);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.leaf-bg{position:fixed;right:-40px;top:50%;transform:translateY(-50%);width:220px;opacity:.04;pointer-events:none;z-index:0}
+@media(max-width:1100px){.leaf-bg{display:none}}
+</style>
+</head>
+<body>
+<svg class="leaf-bg" viewBox="0 0 200 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M100 380 C100 380 10 280 10 180 C10 80 55 20 100 20 C145 20 190 80 190 180 C190 280 100 380 100 380Z" fill="#4caf72"/>
+  <line x1="100" y1="380" x2="100" y2="20" stroke="#4caf72" stroke-width="3"/>
+  <line x1="100" y1="150" x2="50"  y2="100" stroke="#4caf72" stroke-width="1.5"/>
+  <line x1="100" y1="200" x2="150" y2="150" stroke="#4caf72" stroke-width="1.5"/>
+  <line x1="100" y1="250" x2="55"  y2="210" stroke="#4caf72" stroke-width="1.5"/>
+  <line x1="100" y1="300" x2="145" y2="260" stroke="#4caf72" stroke-width="1.5"/>
+</svg>
+
+<div class="page">
+
+<!-- HEADER -->
+<header>
+  <span class="header-badge">Fuzzy Logic Expert System</span>
+  <h1>Cocolisap <em>Infestation</em><br>Severity Analyzer</h1>
+  <p class="subtitle">Mamdani inference system for <em>Aspidiotus rigidus</em> (CSI) in Philippine coconut farms. Input your farm's environmental and structural data to estimate the degree of infestation.</p>
+</header>
+<div class="divider"></div>
+
+<!-- MODE TOGGLE -->
+<div class="mode-toggle">
+  <button class="mode-btn active" id="btn-manual" onclick="setMode('manual')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+    Manual Prediction
+  </button>
+  <button class="mode-btn" id="btn-smart" onclick="setMode('smart')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+    Smart Location
+  </button>
+</div>
+
+<form id="predict-form" novalidate>
+<div class="form-card">
+
+  <!-- ══ SMART LOCATION ══ -->
+  <div class="loc-sec" id="loc-sec">
+    <p class="sec-label">Farm Location — Philippine Address</p>
+    <div class="grid2">
+      <div class="ig"><label for="l-brgy">Barangay</label><input type="text" id="l-brgy" placeholder="e.g. Brgy. San Isidro" autocomplete="off"/></div>
+      <div class="ig"><label for="l-city">City / Municipality</label><input type="text" id="l-city" placeholder="e.g. Lucena City" autocomplete="off"/></div>
+      <div class="ig"><label for="l-prov">Province</label><input type="text" id="l-prov" placeholder="e.g. Quezon" autocomplete="off"/></div>
+      <div class="ig"><label for="l-reg">Region</label><input type="text" id="l-reg" placeholder="e.g. CALABARZON" autocomplete="off"/></div>
+      <div class="ig full"><label for="l-country">Country</label><input type="text" id="l-country" value="Philippines" autocomplete="off"/></div>
+    </div>
+
+    <div style="margin-top:20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <button type="button" class="fetch-btn" id="fetch-btn" onclick="fetchWeather()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/></svg>
+        Get Weather Data
+      </button>
+      <div class="spin" id="wx-spin"></div>
+      <span id="wx-status" style="font-family:var(--mono);font-size:11px;color:var(--text-muted)"></span>
+    </div>
+
+    <div class="wx-preview" id="wx-preview">
+      <div class="wx-label">Live Weather Retrieved</div>
+      <div class="chips">
+        <div class="chip"><span class="chip-l">Temperature</span><div class="chip-v" id="wp-temp">—<span>°C</span></div></div>
+        <div class="chip"><span class="chip-l">Humidity</span><div class="chip-v" id="wp-hum">—<span>%</span></div></div>
+        <div class="chip"><span class="chip-l">Wind Speed</span><div class="chip-v" id="wp-wind">—<span>km/h</span></div></div>
+        <div class="chip"><span class="chip-l">Wind Direction</span><div class="chip-v" id="wp-dir">—</div></div>
+      </div>
+      <div class="loc-res" id="wp-loc"></div>
+    </div>
+    <div class="inline-err" id="wx-err"></div>
+
+    <div class="card-sep"></div>
+    <p class="sec-label">Additional Farm Parameters</p>
+    <div class="grid2">
+      <div class="ig">
+        <label for="s-dens">Planting Density <span class="unit">1–200 /ha</span></label>
+        <div class="slider-row"><input type="range" id="s-dens-r" min="1" max="200" step="1" value="115" oninput="SR(this,'s-dens','s-dens-v')"/><span class="sval" id="s-dens-v">115</span></div>
+        <input type="number" id="s-dens" placeholder="e.g. 115" min="1" max="200" step="1" value="115" oninput="SI(this,'s-dens-r','s-dens-v')"/>
+        <span class="hint">Observed range: 100–130 trees/ha</span><span class="ferr" id="e-s-dens">Must be between 1 and 200</span>
+      </div>
+      <div class="ig">
+        <label for="s-trees">Total Coconut Trees <span class="unit">≥ 1</span></label>
+        <input type="number" id="s-trees" placeholder="e.g. 500" min="1" step="1" value="500" oninput="VN(this,1,1/0,'e-s-trees')"/>
+        <span class="hint">Used to estimate infected tree count</span><span class="ferr" id="e-s-trees">Must be at least 1</span>
+        <span class="ferr" id="e-s-dens-cross">Planting density cannot exceed total number of trees</span>
+      </div>
+      <div class="ig full">
+        <label for="s-days">Days Without Intervention <span class="unit">0 = N/A</span></label>
+        <input type="number" id="s-days" placeholder="0" min="0" step="1" value="0" oninput="VN(this,0,1/0,'e-s-days')"/>
+        <span class="hint">Days farm was at HIGH risk without action. Field data: 14+ days → 90%+ tree loss.</span>
+        <span class="ferr" id="e-s-days">Must be 0 or greater</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ MANUAL ══ -->
+  <div class="man-sec on" id="man-sec">
+    <p class="sec-label">Environmental Parameters</p>
+    <div class="grid2">
+      <div class="ig">
+        <label for="temperature">Temperature <span class="unit">1–45 °C</span></label>
+        <div class="slider-row"><input type="range" id="temp-r" min="1" max="45" step="0.5" value="28" oninput="SR(this,'temperature','temp-v')"/><span class="sval" id="temp-v">28</span></div>
+        <input type="number" id="temperature" placeholder="e.g. 28" min="1" max="45" step="0.1" value="28" oninput="SI(this,'temp-r','temp-v')"/>
+        <span class="hint">Observed range: 20–35 °C</span><span class="ferr" id="e-temperature">Must be between 1 and 45</span>
+      </div>
+      <div class="ig">
+        <label for="humidity">Relative Humidity <span class="unit">0–100 %</span></label>
+        <div class="slider-row"><input type="range" id="hum-r" min="0" max="100" step="1" value="70" oninput="SR(this,'humidity','hum-v')"/><span class="sval" id="hum-v">70</span></div>
+        <input type="number" id="humidity" placeholder="e.g. 70" min="0" max="100" step="0.1" value="70" oninput="SI(this,'hum-r','hum-v')"/>
+        <span class="hint">Observed range: 65–74 %</span><span class="ferr" id="e-humidity">Must be between 0 and 100</span>
+      </div>
+      <div class="ig">
+        <label for="wind_speed">Wind Speed <span class="unit">1–85 km/h</span></label>
+        <div class="slider-row"><input type="range" id="wind-r" min="1" max="85" step="1" value="18" oninput="SR(this,'wind_speed','wind-v')"/><span class="sval" id="wind-v">18</span></div>
+        <input type="number" id="wind_speed" placeholder="e.g. 18" min="1" max="85" step="0.1" value="18" oninput="SI(this,'wind-r','wind-v')"/>
+        <span class="hint">Observed range: 11–24 km/h</span><span class="ferr" id="e-wind_speed">Must be between 1 and 85</span>
+      </div>
+      <div class="ig">
+        <label for="planting_density">Planting Density <span class="unit">1–200 /ha</span></label>
+        <div class="slider-row"><input type="range" id="dens-r" min="1" max="200" step="1" value="115" oninput="SR(this,'planting_density','dens-v')"/><span class="sval" id="dens-v">115</span></div>
+        <input type="number" id="planting_density" placeholder="e.g. 115" min="1" max="200" step="1" value="115" oninput="SI(this,'dens-r','dens-v')"/>
+        <span class="hint">Observed range: 100–130 trees/ha</span><span class="ferr" id="e-planting_density">Must be between 1 and 200</span>
+      </div>
+      <div class="ig full">
+        <label for="total_trees">Total Coconut Trees in Farm <span class="unit">≥ 1</span></label>
+        <input type="number" id="total_trees" placeholder="e.g. 500" min="1" step="1" value="500" oninput="VN(this,1,1/0,'e-total_trees')"/>
+        <span class="hint">Used to estimate the number of infected trees</span><span class="ferr" id="e-total_trees">Must be at least 1</span>
+        <span class="ferr" id="e-planting_density-cross">Planting density cannot exceed total number of trees</span>
+      </div>
+      <div class="ig full">
+        <label for="days_undetected">Days Without Intervention <span class="unit">0 = N/A</span></label>
+        <input type="number" id="days_undetected" placeholder="0" min="0" step="1" value="0" oninput="VN(this,0,1/0,'e-days_undetected')"/>
+        <span class="hint">Number of days at HIGH risk without action. Field data: 14+ days → 90%+ tree loss.</span>
+        <span class="ferr" id="e-days_undetected">Must be 0 or greater</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="submit-row">
+    <button type="submit" id="submit-btn">Analyze Infestation</button>
+    <div class="spin" id="submit-spin"></div>
+  </div>
+  <div id="err-toast"></div>
+</div>
+</form>
+
+<!-- RESULTS -->
+<div id="results">
+  <div class="score-card" id="score-card">
+    <div class="score-top">
+      <div>
+        <div class="score-eyebrow">Degree of Infestation</div>
+        <div class="score-num" id="score-num"><span id="score-cu">0</span><sup>%</sup></div>
+      </div>
+      <span class="badge" id="badge">LOW</span>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="prog-fill"></div></div>
+    <div class="stats-row">
+      <div class="stat-box"><div class="stat-box-l">Estimated Infected</div><div class="stat-box-v" id="st-infected">—</div></div>
+      <div class="stat-box"><div class="stat-box-l">Estimated Healthy</div><div class="stat-box-v" id="st-healthy">—</div></div>
+      <div class="stat-box"><div class="stat-box-l">Fuzzy Base Score</div><div class="stat-box-v" id="st-base">—</div></div>
+    </div>
+    <div class="advisory" id="advisory"><strong id="adv-label">Advisory</strong><span id="adv-text">—</span></div>
+    <div class="detail-grid">
+      <div class="drow"><span class="dkey">Spread Factor</span><span class="dval" id="d-spread">—</span></div>
+      <div class="drow"><span class="dkey">Intervention Mult.</span><span class="dval" id="d-mult">—</span></div>
+      <div class="drow"><span class="dkey">Risk Label</span><span class="dval" id="d-label">—</span></div>
+      <div class="drow"><span class="dkey">Total Trees</span><span class="dval" id="d-total">—</span></div>
+    </div>
+  </div>
+
+  <!-- SPREAD SECTION (smart mode only) -->
+  <div id="spread-section">
+    <button type="button" class="spread-trigger" id="spread-btn" onclick="openSpreadMap()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+      View locations with possible infestation spread
+    </button>
+
+    <div class="spread-card" id="spread-card">
+      <div class="spread-header">
+        <div>
+          <div class="spread-title">Spread <em>Visualization</em></div>
+          <div class="spread-sub" id="spread-sub">Wind-driven CSI crawler dispersal cone</div>
+        </div>
+        <div class="wind-chips">
+          <div class="wchip"><span class="wchip-l">Wind Blows From</span><span class="wchip-v" id="wc-from">—</span></div>
+          <div class="wchip"><span class="wchip-l">Crawlers Travel To</span><span class="wchip-v" id="wc-to">—</span></div>
+          <div class="wchip"><span class="wchip-l">Wind Speed</span><span class="wchip-v" id="wc-speed">—</span></div>
+          <div class="wchip"><span class="wchip-l">Cone Length</span><span class="wchip-v" id="wc-len">—</span></div>
+        </div>
+      </div>
+
+      <div id="spread-map"></div>
+
+      <div class="spread-legend">
+        <div class="leg-item"><div class="leg-dot" style="background:#4caf72;box-shadow:0 0 6px #4caf72"></div>Origin (Infected Farm)</div>
+        <div class="leg-item"><div class="leg-sw" style="background:rgba(232,164,64,0.35);border:1px solid rgba(232,164,64,0.8)"></div>Spread Cone</div>
+        <div class="leg-item"><div class="leg-sw" style="background:rgba(224,85,85,0.25);border:1px solid rgba(224,85,85,0.7)"></div>High-Risk Core</div>
+        <div class="leg-item">
+          <svg width="24" height="12" viewBox="0 0 24 12"><line x1="0" y1="6" x2="18" y2="6" stroke="#4a9edd" stroke-width="2" stroke-dasharray="5,3"/><polygon points="16,2 24,6 16,10" fill="#4a9edd"/></svg>
+          Wind Direction
+        </div>
+      </div>
+
+      <div class="spread-meta" id="spread-meta"></div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <span>Cocolisap Fuzzy Logic Expert System · 81-Rule Mamdani Inference</span>
+  <span>Aspidiotus rigidus · Philippine Coconut Authority Reference Data</span>
+</footer>
+</div><!-- /page -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let MODE='manual', WX=null, PRED=null, MAP=null;
+
+// ── Mode toggle ────────────────────────────────────────────────────────────
+function setMode(m){
+  MODE=m;
+  document.getElementById('btn-manual').classList.toggle('active',m==='manual');
+  document.getElementById('btn-smart').classList.toggle('active', m==='smart');
+  document.getElementById('man-sec').classList.toggle('on', m==='manual');
+  document.getElementById('loc-sec').classList.toggle('on', m==='smart');
+  document.getElementById('results').classList.remove('on');
+  document.getElementById('err-toast').classList.remove('on');
+  document.getElementById('spread-section').classList.remove('on');
+  document.getElementById('spread-section').style.display='none';
+  if(MAP){MAP.remove();MAP=null;}
+  document.getElementById('spread-card').classList.remove('on');
+}
+
+// ── Slider / input sync ────────────────────────────────────────────────────
+function SR(slider,inputId,valId){document.getElementById(inputId).value=slider.value;document.getElementById(valId).textContent=slider.value;}
+function SI(input,sliderId,valId){const v=parseFloat(input.value);if(!isNaN(v)){document.getElementById(sliderId).value=v;document.getElementById(valId).textContent=v;}}
+function VN(input,min,max,errId){
+  const v=parseFloat(input.value),ok=!isNaN(v)&&v>=min&&(max===Infinity||v<=max);
+  input.classList.toggle('error',!ok&&input.value!=='');
+  const e=document.getElementById(errId);if(e)e.classList.toggle('on',!ok&&input.value!=='');
+  return ok;
+}
+// Cross-field: planting density must not exceed total trees
+function VN_density_trees(densityInputId, treesInputId, crossErrId) {
+  const dens  = parseFloat(document.getElementById(densityInputId).value);
+  const trees = parseFloat(document.getElementById(treesInputId).value);
+  const densEl  = document.getElementById(densityInputId);
+  const crossEl = document.getElementById(crossErrId);
+  const invalid = !isNaN(dens) && !isNaN(trees) && dens > trees;
+  densEl.classList.toggle('error', invalid);
+  if (crossEl) crossEl.classList.toggle('on', invalid);
+  return !invalid;
+}
+
+// ── Fetch weather ──────────────────────────────────────────────────────────
+async function fetchWeather(){
+  const brgy=document.getElementById('l-brgy').value.trim();
+  const city=document.getElementById('l-city').value.trim();
+  const prov=document.getElementById('l-prov').value.trim();
+  const reg =document.getElementById('l-reg').value.trim();
+  const cntry=document.getElementById('l-country').value.trim()||'Philippines';
+  if(!city&&!prov){showWxErr('Please enter at least City/Municipality and Province.');return;}
+
+  const btn=document.getElementById('fetch-btn');
+  const sp=document.getElementById('wx-spin');
+  const st=document.getElementById('wx-status');
+  btn.disabled=true;sp.classList.add('on');st.textContent='Resolving address…';
+  hideWxErr();document.getElementById('wx-preview').classList.remove('on');WX=null;
+
+  try{
+    const gR=await fetch('https://cocolisap-detector-398384683490.asia-southeast1.run.app/geocode',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({barangay:brgy,city,province:prov,region:reg,country:cntry})});
+    if(!gR.ok){const e=await gR.json();throw new Error(e.detail||'Geocoding failed.');}
+    const geo=await gR.json();
+    st.textContent='Fetching weather…';
+    const wR=await fetch('https://cocolisap-detector-398384683490.asia-southeast1.run.app/weather',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({latitude:geo.latitude,longitude:geo.longitude})});
+    if(!wR.ok){const e=await wR.json();throw new Error(e.detail||'Weather failed.');}
+    const wx=await wR.json();WX=wx;
+    document.getElementById('wp-temp').innerHTML=`${wx.temperature_c}<span>°C</span>`;
+    document.getElementById('wp-hum').innerHTML =`${wx.humidity_pct}<span>%</span>`;
+    document.getElementById('wp-wind').innerHTML=`${wx.wind_speed_kmh}<span>km/h</span>`;
+    document.getElementById('wp-dir').innerHTML =`${wx.wind_direction_compass}<span> (${wx.wind_direction_deg}°)</span>`;
+    document.getElementById('wp-loc').textContent=`📍 ${geo.display_name}`;
+    document.getElementById('wx-preview').classList.add('on');
+    st.textContent='✓ Weather loaded';
+  }catch(err){showWxErr('⚠ '+err.message);st.textContent='';}
+  finally{btn.disabled=false;sp.classList.remove('on');}
+}
+function showWxErr(m){const e=document.getElementById('wx-err');e.textContent=m;e.classList.add('on');}
+function hideWxErr(){document.getElementById('wx-err').classList.remove('on');}
+
+// ── Animations ─────────────────────────────────────────────────────────────
+function animF(el,target,dur=900){
+  const s=performance.now(),from=parseFloat(el.textContent)||0;
+  (function step(n){const p=Math.min((n-s)/dur,1),e=1-Math.pow(1-p,3);
+    el.textContent=(from+(target-from)*e).toFixed(2);
+    if(p<1)requestAnimationFrame(step);else el.textContent=target.toFixed(2);})(performance.now());
+}
+function animI(el,target,dur=900){
+  const s=performance.now(),from=parseInt(el.textContent.replace(/,/g,''))||0;
+  (function step(n){const p=Math.min((n-s)/dur,1),e=1-Math.pow(1-p,3);
+    el.textContent=Math.round(from+(target-from)*e).toLocaleString();
+    if(p<1)requestAnimationFrame(step);else el.textContent=target.toLocaleString();})(performance.now());
+}
+
+// ── Apply result ───────────────────────────────────────────────────────────
+function applyResult(d){
+  const score=d.degree_of_infestation_pct,lc=d.adjusted_risk_label.toLowerCase(),lu=d.adjusted_risk_label;
+  document.getElementById('score-card').className=`score-card ${lc}`;
+  document.getElementById('score-num').className=`score-num ${lc}`;
+  const badge=document.getElementById('badge');badge.className=`badge ${lc}`;badge.textContent=lu;
+  const fill=document.getElementById('prog-fill');fill.className=`progress-fill ${lc}`;
+  document.getElementById('advisory').className=`advisory ${lc}`;
+  animF(document.getElementById('score-cu'),score,1000);
+  setTimeout(()=>{fill.style.width=Math.min(score,100)+'%';},50);
+  animI(document.getElementById('st-infected'),d.estimated_infected_trees);
+  animI(document.getElementById('st-healthy'), d.estimated_healthy_trees);
+  document.getElementById('st-base').textContent=d.fuzzy_base_score.toFixed(2)+'%';
+  document.getElementById('adv-label').textContent=lu+' Risk Advisory';
+  document.getElementById('adv-text').textContent=d.intervention_note;
+  document.getElementById('d-spread').textContent=d.spread_factor.toFixed(4);
+  document.getElementById('d-mult').textContent='×'+d.intervention_multiplier.toFixed(4);
+  document.getElementById('d-label').textContent=lu;
+  document.getElementById('d-total').textContent=d.inputs.total_trees.toLocaleString();
+  document.getElementById('results').classList.add('on');
+  document.getElementById('results').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// ── Form submit ────────────────────────────────────────────────────────────
+document.getElementById('predict-form').addEventListener('submit',async(e)=>{
+  e.preventDefault();
+  const btn=document.getElementById('submit-btn');
+  const sp=document.getElementById('submit-spin');
+  const toast=document.getElementById('err-toast');
+  toast.classList.remove('on');
+  document.getElementById('spread-section').style.display='none';
+  if(MAP){MAP.remove();MAP=null;}
+  document.getElementById('spread-card').classList.remove('on');
+
+  let payload;
+  if(MODE==='smart'){
+    if(!WX){toast.textContent='⚠ Please fetch weather data first using "Get Weather Data".';toast.classList.add('on');return;}
+    const dEl=document.getElementById('s-dens'),tEl=document.getElementById('s-trees'),dyEl=document.getElementById('s-days');
+    if(!VN(dEl,1,200,'e-s-dens')||!VN(tEl,1,1/0,'e-s-trees')||!VN(dyEl,0,1/0,'e-s-days'))return;
+    if(!VN_density_trees('s-dens','s-trees','e-s-dens-cross'))return;
+    payload={temperature:WX.temperature_c,humidity:WX.humidity_pct,wind_speed:WX.wind_speed_kmh,
+             planting_density:parseFloat(dEl.value),total_trees:parseInt(tEl.value),days_undetected:parseInt(dyEl.value)||0};
+  }else{
+    const fields=[{id:'temperature',min:1,max:45},{id:'humidity',min:0,max:100},
+                  {id:'wind_speed',min:1,max:85},{id:'planting_density',min:1,max:200},
+                  {id:'total_trees',min:1,max:1/0},{id:'days_undetected',min:0,max:1/0}];
+    let valid=true;
+    for(const f of fields)if(!VN(document.getElementById(f.id),f.min,f.max,'e-'+f.id))valid=false;
+    if(!VN_density_trees('planting_density','total_trees','e-planting_density-cross'))valid=false;
+    if(!valid)return;
+    payload={temperature:parseFloat(document.getElementById('temperature').value),humidity:parseFloat(document.getElementById('humidity').value),
+             wind_speed:parseFloat(document.getElementById('wind_speed').value),planting_density:parseFloat(document.getElementById('planting_density').value),
+             total_trees:parseInt(document.getElementById('total_trees').value),days_undetected:parseInt(document.getElementById('days_undetected').value)||0};
+  }
+
+  btn.disabled=true;sp.classList.add('on');
+  try{
+    const r=await fetch('https://cocolisap-detector-398384683490.asia-southeast1.run.app/predict',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(!r.ok){const err=await r.json();throw new Error(err.detail||'Server error');}
+    PRED=await r.json();
+    applyResult(PRED);
+    if(MODE==='smart'&&WX){
+      const ss=document.getElementById('spread-section');
+      ss.style.display='block';ss.classList.add('on');
+      const sb=document.getElementById('spread-btn');
+      sb.disabled=false;
+      sb.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>View locations with possible infestation spread`;
+    }
+  }catch(err){toast.textContent='⚠ '+(err.message||'Could not reach backend.');toast.classList.add('on');}
+  finally{btn.disabled=false;sp.classList.remove('on');}
+});
+
+// ── Spread map ─────────────────────────────────────────────────────────────
+// Client-side helper that mirrors the backend _dest() for drawing the inner cone
+function dest(lat,lon,bearDeg,km){
+  const R=6371,d=km,la=lat*Math.PI/180,lo=lon*Math.PI/180,b=bearDeg*Math.PI/180;
+  const la2=Math.asin(Math.sin(la)*Math.cos(d/R)+Math.cos(la)*Math.sin(d/R)*Math.cos(b));
+  const lo2=lo+Math.atan2(Math.sin(b)*Math.sin(d/R)*Math.cos(la),Math.cos(d/R)-Math.sin(la)*Math.sin(la2));
+  return [la2*180/Math.PI,lo2*180/Math.PI];
+}
+
+async function openSpreadMap(){
+  if(!WX||!PRED)return;
+  const sb=document.getElementById('spread-btn');
+  sb.disabled=true;
+  sb.innerHTML=`<div class="spin on" style="display:inline-block;margin-right:8px"></div>Loading map…`;
+
+  try{
+    const r=await fetch('https://cocolisap-detector-398384683490.asia-southeast1.run.app/spread',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        latitude:           WX.latitude,
+        longitude:          WX.longitude,
+        wind_direction_from:WX.wind_direction_deg,
+        wind_speed_kmh:     WX.wind_speed_kmh,
+        infestation_score:  PRED.degree_of_infestation_pct,
+        risk_label:         PRED.adjusted_risk_label,
+      })
+    });
+    if(!r.ok){const e=await r.json();throw new Error(e.detail||'Spread calculation failed.');}
+    const cone=await r.json();
+
+    // Update wind chips
+    document.getElementById('wc-from').textContent  =`${cone.wind_from_compass} · ${cone.wind_from_deg}°`;
+    document.getElementById('wc-to').textContent    =`${cone.wind_to_compass} · ${cone.wind_to_bearing}°`;
+    document.getElementById('wc-speed').textContent =`${WX.wind_speed_kmh} km/h`;
+    document.getElementById('wc-len').textContent   =`${cone.cone_length_km} km`;
+    document.getElementById('spread-sub').textContent=
+      `Crawlers dispersing ${cone.wind_to_compass}-ward · cone ±${cone.cone_half_angle}° wide`;
+
+    // Show card and build map
+    const card=document.getElementById('spread-card');
+    card.classList.add('on');
+    if(MAP){MAP.remove();MAP=null;}
+
+    MAP=L.map('spread-map',{zoomControl:true,attributionControl:true})
+          .setView(cone.origin,13);
+
+    // Dark CartoDB tiles
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+      attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+      subdomains:'abcd',maxZoom:19
+    }).addTo(MAP);
+
+    // Risk colour
+    const RC={LOW:'#4caf72',MODERATE:'#e8a440',HIGH:'#e05555'}[PRED.adjusted_risk_label]||'#e8a440';
+
+    // ── Outer spread cone ───────────────────────────────────────────────────
+    L.polygon(cone.outer_polygon,{
+      color:RC,weight:2,opacity:0.85,fillColor:RC,fillOpacity:0.17,dashArray:'7,4'
+    }).addTo(MAP)
+      .bindPopup(`<b>Spread Zone</b><br>Risk: ${cone.risk_label}<br>Length: ${cone.cone_length_km} km<br>Angle: ±${cone.cone_half_angle}°`);
+
+    // ── Inner high-risk core ────────────────────────────────────────────────
+    L.polygon(cone.inner_polygon,{
+      color:'#e05555',weight:1.5,opacity:0.75,fillColor:'#e05555',fillOpacity:0.22
+    }).addTo(MAP)
+      .bindPopup(`<b>High-Risk Core</b><br>Highest early-spread probability<br>~${Math.round(cone.cone_length_km*0.60*1000)} m range`);
+
+    // ── Wind direction arrow ────────────────────────────────────────────────
+    const arrowEnd=dest(cone.origin[0],cone.origin[1],cone.wind_to_bearing,cone.cone_length_km*0.60);
+    L.polyline([cone.origin,arrowEnd],{color:'#4a9edd',weight:2.5,opacity:0.9,dashArray:'8,5'}).addTo(MAP);
+    L.marker(arrowEnd,{icon:L.divIcon({
+      html:`<svg width="22" height="22" viewBox="0 0 22 22" style="transform:rotate(${cone.wind_to_bearing}deg);overflow:visible"><polygon points="11,0 20,20 11,13 2,20" fill="#4a9edd" opacity="0.95"/></svg>`,
+      className:'',iconSize:[22,22],iconAnchor:[11,11]
+    })}).addTo(MAP)
+      .bindPopup(`<b>Wind Direction</b><br>From: ${cone.wind_from_compass} (${cone.wind_from_deg}°)<br>Dispersing toward: ${cone.wind_to_compass} (${cone.wind_to_bearing}°)<br>Speed: ${WX.wind_speed_kmh} km/h`);
+
+    // ── Reference range circle (dashed) ─────────────────────────────────────
+    L.circle(cone.origin,{radius:cone.cone_length_km*1000,color:RC,weight:1,
+      opacity:0.14,fillOpacity:0,dashArray:'5,9'}).addTo(MAP);
+
+    // ── Minor upwind tail stub ───────────────────────────────────────────────
+    L.polyline([cone.origin,cone.tail_point],{color:'rgba(109,221,150,0.45)',weight:1.5,dashArray:'4,7'})
+     .addTo(MAP);
+
+    // ── Origin marker ───────────────────────────────────────────────────────
+    const score=PRED.degree_of_infestation_pct;
+    const infected=PRED.estimated_infected_trees.toLocaleString();
+    L.marker(cone.origin,{icon:L.divIcon({
+      html:`<div style="width:14px;height:14px;border-radius:50%;background:#4caf72;border:3px solid #e8f5ec;box-shadow:0 0 14px #4caf72;"></div>`,
+      className:'',iconSize:[14,14],iconAnchor:[7,7]
+    })}).addTo(MAP)
+      .bindPopup(`<b>Infected Farm</b><br>Score: ${score}% (${PRED.adjusted_risk_label})<br>Est. infected trees: ${infected}`)
+      .openPopup();
+
+    // Fit to cone bounds
+    MAP.fitBounds(L.latLngBounds(cone.outer_polygon.map(p=>L.latLng(p[0],p[1]))).pad(0.15));
+
+    // ── PCA guidance note ───────────────────────────────────────────────────
+    const guidance={
+      LOW:   'Low infestation risk. Monitor farms within the cone area quarterly.',
+      MODERATE:'Moderate risk detected. PCA personnel should inspect farms within 1 km of the cone axis within 2–4 weeks.',
+      HIGH:  'HIGH RISK. Immediate field inspection of all farms within the cone is strongly recommended. Coordinate with the LGU for rapid response.'
+    }[PRED.adjusted_risk_label]||'';
+
+    document.getElementById('spread-meta').innerHTML=`
+      <div class="drow"><span class="dkey">Cone Length</span><span class="dval">${cone.cone_length_km} km</span></div>
+      <div class="drow"><span class="dkey">Cone Width</span><span class="dval">±${cone.cone_half_angle}°</span></div>
+      <div class="drow"><span class="dkey">Wind From</span><span class="dval">${cone.wind_from_compass} · ${cone.wind_from_deg}°</span></div>
+      <div class="drow"><span class="dkey">Dispersal Bearing</span><span class="dval">${cone.wind_to_compass} · ${cone.wind_to_bearing}°</span></div>
+      <div class="drow wide" style="background:rgba(76,175,114,0.06);border-color:var(--green-dim);gap:12px;flex-wrap:wrap">
+        <span class="dkey">PCA Guidance</span>
+        <span class="dval" style="color:var(--text-muted);font-weight:400;font-size:11px;text-align:right;flex:1">${guidance}</span>
+      </div>`;
+
+    document.getElementById('spread-card').scrollIntoView({behavior:'smooth',block:'start'});
+    sb.disabled=false;
+    sb.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>Refresh Spread Visualization`;
+
+  }catch(err){
+    sb.disabled=false;
+    sb.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>View locations with possible infestation spread`;
+    document.getElementById('err-toast').textContent='⚠ Map error: '+err.message;
+    document.getElementById('err-toast').classList.add('on');
+  }
+}
+</script>
+</body>
+</html>
