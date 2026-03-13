@@ -1,39 +1,81 @@
-**Welcome to your Base44 project** 
+# 🌴 CocolisapDetector
 
-**About**
+An AI-powered web application for detecting **Cocolisap** (Aspidiotus rigidus) — coconut scale insects — using YOLOv11 Instance Segmentation.
 
-View and Edit  your app on [Base44.com](http://Base44.com) 
+Built for coconut pest management research in the Philippines.
 
-This project contains everything you need to run your app locally.
+## About
 
-**Edit the code in your local development environment**
+This app allows users to upload photos of coconut leaves and detect cocolisap infestations using a trained YOLOv11 model deployed on Google Cloud Run. Detection results are saved to Firebase Firestore.
 
-Any change pushed to the repo will also be reflected in the Base44 Builder.
+## Tech Stack
 
-**Prerequisites:** 
+- **Frontend:** React + Vite + TailwindCSS
+- **AI Model:** YOLOv11 Instance Segmentation (trained on Roboflow)
+- **Backend:** Flask + Google Cloud Run
+- **Database:** Firebase Firestore
+- **Hosting:** GitHub Pages
 
-1. Clone the repository using the project's Git URL 
-2. Navigate to the project directory
-3. Install dependencies: `npm install`
-4. Create an `.env.local` file and set the right environment variables
+## Getting Started
 
+### Prerequisites
+- Node.js 
+- A Firebase project with Firestore enabled
+
+### Installation
+
+1. Clone the repository
+```bash
+   git clone https://github.com/Masanori730/CocolisapDetector.git
+   cd CocolisapDetector
 ```
-VITE_BASE44_APP_ID=your_app_id
-VITE_BASE44_APP_BASE_URL=your_backend_url
 
-e.g.
-VITE_BASE44_APP_ID=cbef744a8545c389ef439ea6
-VITE_BASE44_APP_BASE_URL=https://my-to-do-list-81bfaad7.base44.app
+2. Install dependencies
+```bash
+   npm install
 ```
 
-Run the app: `npm run dev`
+3. Create `src/firebase.js` with your Firebase config
+```js
+   import { initializeApp } from "firebase/app";
+   import { getFirestore } from "firebase/firestore";
 
-**Publish your changes**
+   const firebaseConfig = {
+     apiKey: "your_api_key",
+     authDomain: "your_auth_domain",
+     projectId: "your_project_id",
+     storageBucket: "your_storage_bucket",
+     messagingSenderId: "your_messaging_sender_id",
+     appId: "your_app_id"
+   };
 
-Open [Base44.com](http://Base44.com) and click on Publish.
+   const app = initializeApp(firebaseConfig);
+   export const db = getFirestore(app);
+```
 
-**Docs & Support**
+4. Run the app
+```bash
+   npm run dev
+```
 
-Documentation: [https://docs.base44.com/Integrations/Using-GitHub](https://docs.base44.com/Integrations/Using-GitHub)
+## Features
 
-Support: [https://app.base44.com/support](https://app.base44.com/support)
+- 🔍 Single image detection
+- 📦 Batch image processing
+- 🗺️ Map dashboard with GPS tracking
+- 📊 Analytics and reports
+- 🕒 Detection history saved to Firebase
+- 📍 Location capture (province, municipality, barangay)
+
+## Model Info
+
+- **Model:** YOLOv11 Instance Segmentation Medium
+- **Dataset:** 1608 images
+- **mAP:** 87.4%
+- **Hosted on:** Roboflow + Google Cloud Run
+
+## Acknowledgements
+
+- Philippine Coconut Authority
+- Roboflow
+- Google Cloud
