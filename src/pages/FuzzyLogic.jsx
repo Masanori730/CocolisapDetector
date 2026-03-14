@@ -660,7 +660,7 @@ export default function FuzzyLogic() {
                   <div className="fl-ig full">
                     <label className="fl-label">Days Without Intervention <span className="fl-unit">0 = N/A</span></label>
                     <input className={`fl-input${errs.sDays ? ' error' : ''}`} type="number" placeholder="0"
-                      min={0} step={1} value={sDays} onChange={e => setSDays(parseInt(e.target.value) || 0)} />
+                      min={0} step={1} value={sDays} onChange={e => setSDays(e.target.value === "" ? "" : parseInt(e.target.value) || 0)} onFocus={e => e.target.select()} />
                     <span className="fl-hint">Days farm was at HIGH risk without action. Field data: 14+ days → 90%+ tree loss.</span>
                     {errs.sDays && <span className="fl-ferr">{errs.sDays}</span>}
                   </div>
@@ -691,7 +691,7 @@ export default function FuzzyLogic() {
                   <div className="fl-ig full">
                     <label className="fl-label">Days Without Intervention <span className="fl-unit">0 = N/A</span></label>
                     <input className={`fl-input${errs.days ? ' error' : ''}`} type="number" placeholder="0"
-                      min={0} step={1} value={days} onChange={e => setDays(parseInt(e.target.value) || 0)} />
+                      min={0} step={1} value={days} onChange={e => setDays(e.target.value === "" ? "" : parseInt(e.target.value) || 0)} onFocus={e => e.target.select()} />
                     <span className="fl-hint">Number of days at HIGH risk without action. Field data: 14+ days → 90%+ tree loss.</span>
                     {errs.days && <span className="fl-ferr">{errs.days}</span>}
                   </div>
