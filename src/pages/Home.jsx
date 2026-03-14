@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Leaf, Info, RefreshCw, ChevronDown, ExternalLink, MessageSquare, Layers } from 'lucide-react';
-import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -20,20 +19,56 @@ import { collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, limit } fr
 
 const API_BASE_URL = 'https://cocolisap-detector-398384683490.asia-southeast1.run.app';
 
+const homeStyles = `
+    @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap');
+    .home-root { background: #f4f7f4; min-height: 100vh; color: #1a3326; font-family: 'Outfit', sans-serif; }
+    .home-hero { padding: 56px 24px 48px; max-width: 900px; margin: 0 auto; position: relative; }
+    .home-hero::before { content:''; position:fixed; inset:0; pointer-events:none; z-index:0; background: radial-gradient(ellipse 80% 60% at 15% 10%,rgba(46,139,74,0.05) 0%,transparent 60%), radial-gradient(ellipse 50% 40% at 85% 80%,rgba(46,139,74,0.04) 0%,transparent 55%); }
+    .home-badge { display:inline-flex; align-items:center; gap:8px; background:rgba(46,139,74,0.10); border:1px solid rgba(46,139,74,0.25); border-radius:100px; padding:5px 14px; font-family:'DM Mono',monospace; font-size:11px; letter-spacing:.08em; color:#2e8b4a; text-transform:uppercase; margin-bottom:16px; }
+    .home-badge-dot { width:7px; height:7px; border-radius:50%; background:#2e8b4a; box-shadow:0 0 6px #2e8b4a88; animation:home-pulse 2s ease-in-out infinite; }
+    @keyframes home-pulse { 0%,100%{opacity:1}50%{opacity:.4} }
+    .home-h1 { font-family:'DM Serif Display',serif; font-size:clamp(32px,5vw,52px); font-weight:400; line-height:1.1; color:#1a3326; letter-spacing:-.02em; margin:0 0 12px; }
+    .home-h1 em { font-style:italic; color:#2e8b4a; }
+    .home-subtitle { font-size:15px; color:#5a8068; line-height:1.6; max-width:520px; margin-bottom:28px; }
+    .home-divider { height:1px; background:linear-gradient(90deg,rgba(46,139,74,0.25),transparent 80%); margin:0 0 32px; }
+    .home-cta { display:inline-flex; align-items:center; gap:8px; padding:13px 32px; background:#2e8b4a; color:#fff; border:none; border-radius:12px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:600; letter-spacing:.04em; cursor:pointer; transition:background .2s,transform .15s,box-shadow .2s; }
+    .home-cta:hover { background:#25763e; transform:translateY(-1px); box-shadow:0 6px 20px rgba(46,139,74,.30); }
+    .home-main { max-width: 1200px; margin: 0 auto; padding: 0 24px 80px; position: relative; z-index: 1; }
+    .home-card { background:#ffffff; border:1px solid #d6e8d6; border-radius:20px; padding:32px; position:relative; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.05); }
+    .home-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,#2e8b4a,transparent); }
+    .home-card-title { font-size:17px; font-weight:600; color:#1a3326; margin:0 0 4px; }
+    .home-card-sub { font-size:13px; color:#5a8068; }
+    .home-reset-btn { display:flex; align-items:center; gap:6px; padding:8px 16px; background:transparent; border:1px solid #c8dfc8; border-radius:10px; color:#5a8068; font-family:'Outfit',sans-serif; font-size:12px; font-weight:500; cursor:pointer; transition:background .2s,color .2s; }
+    .home-reset-btn:hover { background:rgba(46,139,74,0.07); color:#1a3326; }
+    .home-detect-btn { width:100%; padding:15px; background:#2e8b4a; color:#fff; border:none; border-radius:12px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:600; letter-spacing:.04em; cursor:pointer; transition:background .2s,transform .15s,box-shadow .2s; margin-top:20px; }
+    .home-detect-btn:hover { background:#25763e; transform:translateY(-1px); box-shadow:0 6px 20px rgba(46,139,74,.25); }
+    .home-detect-btn:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+    .home-action-btn { flex:1; display:flex; align-items:center; justify-content:center; gap:8px; padding:11px 20px; background:transparent; border:1px solid #c8dfc8; border-radius:10px; color:#5a8068; font-family:'Outfit',sans-serif; font-size:13px; font-weight:500; cursor:pointer; transition:background .2s,color .2s,border-color .2s; }
+    .home-action-btn:hover { background:rgba(46,139,74,0.07); color:#1a3326; border-color:rgba(46,139,74,0.35); }
+    .home-info-card { background:#fffbf0; border:1px solid #f0dfa0; border-radius:16px; padding:20px; display:flex; gap:16px; }
+    .home-info-icon { padding:10px; background:#fef3c7; border-radius:10px; height:fit-content; flex-shrink:0; }
+    .home-info-title { font-size:14px; font-weight:600; color:#92610a; margin:0 0 6px; }
+    .home-info-text { font-size:13px; color:#a07028; line-height:1.6; margin:0; }
+    .home-footer { border-top:1px solid #d6e8d6; padding-top:24px; margin-top:40px; font-size:11px; color:#8aaa96; font-family:'DM Mono',monospace; display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+    .home-batch-title { font-size:16px; font-weight:600; color:#1a3326; margin:0 0 20px; }
+    .home-batch-item { border:1px solid #d6e8d6; border-radius:16px; padding:20px; margin-bottom:20px; background:#fafcfa; }
+    .home-batch-filename { font-size:12px; font-weight:500; color:#5a8068; margin:0 0 12px; font-family:'DM Mono',monospace; }
+    [data-radix-tabs-list] { background:#f0f5f0 !important; border:1px solid #d6e8d6 !important; border-radius:10px !important; padding:4px !important; }
+    [data-radix-tabs-trigger] { color:#5a8068 !important; font-family:'Outfit',sans-serif !important; font-size:13px !important; border-radius:8px !important; }
+    [data-radix-tabs-trigger][data-state=active] { background:#ffffff !important; color:#2e8b4a !important; box-shadow:0 1px 4px rgba(0,0,0,.10) !important; }
+`;
+
 const detectWithYOLO = async (imageDataUrl) => {
     const response = await fetch(`${API_BASE_URL}/detect`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image: imageDataUrl }),
     });
-
     if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || 'Detection failed');
     }
-
     const result = await response.json();
-
     return {
         detections: result.detections || [],
         severity: result.severity,
@@ -81,7 +116,6 @@ export default function Home() {
     const [currentDetectionId, setCurrentDetectionId] = useState(null);
     const [history, setHistory] = useState([]);
 
-    // Load history from Firebase on mount
     useEffect(() => {
         getHistory().then(setHistory);
     }, []);
@@ -97,7 +131,6 @@ export default function Home() {
         if (!imagePreview) return;
         setIsProcessing(true);
         setError(null);
-
         try {
             setProcessingStage('uploading');
             await new Promise(r => setTimeout(r, 300));
@@ -125,7 +158,6 @@ export default function Home() {
             setResults(detectionResults);
         } catch (err) {
             setError(err.message || 'Detection failed. Please try again.');
-            console.error(err);
         } finally {
             setIsProcessing(false);
             setProcessingStage('');
@@ -137,7 +169,6 @@ export default function Home() {
         setError(null);
         setResults(null);
         const batchResults = [];
-
         try {
             for (let i = 0; i < files.length; i++) {
                 onProgress(i);
@@ -146,7 +177,6 @@ export default function Home() {
                     reader.onload = (e) => resolve(e.target.result);
                     reader.readAsDataURL(files[i].file);
                 });
-
                 const detectionResults = await detectWithYOLO(imageDataUrl);
                 const newDetection = {
                     image_url: imageDataUrl,
@@ -157,21 +187,14 @@ export default function Home() {
                     processing_time: detectionResults.stats.processingTime,
                     ...locationData
                 };
-
                 await saveToHistory(newDetection);
-                batchResults.push({
-                    fileName: files[i].file.name,
-                    imagePreview: imageDataUrl,
-                    ...detectionResults,
-                });
+                batchResults.push({ fileName: files[i].file.name, imagePreview: imageDataUrl, ...detectionResults });
             }
-
             const updatedHistory = await getHistory();
             setHistory(updatedHistory);
             setResults({ isBatch: true, batchResults });
         } catch (err) {
             setError(err.message || 'Batch processing failed.');
-            console.error(err);
         } finally {
             setIsProcessing(false);
         }
@@ -227,162 +250,163 @@ export default function Home() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-stone-50 to-stone-100">
+        <div className="home-root">
+            <style>{homeStyles}</style>
             <AnimatePresence>
                 {isProcessing && <ProcessingOverlay stage={processingStage} />}
             </AnimatePresence>
 
-            <header className="relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-emerald-800 via-emerald-900 to-stone-900" />
-                <div className="absolute inset-0 opacity-20">
-                    <div className="absolute top-20 left-10 w-64 h-64 bg-emerald-400 rounded-full blur-3xl" />
-                    <div className="absolute bottom-10 right-20 w-96 h-96 bg-amber-400 rounded-full blur-3xl" />
+            {/* Hero */}
+            <div className="home-hero" style={{ position: 'relative', zIndex: 1 }}>
+                <div className="home-badge">
+                    <span className="home-badge-dot" />
+                    YOLOv11 Instance Segmentation
                 </div>
+                <h1 className="home-h1">Cocolisap <em>Detection</em><br />System</h1>
+                <p className="home-subtitle">
+                    AI-powered coconut scale insect detection using deep learning.
+                    Upload an image to analyze infestation severity.
+                </p>
+                <div className="home-divider" />
+                <button className="home-cta" onClick={scrollToUpload}>
+                    Start Detection
+                    <ChevronDown style={{ width: 16, height: 16 }} />
+                </button>
+            </div>
 
-                <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16 md:py-24">
-                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center">
-                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 mb-6">
-                            <Leaf className="w-4 h-4 text-emerald-400" />
-                            <span className="text-sm text-white/90">YOLOv11 Instance Segmentation</span>
-                        </div>
+            {/* Main */}
+            <main className="home-main" id="upload-section">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 24 }} className="home-grid-layout">
+                    <style>{`@media(max-width:900px){.home-grid-layout{grid-template-columns:1fr !important;}}`}</style>
 
-                        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 tracking-tight">
-                            Cocolisap<span className="text-emerald-400"> Detection</span>
-                        </h1>
-
-                        <p className="text-lg md:text-xl text-stone-300 max-w-2xl mx-auto mb-8">
-                            AI-powered coconut scale insect detection using deep learning. Upload an image to analyze infestation severity.
-                        </p>
-
-                        <Button onClick={scrollToUpload} size="lg" className="bg-emerald-500 hover:bg-emerald-600 text-white gap-2 rounded-full px-8">
-                            Start Detection<ChevronDown className="w-4 h-4" />
-                        </Button>
-                    </motion.div>
-                </div>
-
-                <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-stone-50 to-transparent" />
-            </header>
-
-            <main className="max-w-6xl mx-auto px-4 sm:px-6 py-12" id="upload-section">
-                <div className="grid lg:grid-cols-3 gap-8">
-                    <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }} className="lg:col-span-2">
-                        <div className="bg-white rounded-3xl shadow-xl shadow-stone-200/50 p-6 md:p-8">
-                            <div className="flex items-center justify-between mb-6">
+                    {/* Upload Card */}
+                    <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}>
+                        <div className="home-card">
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
                                 <div>
-                                    <h2 className="text-xl font-semibold text-stone-800">Upload Image</h2>
-                                    <p className="text-sm text-stone-500 mt-1">Select or capture photos for analysis</p>
+                                    <h2 className="home-card-title">Upload Image</h2>
+                                    <p className="home-card-sub">Select or capture photos for analysis</p>
                                 </div>
                                 {(selectedImage || results) && (
-                                    <Button variant="outline" size="sm" onClick={handleReset} className="gap-2">
-                                        <RefreshCw className="w-4 h-4" />Reset
-                                    </Button>
+                                    <button className="home-reset-btn" onClick={handleReset}>
+                                        <RefreshCw style={{ width: 14, height: 14 }} />
+                                        Reset
+                                    </button>
                                 )}
                             </div>
 
-                            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                                <TabsList className="grid w-full grid-cols-2 mb-6">
-                                    <TabsTrigger value="single">Single Image</TabsTrigger>
-                                    <TabsTrigger value="batch" className="gap-2"><Layers className="w-4 h-4" />Batch Upload</TabsTrigger>
+                            <Tabs value={activeTab} onValueChange={setActiveTab}>
+                                <TabsList style={{ width: '100%', marginBottom: 20 }}>
+                                    <TabsTrigger value="single" style={{ flex: 1 }}>Single Image</TabsTrigger>
+                                    <TabsTrigger value="batch" style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <Layers style={{ width: 14, height: 14 }} />Batch Upload
+                                    </TabsTrigger>
                                 </TabsList>
 
-                                <TabsContent value="single" className="mt-0">
+                                <TabsContent value="single">
                                     {activeTab === 'single' && (
                                         <>
                                             <ImageUploader onImageSelect={handleImageSelect} isProcessing={isProcessing} />
                                             {selectedImage && !results && (
-                                                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-6">
+                                                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ marginTop: 20 }}>
                                                     <LocationCapture onLocationChange={setLocationData} />
                                                 </motion.div>
                                             )}
                                         </>
                                     )}
-
-                                    {error && <Alert variant="destructive" className="mt-4"><AlertDescription>{error}</AlertDescription></Alert>}
-
+                                    {error && <Alert variant="destructive" style={{ marginTop: 16 }}><AlertDescription>{error}</AlertDescription></Alert>}
                                     {selectedImage && !results && (
-                                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-6">
-                                            <Button onClick={handleDetect} disabled={isProcessing} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-6 text-lg rounded-xl">
+                                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                                            <button className="home-detect-btn" onClick={handleDetect} disabled={isProcessing}>
                                                 {isProcessing ? 'Processing...' : 'Detect Cocolisap'}
-                                            </Button>
+                                            </button>
                                         </motion.div>
                                     )}
                                 </TabsContent>
 
-                                <TabsContent value="batch" className="mt-0">
+                                <TabsContent value="batch">
                                     {activeTab === 'batch' && <BatchUploader onBatchProcess={handleBatchProcess} isProcessing={isProcessing} />}
-                                    {error && <Alert variant="destructive" className="mt-4"><AlertDescription>{error}</AlertDescription></Alert>}
+                                    {error && <Alert variant="destructive" style={{ marginTop: 16 }}><AlertDescription>{error}</AlertDescription></Alert>}
                                 </TabsContent>
                             </Tabs>
                         </div>
 
+                        {/* Single Results */}
                         {results && !results.isBatch && (
-                            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-6 space-y-6">
-                                <div className="bg-white rounded-3xl shadow-xl shadow-stone-200/50 p-6 md:p-8">
+                            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 20 }}>
+                                <div className="home-card">
                                     <DetectionResults originalImage={imagePreview} detections={results.detections} />
                                 </div>
                                 <EnhancedDetectionResults results={results} locationData={locationData} detectionId={currentDetectionId} />
-                                <div className="flex gap-3">
-                                    <Button variant="outline" className="flex-1 gap-2" onClick={() => setReportDetection({ ...results, image_url: imagePreview, total_detections: results.stats.totalDetections, avg_confidence: results.stats.avgConfidence, processing_time: results.stats.processingTime, id: currentDetectionId || 'temp', ...locationData })}>
-                                        <ExternalLink className="w-4 h-4" />Generate Report
-                                    </Button>
-                                    <Button variant="outline" className="flex-1 gap-2" onClick={() => setFeedbackDetectionId(currentDetectionId || 'temp')}>
-                                        <MessageSquare className="w-4 h-4" />Give Feedback
-                                    </Button>
+                                <div style={{ display: 'flex', gap: 12 }}>
+                                    <button className="home-action-btn" onClick={() => setReportDetection({ ...results, image_url: imagePreview, total_detections: results.stats.totalDetections, avg_confidence: results.stats.avgConfidence, processing_time: results.stats.processingTime, id: currentDetectionId || 'temp', ...locationData })}>
+                                        <ExternalLink style={{ width: 15, height: 15 }} />Generate Report
+                                    </button>
+                                    <button className="home-action-btn" onClick={() => setFeedbackDetectionId(currentDetectionId || 'temp')}>
+                                        <MessageSquare style={{ width: 15, height: 15 }} />Give Feedback
+                                    </button>
                                 </div>
                             </motion.div>
                         )}
 
+                        {/* Batch Results */}
                         {results && results.isBatch && (
-                            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-6 space-y-4">
-                                <div className="bg-white rounded-3xl shadow-xl shadow-stone-200/50 p-6 md:p-8">
-                                    <h3 className="text-lg font-semibold text-stone-800 mb-4">Batch Results — {results.batchResults.length} image{results.batchResults.length > 1 ? 's' : ''} processed</h3>
-                                    <div className="space-y-6">
-                                        {results.batchResults.map((item, index) => (
-                                            <div key={index} className="border border-stone-200 rounded-2xl p-4">
-                                                <p className="text-sm font-medium text-stone-600 mb-3 truncate">{item.fileName}</p>
-                                                <DetectionResults originalImage={item.imagePreview} detections={item.detections} />
-                                                <EnhancedDetectionResults results={item} locationData={locationData} />
-                                            </div>
-                                        ))}
-                                    </div>
+                            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ marginTop: 20 }}>
+                                <div className="home-card">
+                                    <p className="home-batch-title">Batch Results — {results.batchResults.length} image{results.batchResults.length > 1 ? 's' : ''} processed</p>
+                                    {results.batchResults.map((item, index) => (
+                                        <div key={index} className="home-batch-item">
+                                            <p className="home-batch-filename">{item.fileName}</p>
+                                            <DetectionResults originalImage={item.imagePreview} detections={item.detections} />
+                                            <EnhancedDetectionResults results={item} locationData={locationData} />
+                                        </div>
+                                    ))}
                                 </div>
                             </motion.div>
                         )}
 
-                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="mt-6 bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-5 border border-amber-200">
-                            <div className="flex gap-4">
-                                <div className="p-2 rounded-xl bg-amber-100 h-fit"><Info className="w-5 h-5 text-amber-600" /></div>
+                        {/* Info Card */}
+                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} style={{ marginTop: 20 }}>
+                            <div className="home-info-card">
+                                <div className="home-info-icon">
+                                    <Info style={{ width: 18, height: 18, color: '#e8a440' }} />
+                                </div>
                                 <div>
-                                    <h3 className="font-semibold text-amber-800 mb-1">About Cocolisap</h3>
-                                    <p className="text-sm text-amber-700 leading-relaxed">Cocolisap (Aspidiotus rigidus) is a coconut scale insect that causes yellowing and drying of leaves. Early detection is crucial for effective pest management and protecting coconut plantations.</p>
+                                    <h3 className="home-info-title">About Cocolisap</h3>
+                                    <p className="home-info-text">
+                                        Cocolisap (<em>Aspidiotus rigidus</em>) is a coconut scale insect that causes
+                                        yellowing and drying of leaves. Early detection is crucial for
+                                        effective pest management and protecting coconut plantations.
+                                    </p>
                                 </div>
                             </div>
                         </motion.div>
+
+                        <div className="home-footer">
+                            <span>Cocolisap Detection System · YOLOv11 + Roboflow Dataset</span>
+                            <span>Built for coconut pest management research</span>
+                        </div>
                     </motion.div>
 
-                    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}>
-                        <DetectionHistory detections={history} onSelect={handleSelectFromHistory} onDelete={handleDeleteHistory} onGenerateReport={setReportDetection} onClearAll={handleClearAllHistory} />
+                    {/* History Sidebar */}
+                    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
+                        <DetectionHistory
+                            detections={history}
+                            onSelect={handleSelectFromHistory}
+                            onDelete={handleDeleteHistory}
+                            onGenerateReport={setReportDetection}
+                            onClearAll={handleClearAllHistory}
+                        />
                     </motion.div>
                 </div>
             </main>
 
-            <footer className="border-t border-stone-200 mt-12">
-                <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
-                    <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-                        <div className="flex items-center gap-2 text-stone-600">
-                            <Leaf className="w-5 h-5 text-emerald-600" />
-                            <span className="font-semibold">Cocolisap Detection</span>
-                        </div>
-                        <div className="text-sm text-stone-500 text-center md:text-right">
-                            <p>Philippine Coconut Authority • YOLOv11 Instance Segmentation</p>
-                            <p className="mt-1">Built for coconut pest management research</p>
-                        </div>
-                    </div>
-                </div>
-            </footer>
-
             <DetectionReport detection={reportDetection} open={!!reportDetection} onClose={() => setReportDetection(null)} />
-            <FeedbackDialog open={!!feedbackDetectionId} onClose={() => setFeedbackDetectionId(null)} onSubmit={(feedback, notes) => console.log('Feedback:', feedback, notes)} />
+            <FeedbackDialog
+                open={!!feedbackDetectionId}
+                onClose={() => setFeedbackDetectionId(null)}
+                onSubmit={(feedback, notes) => console.log('Feedback:', feedback, notes)}
+            />
         </div>
     );
 }

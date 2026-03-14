@@ -1,10 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
-import { Map, TrendingUp, AlertTriangle, BarChart3, MapPin, Calendar } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Map, TrendingUp, AlertTriangle, BarChart3, MapPin } from 'lucide-react';
 import { format } from 'date-fns';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -14,7 +11,6 @@ import TrendChart from '@/components/analytics/TrendChart';
 import ProvinceAnalysis from '@/components/analytics/ProvinceAnalysis';
 import AnalyticsExport from '@/components/analytics/AnalyticsExport';
 
-// Fix Leaflet default marker icon issue
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
     iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
@@ -23,42 +19,88 @@ L.Icon.Default.mergeOptions({
 });
 
 const createCustomIcon = (severity) => {
-    const colors = {
-        severe: '#dc2626',
-        moderate: '#f59e0b',
-        low: '#059669'
-    };
-
+    const colors = { severe: '#e05555', moderate: '#e8a440', low: '#4caf72' };
     return L.divIcon({
         className: 'custom-marker',
-        html: `<div style="
-            width: 24px;
-            height: 24px;
-            background-color: ${colors[severity]};
-            border: 3px solid white;
-            border-radius: 50%;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        "></div>`,
-        iconSize: [24, 24],
-        iconAnchor: [12, 12],
+        html: `<div style="width:20px;height:20px;background:${colors[severity]};border:2px solid #ffffff;border-radius:50%;box-shadow:0 0 8px ${colors[severity]}88;"></div>`,
+        iconSize: [20, 20], iconAnchor: [10, 10],
     });
 };
 
 const PHILIPPINE_PROVINCES = [
-    "Abra", "Agusan del Norte", "Agusan del Sur", "Aklan", "Albay", "Antique", "Apayao", "Aurora",
-    "Basilan", "Bataan", "Batanes", "Batangas", "Benguet", "Biliran", "Bohol", "Bukidnon",
-    "Bulacan", "Cagayan", "Camarines Norte", "Camarines Sur", "Camiguin", "Capiz", "Catanduanes",
-    "Cavite", "Cebu", "Cotabato", "Davao de Oro", "Davao del Norte", "Davao del Sur", "Davao Occidental",
-    "Davao Oriental", "Dinagat Islands", "Eastern Samar", "Guimaras", "Ifugao", "Ilocos Norte",
-    "Ilocos Sur", "Iloilo", "Isabela", "Kalinga", "La Union", "Laguna", "Lanao del Norte",
-    "Lanao del Sur", "Leyte", "Maguindanao", "Marinduque", "Masbate", "Metro Manila", "Misamis Occidental",
-    "Misamis Oriental", "Mountain Province", "Negros Occidental", "Negros Oriental", "Northern Samar",
-    "Nueva Ecija", "Nueva Vizcaya", "Occidental Mindoro", "Oriental Mindoro", "Palawan", "Pampanga",
-    "Pangasinan", "Quezon", "Quirino", "Rizal", "Romblon", "Samar", "Sarangani", "Siquijor",
-    "Sorsogon", "South Cotabato", "Southern Leyte", "Sultan Kudarat", "Sulu", "Surigao del Norte",
-    "Surigao del Sur", "Tarlac", "Tawi-Tawi", "Zambales", "Zamboanga del Norte", "Zamboanga del Sur",
-    "Zamboanga Sibugay"
+    "Abra","Agusan del Norte","Agusan del Sur","Aklan","Albay","Antique","Apayao","Aurora","Basilan","Bataan","Batanes","Batangas","Benguet","Biliran","Bohol","Bukidnon","Bulacan","Cagayan","Camarines Norte","Camarines Sur","Camiguin","Capiz","Catanduanes","Cavite","Cebu","Cotabato","Davao de Oro","Davao del Norte","Davao del Sur","Davao Occidental","Davao Oriental","Dinagat Islands","Eastern Samar","Guimaras","Ifugao","Ilocos Norte","Ilocos Sur","Iloilo","Isabela","Kalinga","La Union","Laguna","Lanao del Norte","Lanao del Sur","Leyte","Maguindanao","Marinduque","Masbate","Metro Manila","Misamis Occidental","Misamis Oriental","Mountain Province","Negros Occidental","Negros Oriental","Northern Samar","Nueva Ecija","Nueva Vizcaya","Occidental Mindoro","Oriental Mindoro","Palawan","Pampanga","Pangasinan","Quezon","Quirino","Rizal","Romblon","Samar","Sarangani","Siquijor","Sorsogon","South Cotabato","Southern Leyte","Sultan Kudarat","Sulu","Surigao del Norte","Surigao del Sur","Tarlac","Tawi-Tawi","Zambales","Zamboanga del Norte","Zamboanga del Sur","Zamboanga Sibugay"
 ];
+
+const mapStyles = `
+    @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap');
+    .map-root { background:#f4f7f4; min-height:100vh; color:#1a3326; font-family:'Outfit',sans-serif; }
+    .map-root::before { content:''; position:fixed; inset:0; pointer-events:none; z-index:0; background: radial-gradient(ellipse 80% 60% at 15% 10%,rgba(46,139,74,0.04) 0%,transparent 60%); }
+    .map-page { position:relative; z-index:1; max-width:1280px; margin:0 auto; padding:32px 24px 80px; }
+    .map-header-badge { display:inline-flex; align-items:center; gap:8px; background:rgba(46,139,74,0.10); border:1px solid rgba(46,139,74,0.25); border-radius:100px; padding:4px 12px; font-family:'DM Mono',monospace; font-size:10px; letter-spacing:.1em; color:#2e8b4a; text-transform:uppercase; margin-bottom:12px; }
+    .map-h1 { font-family:'DM Serif Display',serif; font-size:clamp(26px,4vw,38px); font-weight:400; color:#1a3326; margin:0 0 6px; letter-spacing:-.02em; }
+    .map-h1 em { font-style:italic; color:#2e8b4a; }
+    .map-sub { font-size:13px; color:#5a8068; font-family:'DM Mono',monospace; }
+    .map-divider { height:1px; background:linear-gradient(90deg,rgba(46,139,74,0.25),transparent 80%); margin:20px 0 28px; }
+    .map-stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px; }
+    @media(max-width:700px){ .map-stat-grid{grid-template-columns:1fr 1fr;} }
+    .map-stat { background:#ffffff; border:1px solid #d6e8d6; border-radius:16px; padding:20px; position:relative; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,0.05); }
+    .map-stat::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
+    .map-stat.blue::before { background:linear-gradient(90deg,#3b82f6,transparent); }
+    .map-stat.red::before { background:linear-gradient(90deg,#dc2626,transparent); }
+    .map-stat.amber::before { background:linear-gradient(90deg,#d97706,transparent); }
+    .map-stat.green::before { background:linear-gradient(90deg,#2e8b4a,transparent); }
+    .map-stat-icon { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; margin-bottom:12px; }
+    .map-stat-icon.blue { background:rgba(59,130,246,0.10); }
+    .map-stat-icon.red { background:rgba(220,38,38,0.10); }
+    .map-stat-icon.amber { background:rgba(217,119,6,0.10); }
+    .map-stat-icon.green { background:rgba(46,139,74,0.10); }
+    .map-stat-label { font-family:'DM Mono',monospace; font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:#8aaa96; margin-bottom:6px; }
+    .map-stat-value { font-family:'DM Serif Display',serif; font-size:32px; font-weight:400; line-height:1; }
+    .map-stat-value.blue { color:#3b82f6; } .map-stat-value.red { color:#dc2626; } .map-stat-value.amber { color:#d97706; } .map-stat-value.green { color:#2e8b4a; }
+    .map-card { background:#ffffff; border:1px solid #d6e8d6; border-radius:16px; overflow:hidden; position:relative; box-shadow:0 1px 6px rgba(0,0,0,0.05); }
+    .map-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,#2e8b4a,transparent); z-index:1; }
+    .map-card-header { padding:18px 22px; border-bottom:1px solid #eaf2ea; display:flex; align-items:center; justify-content:space-between; }
+    .map-card-title { font-size:14px; font-weight:600; color:#1a3326; display:flex; align-items:center; gap:8px; }
+    .map-card-body { padding:20px; }
+    .map-filters-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+    @media(max-width:700px){ .map-filters-grid{grid-template-columns:1fr;} }
+    .map-filter-label { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:#8aaa96; margin-bottom:8px; display:block; }
+    .map-select { width:100%; background:#f8fbf8; border:1px solid #c8dfc8; border-radius:10px; color:#1a3326; font-family:'Outfit',sans-serif; font-size:13px; padding:10px 14px; outline:none; cursor:pointer; transition:border-color .2s; }
+    .map-select:focus { border-color:#2e8b4a; }
+    .map-date-input { width:100%; background:#f8fbf8; border:1px solid #c8dfc8; border-radius:10px; color:#1a3326; font-family:'DM Mono',monospace; font-size:13px; padding:10px 14px; outline:none; transition:border-color .2s; }
+    .map-date-input:focus { border-color:#2e8b4a; }
+    .map-analytics-btn { display:flex; align-items:center; gap:8px; padding:10px 18px; border-radius:10px; font-family:'Outfit',sans-serif; font-size:13px; font-weight:500; cursor:pointer; transition:background .2s,color .2s; border:1px solid #c8dfc8; background:transparent; color:#5a8068; }
+    .map-analytics-btn.active { background:#2e8b4a; color:#fff; border-color:#2e8b4a; }
+    .map-analytics-btn:hover { background:rgba(46,139,74,0.08); color:#1a3326; }
+    .map-analytics-btn.active:hover { background:#25763e; }
+    .map-main-grid { display:grid; grid-template-columns:1fr 320px; gap:20px; }
+    @media(max-width:1000px){ .map-main-grid{grid-template-columns:1fr;} }
+    .map-side-grid { display:flex; flex-direction:column; gap:20px; }
+    .map-legend { padding:16px 20px; border-top:1px solid #eaf2ea; background:#f8fbf8; display:flex; gap:20px; flex-wrap:wrap; }
+    .map-legend-item { display:flex; align-items:center; gap:8px; font-size:12px; color:#5a8068; font-family:'DM Mono',monospace; }
+    .map-legend-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
+    .map-province-item { display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid #eaf2ea; }
+    .map-province-item:last-child { border:0; }
+    .map-province-rank { width:24px; height:24px; border-radius:8px; background:rgba(46,139,74,0.10); color:#2e8b4a; font-size:11px; font-weight:700; font-family:'DM Mono',monospace; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .map-province-name { font-size:13px; color:#1a3326; margin-left:10px; flex:1; }
+    .map-province-count { font-family:'DM Mono',monospace; font-size:12px; background:rgba(46,139,74,0.08); border:1px solid rgba(46,139,74,0.20); border-radius:6px; padding:2px 8px; color:#2e8b4a; }
+    .map-recent-item { padding-bottom:12px; border-bottom:1px solid #eaf2ea; margin-bottom:12px; }
+    .map-recent-item:last-child { border:0; margin:0; padding:0; }
+    .map-severity-pill { display:inline-flex; align-items:center; gap:5px; border-radius:100px; padding:3px 10px; font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; }
+    .map-severity-pill::before { content:''; width:5px; height:5px; border-radius:50%; flex-shrink:0; }
+    .map-severity-pill.severe { background:rgba(220,38,38,.10); color:#dc2626; border:1px solid rgba(220,38,38,.25); }
+    .map-severity-pill.severe::before { background:#dc2626; }
+    .map-severity-pill.moderate { background:rgba(217,119,6,.10); color:#d97706; border:1px solid rgba(217,119,6,.25); }
+    .map-severity-pill.moderate::before { background:#d97706; }
+    .map-severity-pill.low { background:rgba(46,139,74,.10); color:#2e8b4a; border:1px solid rgba(46,139,74,.25); }
+    .map-severity-pill.low::before { background:#2e8b4a; }
+    .map-empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:60px 24px; text-align:center; }
+    .map-empty-icon { width:56px; height:56px; border-radius:16px; background:rgba(46,139,74,0.08); border:1px solid #c8dfc8; display:flex; align-items:center; justify-content:center; margin-bottom:16px; }
+    .leaflet-control-attribution { background:rgba(255,255,255,.90)!important; color:#5a8068!important; }
+    .leaflet-control-attribution a { color:#2e8b4a!important; }
+    .leaflet-popup-content-wrapper { background:#ffffff!important; border:1px solid #d6e8d6!important; color:#1a3326!important; border-radius:12px!important; box-shadow:0 4px 16px rgba(0,0,0,0.12)!important; }
+    .leaflet-popup-tip { background:#ffffff!important; }
+`;
 
 export default function MapDashboard() {
     const [severityFilter, setSeverityFilter] = useState('all');
@@ -70,14 +112,12 @@ export default function MapDashboard() {
     const [allDetections, setAllDetections] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Fetch detections from Firebase
     useEffect(() => {
         const fetchDetections = async () => {
             try {
                 const q = query(collection(db, 'detections'), orderBy('created_date', 'desc'), limit(500));
                 const snapshot = await getDocs(q);
-                const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-                setAllDetections(data);
+                setAllDetections(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
             } catch (e) {
                 console.error('Failed to fetch detections:', e);
             } finally {
@@ -89,37 +129,24 @@ export default function MapDashboard() {
 
     const filteredDetections = useMemo(() => {
         let filtered = allDetections;
-
-        if (severityFilter !== 'all') {
-            filtered = filtered.filter(d => d.severity === severityFilter);
-        }
-
-        if (provinceFilter !== 'all') {
-            filtered = filtered.filter(d => d.province === provinceFilter);
-        }
-
+        if (severityFilter !== 'all') filtered = filtered.filter(d => d.severity === severityFilter);
+        if (provinceFilter !== 'all') filtered = filtered.filter(d => d.province === provinceFilter);
         if (dateFilter === 'custom' && customStartDate && customEndDate) {
-            const start = new Date(customStartDate);
-            const end = new Date(customEndDate);
+            const start = new Date(customStartDate), end = new Date(customEndDate);
             end.setHours(23, 59, 59, 999);
-            filtered = filtered.filter(d => {
-                const detectionDate = new Date(d.created_date);
-                return detectionDate >= start && detectionDate <= end;
-            });
+            filtered = filtered.filter(d => { const dt = new Date(d.created_date); return dt >= start && dt <= end; });
         } else if (dateFilter !== 'all') {
             const now = new Date();
             filtered = filtered.filter(d => {
-                const detectionDate = new Date(d.created_date);
-                const diffDays = Math.floor((now - detectionDate) / (1000 * 60 * 60 * 24));
-                if (dateFilter === 'today') return diffDays === 0;
-                if (dateFilter === 'week') return diffDays <= 7;
-                if (dateFilter === 'month') return diffDays <= 30;
-                if (dateFilter === 'quarter') return diffDays <= 90;
-                if (dateFilter === 'year') return diffDays <= 365;
+                const diff = Math.floor((now - new Date(d.created_date)) / 86400000);
+                if (dateFilter === 'today') return diff === 0;
+                if (dateFilter === 'week') return diff <= 7;
+                if (dateFilter === 'month') return diff <= 30;
+                if (dateFilter === 'quarter') return diff <= 90;
+                if (dateFilter === 'year') return diff <= 365;
                 return true;
             });
         }
-
         return filtered;
     }, [allDetections, severityFilter, dateFilter, provinceFilter, customStartDate, customEndDate]);
 
@@ -128,284 +155,202 @@ export default function MapDashboard() {
         const severe = filteredDetections.filter(d => d.severity === 'severe').length;
         const moderate = filteredDetections.filter(d => d.severity === 'moderate').length;
         const low = filteredDetections.filter(d => d.severity === 'low').length;
-        const avgInsects = total > 0
-            ? (filteredDetections.reduce((sum, d) => sum + (d.total_detections || 0), 0) / total).toFixed(1)
-            : 0;
+        const avgInsects = total > 0 ? (filteredDetections.reduce((s, d) => s + (d.total_detections || 0), 0) / total).toFixed(1) : 0;
         return { total, severe, moderate, low, avgInsects };
     }, [filteredDetections]);
 
     const topProvinces = useMemo(() => {
-        const provinceCounts = {};
-        filteredDetections.forEach(d => {
-            if (d.province) {
-                provinceCounts[d.province] = (provinceCounts[d.province] || 0) + 1;
-            }
-        });
-        return Object.entries(provinceCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+        const pc = {};
+        filteredDetections.forEach(d => { if (d.province) pc[d.province] = (pc[d.province] || 0) + 1; });
+        return Object.entries(pc).sort((a, b) => b[1] - a[1]).slice(0, 5);
     }, [filteredDetections]);
 
     const recentDetections = useMemo(() => filteredDetections.slice(0, 5), [filteredDetections]);
-
-    const detectionsWithGPS = useMemo(() => {
-        return filteredDetections.filter(d => d.latitude && d.longitude);
-    }, [filteredDetections]);
-
+    const detectionsWithGPS = useMemo(() => filteredDetections.filter(d => d.latitude && d.longitude), [filteredDetections]);
     const mapCenter = useMemo(() => {
-        if (detectionsWithGPS.length === 0) return [12.8797, 121.7740];
-        const avgLat = detectionsWithGPS.reduce((sum, d) => sum + d.latitude, 0) / detectionsWithGPS.length;
-        const avgLng = detectionsWithGPS.reduce((sum, d) => sum + d.longitude, 0) / detectionsWithGPS.length;
-        return [avgLat, avgLng];
+        if (!detectionsWithGPS.length) return [12.8797, 121.7740];
+        return [
+            detectionsWithGPS.reduce((s, d) => s + d.latitude, 0) / detectionsWithGPS.length,
+            detectionsWithGPS.reduce((s, d) => s + d.longitude, 0) / detectionsWithGPS.length
+        ];
     }, [detectionsWithGPS]);
 
     if (isLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <p className="text-stone-500">Loading detections...</p>
+            <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f4f7f4' }}>
+                <p style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, color: '#8aaa96' }}>Loading detections...</p>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-emerald-50 to-stone-50">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-                {/* Header */}
-                <div className="mb-8">
-                    <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-3">
-                            <Map className="w-8 h-8 text-emerald-600" />
-                            <h1 className="text-3xl font-bold text-stone-800">Detection Map Dashboard</h1>
-                        </div>
-                        <Button
-                            onClick={() => setShowAnalytics(!showAnalytics)}
-                            variant={showAnalytics ? 'default' : 'outline'}
-                            className={showAnalytics ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
-                        >
-                            <BarChart3 className="w-4 h-4 mr-2" />
-                            {showAnalytics ? 'Hide' : 'Show'} Advanced Analytics
-                        </Button>
-                    </div>
-                    <p className="text-stone-600">Cocolisap Monitoring System</p>
-                </div>
+        <div className="map-root">
+            <style>{mapStyles}</style>
+            <div className="map-page">
 
-                {/* Statistics Cards */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                    <div className="bg-white rounded-xl p-5 border border-stone-200 shadow-sm">
-                        <div className="flex items-center gap-3">
-                            <div className="p-3 bg-blue-100 rounded-lg">
-                                <BarChart3 className="w-6 h-6 text-blue-600" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-stone-600">Total Detections</p>
-                                <p className="text-2xl font-bold text-stone-800">{stats.total}</p>
-                            </div>
+                {/* Header */}
+                <div style={{ marginBottom: 28 }}>
+                    <div className="map-header-badge">Monitoring System</div>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+                        <div>
+                            <h1 className="map-h1">Detection <em>Map</em> Dashboard</h1>
+                            <p className="map-sub">Cocolisap infestation monitoring across Philippine coconut farms</p>
                         </div>
+                        <button className={`map-analytics-btn${showAnalytics ? ' active' : ''}`} onClick={() => setShowAnalytics(!showAnalytics)}>
+                            <BarChart3 style={{ width: 15, height: 15 }} />
+                            {showAnalytics ? 'Hide' : 'Show'} Analytics
+                        </button>
                     </div>
-                    <div className="bg-white rounded-xl p-5 border border-red-200 shadow-sm">
-                        <div className="flex items-center gap-3">
-                            <div className="p-3 bg-red-100 rounded-lg">
-                                <AlertTriangle className="w-6 h-6 text-red-600" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-stone-600">Severe Cases</p>
-                                <p className="text-2xl font-bold text-red-600">{stats.severe}</p>
-                            </div>
+                </div>
+                <div className="map-divider" />
+
+                {/* Stats */}
+                <div className="map-stat-grid">
+                    {[
+                        { label: 'Total Detections', value: stats.total, color: 'blue', icon: <BarChart3 style={{ width: 18, height: 18, color: '#3b82f6' }} /> },
+                        { label: 'Severe Cases', value: stats.severe, color: 'red', icon: <AlertTriangle style={{ width: 18, height: 18, color: '#dc2626' }} /> },
+                        { label: 'Moderate Cases', value: stats.moderate, color: 'amber', icon: <TrendingUp style={{ width: 18, height: 18, color: '#d97706' }} /> },
+                        { label: 'Avg Insects', value: stats.avgInsects, color: 'green', icon: <BarChart3 style={{ width: 18, height: 18, color: '#2e8b4a' }} /> },
+                    ].map(s => (
+                        <div key={s.label} className={`map-stat ${s.color}`}>
+                            <div className={`map-stat-icon ${s.color}`}>{s.icon}</div>
+                            <div className="map-stat-label">{s.label}</div>
+                            <div className={`map-stat-value ${s.color}`}>{s.value}</div>
                         </div>
-                    </div>
-                    <div className="bg-white rounded-xl p-5 border border-amber-200 shadow-sm">
-                        <div className="flex items-center gap-3">
-                            <div className="p-3 bg-amber-100 rounded-lg">
-                                <TrendingUp className="w-6 h-6 text-amber-600" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-stone-600">Moderate Cases</p>
-                                <p className="text-2xl font-bold text-amber-600">{stats.moderate}</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="bg-white rounded-xl p-5 border border-stone-200 shadow-sm">
-                        <div className="flex items-center gap-3">
-                            <div className="p-3 bg-emerald-100 rounded-lg">
-                                <BarChart3 className="w-6 h-6 text-emerald-600" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-stone-600">Avg. Insects</p>
-                                <p className="text-2xl font-bold text-emerald-600">{stats.avgInsects}</p>
-                            </div>
-                        </div>
-                    </div>
+                    ))}
                 </div>
 
                 {/* Filters */}
-                <div className="bg-white rounded-xl p-5 mb-6 border border-stone-200">
-                    <h3 className="font-semibold text-stone-800 mb-4">Filters</h3>
-                    <div className="grid md:grid-cols-3 gap-4">
-                        <div>
-                            <label className="text-sm text-stone-600 mb-2 block">Severity Level</label>
-                            <Select value={severityFilter} onValueChange={setSeverityFilter}>
-                                <SelectTrigger><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Levels</SelectItem>
-                                    <SelectItem value="severe">Severe Only</SelectItem>
-                                    <SelectItem value="moderate">Moderate Only</SelectItem>
-                                    <SelectItem value="low">Low Only</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <label className="text-sm text-stone-600 mb-2 block">Date Range</label>
-                            <Select value={dateFilter} onValueChange={setDateFilter}>
-                                <SelectTrigger><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Time</SelectItem>
-                                    <SelectItem value="today">Today</SelectItem>
-                                    <SelectItem value="week">Last 7 Days</SelectItem>
-                                    <SelectItem value="month">Last 30 Days</SelectItem>
-                                    <SelectItem value="quarter">Last 3 Months</SelectItem>
-                                    <SelectItem value="year">Last Year</SelectItem>
-                                    <SelectItem value="custom">Custom Range</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <label className="text-sm text-stone-600 mb-2 block">Province</label>
-                            <Select value={provinceFilter} onValueChange={setProvinceFilter}>
-                                <SelectTrigger><SelectValue /></SelectTrigger>
-                                <SelectContent className="max-h-[300px]">
-                                    <SelectItem value="all">All Provinces</SelectItem>
-                                    {PHILIPPINE_PROVINCES.map(province => (
-                                        <SelectItem key={province} value={province}>{province}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
+                <div className="map-card" style={{ marginBottom: 20 }}>
+                    <div className="map-card-header">
+                        <span className="map-card-title">Filters</span>
                     </div>
-                    {dateFilter === 'custom' && (
-                        <div className="grid md:grid-cols-2 gap-4 mt-4">
+                    <div className="map-card-body">
+                        <div className="map-filters-grid">
                             <div>
-                                <label className="text-sm text-stone-600 mb-2 block">Start Date</label>
-                                <input type="date" value={customStartDate} onChange={(e) => setCustomStartDate(e.target.value)} className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm" />
+                                <span className="map-filter-label">Severity Level</span>
+                                <select className="map-select" value={severityFilter} onChange={e => setSeverityFilter(e.target.value)}>
+                                    <option value="all">All Levels</option>
+                                    <option value="severe">Severe Only</option>
+                                    <option value="moderate">Moderate Only</option>
+                                    <option value="low">Low Only</option>
+                                </select>
                             </div>
                             <div>
-                                <label className="text-sm text-stone-600 mb-2 block">End Date</label>
-                                <input type="date" value={customEndDate} onChange={(e) => setCustomEndDate(e.target.value)} className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm" />
+                                <span className="map-filter-label">Date Range</span>
+                                <select className="map-select" value={dateFilter} onChange={e => setDateFilter(e.target.value)}>
+                                    <option value="all">All Time</option>
+                                    <option value="today">Today</option>
+                                    <option value="week">Last 7 Days</option>
+                                    <option value="month">Last 30 Days</option>
+                                    <option value="quarter">Last 3 Months</option>
+                                    <option value="year">Last Year</option>
+                                    <option value="custom">Custom Range</option>
+                                </select>
+                            </div>
+                            <div>
+                                <span className="map-filter-label">Province</span>
+                                <select className="map-select" value={provinceFilter} onChange={e => setProvinceFilter(e.target.value)}>
+                                    <option value="all">All Provinces</option>
+                                    {PHILIPPINE_PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+                                </select>
                             </div>
                         </div>
-                    )}
+                        {dateFilter === 'custom' && (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>
+                                <div><span className="map-filter-label">Start Date</span><input type="date" className="map-date-input" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)} /></div>
+                                <div><span className="map-filter-label">End Date</span><input type="date" className="map-date-input" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)} /></div>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
-                {/* Advanced Analytics */}
+                {/* Analytics */}
                 {showAnalytics && (
-                    <div className="space-y-6 mb-6">
+                    <div style={{ marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 20 }}>
                         <TrendChart detections={filteredDetections} dateRange={dateFilter} />
-                        <div className="grid lg:grid-cols-3 gap-6">
-                            <div className="lg:col-span-2">
-                                <ProvinceAnalysis detections={filteredDetections} />
-                            </div>
-                            <div>
-                                <AnalyticsExport detections={filteredDetections} stats={stats} topProvinces={topProvinces} />
-                            </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 20 }}>
+                            <ProvinceAnalysis detections={filteredDetections} />
+                            <AnalyticsExport detections={filteredDetections} stats={stats} topProvinces={topProvinces} />
                         </div>
                     </div>
                 )}
 
-                <div className="grid lg:grid-cols-3 gap-6">
-                    {/* Map */}
-                    <div className="lg:col-span-2">
-                        <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
-                            <div className="bg-emerald-600 text-white p-4">
-                                <h3 className="font-semibold flex items-center gap-2">
-                                    <MapPin className="w-5 h-5" />
-                                    Interactive Map View
-                                    <span className="ml-auto text-sm font-normal">{detectionsWithGPS.length} locations</span>
-                                </h3>
-                            </div>
-                            <div className="aspect-video relative">
-                                {detectionsWithGPS.length > 0 ? (
-                                    <MapContainer center={mapCenter} zoom={6} style={{ height: '100%', width: '100%' }} scrollWheelZoom={true}>
-                                        <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                                        {detectionsWithGPS.map((detection) => (
-                                            <Marker key={detection.id} position={[detection.latitude, detection.longitude]} icon={createCustomIcon(detection.severity)}>
-                                                <Popup>
-                                                    <div className="p-2 min-w-[200px]">
-                                                        <div className="mb-2">
-                                                            <Badge className={detection.severity === 'severe' ? 'bg-red-600' : detection.severity === 'moderate' ? 'bg-amber-500' : 'bg-green-600'}>
-                                                                {detection.severity.toUpperCase()}
-                                                            </Badge>
-                                                        </div>
-                                                        {detection.province && <p className="font-semibold text-stone-800 mb-1">{detection.province}</p>}
-                                                        {detection.municipality && <p className="text-sm text-stone-600 mb-1">{detection.municipality}{detection.barangay && `, ${detection.barangay}`}</p>}
-                                                        <div className="text-sm text-stone-700 mt-2">
-                                                            <p><strong>{detection.total_detections}</strong> insects detected</p>
-                                                            <p className="text-xs text-stone-500 mt-1">{format(new Date(detection.created_date), 'MMM d, yyyy • h:mm a')}</p>
-                                                        </div>
-                                                        {detection.farmName && <p className="text-xs text-stone-500 mt-2 border-t pt-1">Farm: {detection.farmName}</p>}
-                                                    </div>
-                                                </Popup>
-                                            </Marker>
-                                        ))}
-                                    </MapContainer>
-                                ) : (
-                                    <div className="h-full bg-gradient-to-br from-emerald-100 to-blue-100 flex items-center justify-center p-8">
-                                        <div className="text-center">
-                                            <Map className="w-16 h-16 text-emerald-600 mx-auto mb-4" />
-                                            <h4 className="text-lg font-semibold text-stone-800 mb-2">No GPS Data Available</h4>
-                                            <p className="text-sm text-stone-600 max-w-md">No detections with GPS coordinates found for the current filters.</p>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                            <div className="p-4 border-t border-stone-200 bg-stone-50">
-                                <h4 className="text-sm font-semibold text-stone-700 mb-3">Severity Legend</h4>
-                                <div className="flex flex-wrap gap-4">
-                                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-red-600" /><span className="text-sm text-stone-600">Severe (10+ insects)</span></div>
-                                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-amber-500" /><span className="text-sm text-stone-600">Moderate (5-9 insects)</span></div>
-                                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-green-600" /><span className="text-sm text-stone-600">Low (1-4 insects)</span></div>
+                {/* Map + Side */}
+                <div className="map-main-grid">
+                    <div className="map-card">
+                        <div className="map-card-header">
+                            <span className="map-card-title"><MapPin style={{ width: 15, height: 15, color: '#2e8b4a' }} />Interactive Map View</span>
+                            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: '#8aaa96' }}>{detectionsWithGPS.length} locations</span>
+                        </div>
+                        <div style={{ height: 420, position: 'relative' }}>
+                            {detectionsWithGPS.length > 0 ? (
+                                <MapContainer center={mapCenter} zoom={6} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
+                                    <TileLayer
+                                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>'
+                                        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                                        subdomains="abcd"
+                                    />
+                                    {detectionsWithGPS.map(d => (
+                                        <Marker key={d.id} position={[d.latitude, d.longitude]} icon={createCustomIcon(d.severity)}>
+                                            <Popup>
+                                                <div style={{ padding: '6px 2px', minWidth: 180, fontFamily: "'Outfit',sans-serif" }}>
+                                                    <span className={`map-severity-pill ${d.severity}`}>{d.severity?.toUpperCase()}</span>
+                                                    {d.province && <p style={{ fontWeight: 600, color: '#1a3326', margin: '8px 0 4px', fontSize: 13 }}>{d.province}</p>}
+                                                    {d.municipality && <p style={{ fontSize: 12, color: '#5a8068', margin: '0 0 8px' }}>{d.municipality}{d.barangay && `, ${d.barangay}`}</p>}
+                                                    <p style={{ fontSize: 13, color: '#1a3326', margin: 0 }}><strong style={{ color: '#2e8b4a' }}>{d.total_detections}</strong> insects</p>
+                                                    <p style={{ fontSize: 11, color: '#8aaa96', marginTop: 4, fontFamily: "'DM Mono',monospace" }}>{format(new Date(d.created_date), 'MMM d, yyyy · h:mm a')}</p>
+                                                    {d.farmName && <p style={{ fontSize: 11, color: '#8aaa96', marginTop: 6, paddingTop: 6, borderTop: '1px solid #eaf2ea', fontFamily: "'DM Mono',monospace" }}>Farm: {d.farmName}</p>}
+                                                </div>
+                                            </Popup>
+                                        </Marker>
+                                    ))}
+                                </MapContainer>
+                            ) : (
+                                <div className="map-empty-state">
+                                    <div className="map-empty-icon"><Map style={{ width: 24, height: 24, color: '#2e8b4a' }} /></div>
+                                    <p style={{ fontWeight: 600, color: '#1a3326', marginBottom: 6 }}>No GPS Data Available</p>
+                                    <p style={{ fontSize: 13, color: '#5a8068', maxWidth: 320 }}>No detections with GPS coordinates found. Adjust filters or capture location during detection.</p>
                                 </div>
-                            </div>
+                            )}
+                        </div>
+                        <div className="map-legend">
+                            {[{ color: '#e05555', label: 'Severe (10+)' }, { color: '#e8a440', label: 'Moderate (5–9)' }, { color: '#4caf72', label: 'Low (1–4)' }].map(l => (
+                                <div key={l.label} className="map-legend-item"><div className="map-legend-dot" style={{ background: l.color, boxShadow: `0 0 6px ${l.color}88` }} />{l.label}</div>
+                            ))}
                         </div>
                     </div>
 
                     {/* Side Panel */}
-                    <div className="space-y-6">
-                        <div className="bg-white rounded-xl border border-stone-200 p-5">
-                            <h3 className="font-semibold text-stone-800 mb-4">Top Affected Provinces</h3>
-                            {topProvinces.length > 0 ? (
-                                <div className="space-y-3">
-                                    {topProvinces.map(([province, count], idx) => (
-                                        <div key={province} className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold flex items-center justify-center">{idx + 1}</div>
-                                                <span className="text-sm text-stone-700">{province}</span>
-                                            </div>
-                                            <Badge variant="secondary">{count}</Badge>
+                    <div className="map-side-grid">
+                        <div className="map-card">
+                            <div className="map-card-header"><span className="map-card-title">Top Affected Provinces</span></div>
+                            <div className="map-card-body">
+                                {topProvinces.length > 0 ? topProvinces.map(([province, count], idx) => (
+                                    <div key={province} className="map-province-item">
+                                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                                            <div className="map-province-rank">{idx + 1}</div>
+                                            <span className="map-province-name">{province}</span>
                                         </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <p className="text-sm text-stone-500 text-center py-4">No province data available</p>
-                            )}
+                                        <span className="map-province-count">{count}</span>
+                                    </div>
+                                )) : <p style={{ fontSize: 13, color: '#8aaa96', textAlign: 'center', padding: '16px 0', fontFamily: "'DM Mono',monospace" }}>No province data available</p>}
+                            </div>
                         </div>
 
-                        <div className="bg-white rounded-xl border border-stone-200 p-5">
-                            <h3 className="font-semibold text-stone-800 mb-4">Recent Detections</h3>
-                            {recentDetections.length > 0 ? (
-                                <div className="space-y-3">
-                                    {recentDetections.map(detection => {
-                                        const severityColors = { severe: 'bg-red-100 text-red-700', moderate: 'bg-amber-100 text-amber-700', low: 'bg-green-100 text-green-700' };
-                                        return (
-                                            <div key={detection.id} className="border-b border-stone-100 pb-3 last:border-0">
-                                                <div className="flex items-start justify-between mb-1">
-                                                    <Badge className={severityColors[detection.severity]}>{detection.severity}</Badge>
-                                                    <span className="text-xs text-stone-500">{format(new Date(detection.created_date), 'MMM d')}</span>
-                                                </div>
-                                                <p className="text-sm text-stone-700">{detection.province || 'Unknown location'} • {detection.total_detections} insects</p>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            ) : (
-                                <p className="text-sm text-stone-500 text-center py-4">No recent detections</p>
-                            )}
+                        <div className="map-card">
+                            <div className="map-card-header"><span className="map-card-title">Recent Detections</span></div>
+                            <div className="map-card-body">
+                                {recentDetections.length > 0 ? recentDetections.map(d => (
+                                    <div key={d.id} className="map-recent-item">
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                                            <span className={`map-severity-pill ${d.severity}`}>{d.severity}</span>
+                                            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: '#8aaa96' }}>{format(new Date(d.created_date), 'MMM d')}</span>
+                                        </div>
+                                        <p style={{ fontSize: 13, color: '#1a3326', margin: 0 }}>{d.province || 'Unknown'} · {d.total_detections} insects</p>
+                                    </div>
+                                )) : <p style={{ fontSize: 13, color: '#8aaa96', textAlign: 'center', padding: '16px 0', fontFamily: "'DM Mono',monospace" }}>No recent detections</p>}
+                            </div>
                         </div>
                     </div>
                 </div>

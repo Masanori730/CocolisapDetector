@@ -1,11 +1,12 @@
-/**
- * pages.config.js - Page routing configuration
- */
+import DataExport from './pages/DataExport';
+import FuzzyLogic from './pages/FuzzyLogic';
 import Home from './pages/Home';
 import MapDashboard from './pages/MapDashboard';
-import __Layout from './Layout.jsx';
+import Layout from './Layout.jsx';
 
 export const PAGES = {
+    "DataExport": DataExport,
+    "FuzzyLogic": FuzzyLogic,
     "Home": Home,
     "MapDashboard": MapDashboard,
 }
@@ -13,5 +14,5 @@ export const PAGES = {
 export const pagesConfig = {
     mainPage: "Home",
     Pages: PAGES,
-    Layout: __Layout,
+    Layout: Layout,
 };
