@@ -1,0 +1,133 @@
+{
+  "name": "FuzzyLogicAssessment",
+  "type": "object",
+  "properties": {
+    "province": {
+      "type": "string",
+      "description": "Philippine province of the farm"
+    },
+    "municipality": {
+      "type": "string",
+      "description": "Municipality of the farm"
+    },
+    "barangay": {
+      "type": "string",
+      "description": "Barangay of the farm"
+    },
+    "farmName": {
+      "type": "string",
+      "description": "Name of the farm"
+    },
+    "farmOwner": {
+      "type": "string",
+      "description": "Owner of the farm"
+    },
+    "latitude": {
+      "type": "number",
+      "description": "Latitude of the farm location"
+    },
+    "longitude": {
+      "type": "number",
+      "description": "Longitude of the farm location"
+    },
+    "temperature_c": {
+      "type": "number",
+      "description": "Temperature in Celsius"
+    },
+    "humidity_pct": {
+      "type": "number",
+      "description": "Relative humidity percentage"
+    },
+    "wind_speed_kmh": {
+      "type": "number",
+      "description": "Wind speed in km/h"
+    },
+    "planting_density": {
+      "type": "number",
+      "description": "Planting density in trees/ha"
+    },
+    "total_trees": {
+      "type": "number",
+      "description": "Total coconut trees in the farm"
+    },
+    "days_without_intervention": {
+      "type": "number",
+      "description": "Days without intervention"
+    },
+    "fuzzy_base_score": {
+      "type": "number",
+      "description": "Base fuzzy logic score"
+    },
+    "fuzzy_base_label": {
+      "type": "string",
+      "enum": [
+        "LOW",
+        "MODERATE",
+        "HIGH"
+      ],
+      "description": "Fuzzy base label"
+    },
+    "intervention_multiplier": {
+      "type": "number",
+      "description": "Intervention multiplier"
+    },
+    "adjusted_risk_score": {
+      "type": "number",
+      "description": "Adjusted risk score"
+    },
+    "adjusted_risk_label": {
+      "type": "string",
+      "enum": [
+        "LOW",
+        "MODERATE",
+        "HIGH"
+      ],
+      "description": "Adjusted risk label"
+    },
+    "degree_of_infestation_pct": {
+      "type": "number",
+      "description": "Degree of infestation %"
+    },
+    "estimated_infected_trees": {
+      "type": "number",
+      "description": "Estimated infected trees"
+    },
+    "estimated_healthy_trees": {
+      "type": "number",
+      "description": "Estimated healthy trees"
+    },
+    "spread_cone_length_km": {
+      "type": "number",
+      "description": "Spread cone length in km"
+    },
+    "wind_direction_deg": {
+      "type": "number",
+      "description": "Wind direction in degrees"
+    },
+    "wind_direction_compass": {
+      "type": "string",
+      "description": "Wind direction compass cardinal"
+    },
+    "intervention_note": {
+      "type": "string",
+      "description": "Intervention notes"
+    }
+  },
+  "required": [
+    "temperature_c",
+    "humidity_pct",
+    "wind_speed_kmh",
+    "planting_density",
+    "total_trees",
+    "days_without_intervention",
+    "fuzzy_base_score",
+    "fuzzy_base_label",
+    "intervention_multiplier",
+    "adjusted_risk_score",
+    "adjusted_risk_label",
+    "degree_of_infestation_pct",
+    "estimated_infected_trees",
+    "estimated_healthy_trees",
+    "intervention_note"
+  ]
+}
