@@ -120,11 +120,11 @@ export default function Home() {
                     Aspidiotus rigidus · Philippine Coconut Farms
                 </div>
                 <h1 className="landing-h1">
-                    Cocolisap <em>Expert</em><br />Detection System
+                    Cocolisap<em>Scan</em>
                 </h1>
                 <p className="landing-sub">
-                    An integrated AI-powered platform for detecting, monitoring, and assessing
-                    coconut scale insect infestations across the Philippines.
+                    A detection and monitoring system for coconut scale insect infestations
+                    using YOLOv11 instance segmentation and an 81-rule Mamdani fuzzy logic system.
                 </p>
                 <div className="landing-cta-row">
                     <Link to="/ImageDetection" className="landing-cta-primary">
