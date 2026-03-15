@@ -82,12 +82,17 @@ function downloadText(text, filename) {
     a.click();
 }
 
-function downloadCSV(rows, filename) {
-    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-    a.download = filename;
-    a.click();
+function downloadXLSX(rows, filename) {
+    const XLSX = window.XLSX;
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const colWidths = rows[0].map((h, i) => {
+        const maxLen = Math.max(String(h).length, ...rows.slice(1).map(r => String(r[i] ?? '').length));
+        return { wch: Math.min(Math.max(maxLen + 2, 10), 35) };
+    });
+    ws['!cols'] = colWidths;
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Data');
+    XLSX.writeFile(wb, filename);
 }
 
 export default function DataExport() {
@@ -151,11 +156,11 @@ export default function DataExport() {
             const confidence = d.avg_confidence ? (d.avg_confidence * 100).toFixed(1) : 'N/A';
             const procTime = d.processing_time ? (d.processing_time / 1000).toFixed(2) : 'N/A';
             const row = [`DET-${String(i + 1).padStart(3, '0')}`, format(dt, 'yyyy-MM-dd'), format(dt, 'HH:mm:ss'), ns(d.province), ns(d.municipality), ns(d.barangay), ns(d.farmName), ns(d.farmOwner), ns(d.latitude), ns(d.longitude), severity, d.total_detections || 0, confidence, procTime, ns(d.locationMethod), ns(d.notes)];
-            if (includePhotos) row.push(ns(d.image_url));
+            if (includePhotos) row.push(d.image_url ? '[Photo Attached]' : 'Not Specified');
             return row;
         })];
-        downloadCSV(rows, `cocolisap-image-detections-${format(new Date(), 'yyyy-MM-dd')}.csv`);
-        setExportMessage({ type: 'success', text: `Exported ${filteredDetections.length} image detections to CSV.` });
+        downloadXLSX(rows, `cocolisap-image-detections-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+        setExportMessage({ type: 'success', text: `Exported ${filteredDetections.length} image detections to Excel.` });
     };
 
     const handleDetectionSummary = () => {
@@ -192,8 +197,8 @@ export default function DataExport() {
             const dt = new Date(a.created_date);
             return [`FZY-${String(i + 1).padStart(3, '0')}`, format(dt, 'yyyy-MM-dd'), format(dt, 'HH:mm:ss'), ns(a.province), ns(a.municipality), ns(a.barangay), ns(a.latitude), ns(a.longitude), a.temperature_c, a.humidity_pct, a.wind_speed_kmh, a.planting_density, a.total_trees, a.days_without_intervention, a.fuzzy_base_score?.toFixed(2), a.fuzzy_base_label, a.intervention_multiplier?.toFixed(4), a.adjusted_risk_score?.toFixed(2), a.adjusted_risk_label, a.degree_of_infestation_pct?.toFixed(2), a.estimated_infected_trees, a.estimated_healthy_trees, a.wind_direction_compass ? `${a.wind_direction_compass} (${a.wind_direction_deg}°)` : 'Not Specified', ns(a.intervention_note)];
         })];
-        downloadCSV(rows, `cocolisap-fuzzy-assessments-${format(new Date(), 'yyyy-MM-dd')}.csv`);
-        setExportMessage({ type: 'success', text: `Exported ${filteredAssessments.length} fuzzy logic assessments to CSV.` });
+        downloadXLSX(rows, `cocolisap-fuzzy-assessments-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+        setExportMessage({ type: 'success', text: `Exported ${filteredAssessments.length} fuzzy logic assessments to Excel.` });
     };
 
     const handleFuzzySummary = () => {
@@ -318,7 +323,7 @@ export default function DataExport() {
                         <p className="export-option-sub">YOLOv11 · Instance Segmentation</p>
                         <p className="export-option-desc">Export all image scan records with location, severity, confidence scores, and optional photo URLs.</p>
                         <div className="export-btn-row">
-                            <button className="export-dl-btn green" onClick={handleDetectionCSV} disabled={!filteredDetections.length}><FileSpreadsheet style={{ width: 15, height: 15 }} />Download CSV</button>
+                            <button className="export-dl-btn green" onClick={handleDetectionCSV} disabled={!filteredDetections.length}><FileSpreadsheet style={{ width: 15, height: 15 }} />Download Excel</button>
                             <button className="export-dl-btn blue" onClick={handleDetectionSummary} disabled={!filteredDetections.length}><FileText style={{ width: 15, height: 15 }} />Download Summary TXT</button>
                         </div>
                     </div>
@@ -329,7 +334,7 @@ export default function DataExport() {
                         <p className="export-option-sub">Mamdani · 81-Rule Inference</p>
                         <p className="export-option-desc">Export fuzzy logic risk assessments with environmental parameters, farm impact, and PCA intervention notes.</p>
                         <div className="export-btn-row">
-                            <button className="export-dl-btn green" onClick={handleFuzzyCSV} disabled={!filteredAssessments.length}><FileSpreadsheet style={{ width: 15, height: 15 }} />Download CSV</button>
+                            <button className="export-dl-btn green" onClick={handleFuzzyCSV} disabled={!filteredAssessments.length}><FileSpreadsheet style={{ width: 15, height: 15 }} />Download Excel</button>
                             <button className="export-dl-btn blue" onClick={handleFuzzySummary} disabled={!filteredAssessments.length}><FileText style={{ width: 15, height: 15 }} />Download Summary TXT</button>
                         </div>
                     </div>
@@ -350,7 +355,7 @@ export default function DataExport() {
                     <div>
                         <p className="export-tips-title">Usage Tips</p>
                         <ul className="export-tips-list">
-                            <li>· CSV exports are ideal for data analysis in Excel or Google Sheets</li>
+                            <li>· Excel exports open directly in Excel or Google Sheets with proper column widths</li>
                             <li>· Summary TXT reports are formatted for government documentation and briefings</li>
                             <li>· The Combined Report merges both datasets for a full integrated overview</li>
                             <li>· Use date and province filters to generate targeted regional reports</li>
