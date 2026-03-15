@@ -1,18 +1,17 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Map, FlaskConical, Download } from 'lucide-react';
+import { Home, Map, FlaskConical, Download, ScanSearch } from 'lucide-react';
 import { Leaf } from 'lucide-react';
 
 export default function Layout({ children, currentPageName }) {
     const location = useLocation();
-
     const navItems = [
         { name: 'Home', icon: Home, path: '/Home' },
+        { name: 'Detection', icon: ScanSearch, path: '/ImageDetection' },
         { name: 'Map Dashboard', icon: Map, path: '/MapDashboard' },
-        { name: 'Data Export', icon: Download, path: '/DataExport' },
         { name: 'Fuzzy Logic', icon: FlaskConical, path: '/FuzzyLogic' },
+        { name: 'Data Export', icon: Download, path: '/DataExport' },
     ];
-
     return (
         <div style={{ minHeight: '100vh', background: '#f4f7f4', color: '#1a3326', fontFamily: "'Outfit', sans-serif" }}>
             <style>{`
@@ -31,12 +30,11 @@ export default function Layout({ children, currentPageName }) {
                 .app-nav-link svg { width: 15px; height: 15px; }
                 @media(max-width:640px){ .app-nav-link span { display:none; } .app-nav-link { padding:8px 10px; } }
             `}</style>
-
             <nav className="app-nav">
                 <div className="app-nav-inner">
                     <Link to="/Home" className="app-nav-brand">
                         <Leaf style={{ width: 20, height: 20, color: '#4caf72' }} />
-                        <span className="app-nav-brand-text">Cocolisap Detection</span>
+                        <span className="app-nav-brand-text">CocolisapScan</span>
                     </Link>
                     <div className="app-nav-links">
                         {navItems.map((item) => {
@@ -56,8 +54,7 @@ export default function Layout({ children, currentPageName }) {
                     </div>
                 </div>
             </nav>
-
             <main>{children}</main>
         </div>
     );
-}   
+}
