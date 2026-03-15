@@ -101,7 +101,6 @@ export default function DataExport() {
     const [severityFilter, setSeverityFilter] = useState('all');
     const [provinceFilter, setProvinceFilter] = useState('all');
     const [riskFilter, setRiskFilter] = useState('all');
-    const [includePhotos, setIncludePhotos] = useState(true);
     const [exportMessage, setExportMessage] = useState(null);
     const [allDetections, setAllDetections] = useState([]);
     const [allAssessments, setAllAssessments] = useState([]);
@@ -148,16 +147,13 @@ export default function DataExport() {
 
     const handleDetectionCSV = () => {
         if (!filteredDetections.length) { setExportMessage({ type: 'error', text: 'No image detections match current filters.' }); return; }
-        const headers = ['Detection ID', 'Date', 'Time', 'Province', 'Municipality', 'Barangay', 'Farm Name', 'Farm Owner', 'Latitude', 'Longitude', 'Severity', 'Total Insects Detected', 'Avg Confidence (%)', 'Processing Time (s)', 'Location Method', 'Notes'];
-        if (includePhotos) headers.push('Photo URL');
+        const headers = ['Detection ID', 'Date', 'Time', 'Province', 'Municipality', 'Barangay', 'Latitude', 'Longitude', 'Severity', 'Total Insects Detected', 'Avg Confidence (%)', 'Processing Time (s)', 'Location Method'];
         const rows = [headers, ...filteredDetections.map((d, i) => {
             const dt = new Date(d.created_date);
             const severity = d.severity ? d.severity.charAt(0).toUpperCase() + d.severity.slice(1) : 'N/A';
             const confidence = d.avg_confidence ? (d.avg_confidence * 100).toFixed(1) : 'N/A';
             const procTime = d.processing_time ? (d.processing_time / 1000).toFixed(2) : 'N/A';
-            const row = [`DET-${String(i + 1).padStart(3, '0')}`, format(dt, 'yyyy-MM-dd'), format(dt, 'HH:mm:ss'), ns(d.province), ns(d.municipality), ns(d.barangay), ns(d.farmName), ns(d.farmOwner), ns(d.latitude), ns(d.longitude), severity, d.total_detections || 0, confidence, procTime, ns(d.locationMethod), ns(d.notes)];
-            if (includePhotos) row.push(d.image_url ? '[Photo Attached]' : 'Not Specified');
-            return row;
+            return [`DET-${String(i + 1).padStart(3, '0')}`, format(dt, 'yyyy-MM-dd'), format(dt, 'HH:mm:ss'), ns(d.province), ns(d.municipality), ns(d.barangay), ns(d.latitude), ns(d.longitude), severity, d.total_detections || 0, confidence, procTime, ns(d.locationMethod)];
         })];
         downloadXLSX(rows, `cocolisap-image-detections-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
         setExportMessage({ type: 'success', text: `Exported ${filteredDetections.length} image detections to Excel.` });
@@ -292,10 +288,7 @@ export default function DataExport() {
                             </div>
                         </div>
                     </div>
-                    <label className="export-checkbox-row">
-                        <input type="checkbox" className="export-checkbox" checked={includePhotos} onChange={e => setIncludePhotos(e.target.checked)} />
-                        <span className="export-checkbox-label">Include photo URLs in image detection CSV</span>
-                    </label>
+
                 </div>
 
                 <div className="export-count-row">
