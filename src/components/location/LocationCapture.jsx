@@ -44,62 +44,29 @@ export default function LocationCapture({ onLocationChange }) {
         locationMethod: 'manual'
     });
 
-    const handleCaptureGPS = () => {
-        if (!navigator.geolocation) {
-            setMessage({ type: 'error', text: 'GPS is not supported by your device or browser.' });
-            return;
-        }
-
-        setCapturing(true);
-        setMessage(null);
-        setAccuracy(null);
-
-        const watchId = navigator.geolocation.watchPosition(
-            (position) => {
-                const newData = {
-                    ...locationData,
-                    latitude: position.coords.latitude,
-                    longitude: position.coords.longitude,
-                    locationMethod: 'gps'
+    // Reverse geocode: coordinates → province/municipality/barangay
+    const reverseGeocode = async (lat, lng) => {
+        try {
+            const res = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`,
+                { headers: { 'Accept-Language': 'en' } }
+            );
+            if (res.ok) {
+                const data = await res.json();
+                const addr = data.address || {};
+                return {
+                    province: addr.province || addr.state || '',
+                    municipality: addr.city || addr.town || addr.municipality || addr.village || '',
+                    barangay: addr.suburb || addr.neighbourhood || addr.quarter || '',
                 };
-                setLocationData(newData);
-                onLocationChange(newData);
-                setAccuracy(position.coords.accuracy);
-
-                const accuracyStatus = position.coords.accuracy < 10 ? 'Excellent' :
-                                      position.coords.accuracy < 30 ? 'Good' :
-                                      position.coords.accuracy < 100 ? 'Fair' : 'Poor';
-
-                setMessage({
-                    type: 'success',
-                    text: `GPS locked! Accuracy: ${accuracyStatus} (±${position.coords.accuracy.toFixed(1)}m)`
-                });
-
-                if (position.coords.accuracy < 50) {
-                    navigator.geolocation.clearWatch(watchId);
-                    setCapturing(false);
-                }
-            },
-            (error) => {
-                let errorMessage = 'Unable to get GPS location. ';
-                if (error.code === 1) errorMessage += 'Please enable location permissions.';
-                else if (error.code === 2) errorMessage += 'Location unavailable. Make sure GPS is enabled.';
-                else if (error.code === 3) errorMessage += 'GPS timeout. Try moving outdoors.';
-                else errorMessage += 'Please try manual entry instead.';
-                setMessage({ type: 'error', text: errorMessage });
-                navigator.geolocation.clearWatch(watchId);
-                setCapturing(false);
-            },
-            { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 }
-        );
-
-        setTimeout(() => {
-            navigator.geolocation.clearWatch(watchId);
-            setCapturing(false);
-        }, 30000);
+            }
+        } catch (e) {
+            console.error('Reverse geocode failed:', e);
+        }
+        return { province: '', municipality: '', barangay: '' };
     };
 
-    // Auto-geocode when province/municipality/barangay changes
+    // Forward geocode: province/municipality → coordinates
     const geocodeLocation = async (data) => {
         if (!data.province) return;
         setGeocoding(true);
@@ -121,7 +88,7 @@ export default function LocationCapture({ onLocationChange }) {
                     const updated = { ...data, latitude: geo.latitude, longitude: geo.longitude };
                     setLocationData(updated);
                     onLocationChange(updated);
-                    setMessage({ type: 'success', text: `📍 Location found: ${geo.display_name?.split(',').slice(0, 2).join(',')}` });
+                    setMessage({ type: 'success', text: `📍 Coordinates found for ${data.province}` });
                 }
             }
         } catch (e) {
@@ -131,16 +98,77 @@ export default function LocationCapture({ onLocationChange }) {
         }
     };
 
+    const handleCaptureGPS = () => {
+        if (!navigator.geolocation) {
+            setMessage({ type: 'error', text: 'GPS is not supported by your device or browser.' });
+            return;
+        }
+
+        setCapturing(true);
+        setMessage(null);
+        setAccuracy(null);
+
+        const watchId = navigator.geolocation.watchPosition(
+            async (position) => {
+                const { latitude, longitude } = position.coords;
+                const acc = position.coords.accuracy;
+                setAccuracy(acc);
+
+                const accuracyStatus = acc < 10 ? 'Excellent' : acc < 30 ? 'Good' : acc < 100 ? 'Fair' : 'Poor';
+                setMessage({ type: 'success', text: `GPS locked! ${accuracyStatus} (±${acc.toFixed(1)}m) — Looking up address...` });
+
+                if (acc < 50) {
+                    navigator.geolocation.clearWatch(watchId);
+                    setCapturing(false);
+
+                    // Reverse geocode to fill in province/municipality/barangay
+                    const place = await reverseGeocode(latitude, longitude);
+
+                    const newData = {
+                        ...locationData,
+                        latitude,
+                        longitude,
+                        locationMethod: 'gps',
+                        province: place.province,
+                        municipality: place.municipality,
+                        barangay: place.barangay,
+                    };
+                    setLocationData(newData);
+                    onLocationChange(newData);
+
+                    setMessage({
+                        type: 'success',
+                        text: `📍 GPS locked! ${[place.municipality, place.province].filter(Boolean).join(', ') || 'Location captured'} (±${acc.toFixed(0)}m)`
+                    });
+                }
+            },
+            (error) => {
+                let errorMessage = 'Unable to get GPS location. ';
+                if (error.code === 1) errorMessage += 'Please enable location permissions.';
+                else if (error.code === 2) errorMessage += 'Location unavailable. Make sure GPS is enabled.';
+                else if (error.code === 3) errorMessage += 'GPS timeout. Try moving outdoors.';
+                else errorMessage += 'Please try manual entry instead.';
+                setMessage({ type: 'error', text: errorMessage });
+                navigator.geolocation.clearWatch(watchId);
+                setCapturing(false);
+            },
+            { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 }
+        );
+
+        setTimeout(() => {
+            navigator.geolocation.clearWatch(watchId);
+            setCapturing(false);
+        }, 30000);
+    };
+
     const handleInputChange = (field, value) => {
         const newData = { ...locationData, [field]: value, locationMethod: 'manual' };
         setLocationData(newData);
         onLocationChange(newData);
 
-        // Trigger geocoding when province or municipality changes
+        // Auto-geocode when location fields change
         if (field === 'province' || field === 'municipality' || field === 'barangay') {
-            const updated = { ...newData, [field]: value };
-            // Debounce geocoding slightly
-            setTimeout(() => geocodeLocation(updated), 500);
+            setTimeout(() => geocodeLocation({ ...newData, [field]: value }), 600);
         }
     };
 
@@ -150,7 +178,7 @@ export default function LocationCapture({ onLocationChange }) {
                 <div className="flex items-center gap-2">
                     <MapPin className="w-5 h-5 text-emerald-600" />
                     <h3 className="font-semibold text-stone-800">Location Information</h3>
-                    {geocoding && <span style={{ fontSize: 11, color: '#8aaa96', fontFamily: 'monospace' }}>Geocoding...</span>}
+                    {geocoding && <span style={{ fontSize: 11, color: '#8aaa96', fontFamily: 'monospace' }}>Finding coordinates...</span>}
                     {locationData.latitude && !geocoding && (
                         <span style={{ fontSize: 11, color: '#2e8b4a', fontFamily: 'monospace' }}>✓ GPS ready</span>
                     )}
@@ -225,6 +253,8 @@ export default function LocationCapture({ onLocationChange }) {
                                 <div className="space-y-1 text-sm text-emerald-800">
                                     <p><strong>Latitude:</strong> {locationData.latitude.toFixed(6)}°</p>
                                     <p><strong>Longitude:</strong> {locationData.longitude.toFixed(6)}°</p>
+                                    {locationData.province && <p><strong>Province:</strong> {locationData.province}</p>}
+                                    {locationData.municipality && <p><strong>Municipality:</strong> {locationData.municipality}</p>}
                                     {accuracy && (
                                         <p>
                                             <strong>Accuracy:</strong> ±{accuracy.toFixed(0)}m
@@ -297,7 +327,7 @@ export default function LocationCapture({ onLocationChange }) {
                     </div>
                     {locationData.latitude && (
                         <div className="p-2 bg-emerald-50 rounded-lg border border-emerald-200 text-xs text-emerald-700">
-                            📍 Coordinates auto-detected: {locationData.latitude.toFixed(4)}, {locationData.longitude.toFixed(4)}
+                            📍 Coordinates: {locationData.latitude.toFixed(4)}, {locationData.longitude.toFixed(4)}
                         </div>
                     )}
                 </div>
