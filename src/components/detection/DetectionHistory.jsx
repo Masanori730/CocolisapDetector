@@ -1,12 +1,12 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
-import { History, Trash2, FileText, Eye } from 'lucide-react';
+import { History, Trash2, Eye } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-export default function DetectionHistory({ detections, onSelect, onDelete, onGenerateReport, onClearAll }) {
+export default function DetectionHistory({ detections, onSelect, onDelete, onClearAll }) {
     const severityColors = {
         low: 'bg-green-100 text-green-700',
         moderate: 'bg-yellow-100 text-yellow-700',
@@ -87,14 +87,6 @@ export default function DetectionHistory({ detections, onSelect, onDelete, onGen
                                     onClick={() => onSelect(detection)}
                                 >
                                     <Eye className="w-3.5 h-3.5" />
-                                </Button>
-                                <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    className="h-7 w-7"
-                                    onClick={() => onGenerateReport(detection)}
-                                >
-                                    <FileText className="w-3.5 h-3.5" />
                                 </Button>
                                 <Button 
                                     variant="ghost" 
