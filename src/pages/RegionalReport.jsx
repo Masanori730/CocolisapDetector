@@ -6,7 +6,7 @@ import { jsPDF } from 'jspdf';
 import { format } from 'date-fns';
 
 import ReportFilters from '@/components/report/ReportFilters';
-import ProvinceBarChart from '@/components/report/ProvinceBarChart';
+import ProvinceBarChart, { SeverityPieChart, MonthlyTrendChart } from '@/components/report/ProvinceBarChart';
 import ProvinceDrillDown from '@/components/report/ProvinceDrillDown';
 
 const pageStyles = `
@@ -271,6 +271,32 @@ export default function RegionalReport() {
                         </button>
                     </div>
                     {showChart && <div style={{ padding: '20px 16px 8px' }}><ProvinceBarChart tableRows={tableRows} /></div>}
+                </div>
+
+                {/* Severity Distribution + Monthly Trend */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+                    <div className="rr-card" style={{ marginBottom: 0 }}>
+                        <div className="rr-card-header">
+                            <span className="rr-card-title">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2e8b4a" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+                                Severity Distribution
+                            </span>
+                        </div>
+                        <div style={{ padding: '16px' }}>
+                            <SeverityPieChart detections={filtered} />
+                        </div>
+                    </div>
+                    <div className="rr-card" style={{ marginBottom: 0 }}>
+                        <div className="rr-card-header">
+                            <span className="rr-card-title">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2e8b4a" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                                Monthly Detection Trend
+                            </span>
+                        </div>
+                        <div style={{ padding: '16px 8px 8px' }}>
+                            <MonthlyTrendChart detections={filtered} />
+                        </div>
+                    </div>
                 </div>
 
                 <div className="rr-card">
