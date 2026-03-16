@@ -32,9 +32,8 @@ const exportStyles = `
     .export-input:focus { border-color:#2e8b4a; box-shadow:0 0 0 3px rgba(46,139,74,0.08); }
     .export-select { width:100%; background:#f8fbf8; border:1px solid #c8dfc8; border-radius:12px; color:#1a3326; font-family:'Outfit',sans-serif; font-size:14px; padding:12px 16px; outline:none; cursor:pointer; transition:border-color .2s; box-sizing:border-box; }
     .export-select:focus { border-color:#2e8b4a; }
-    .export-checkbox-row { display:flex; align-items:center; gap:10px; margin-top:16px; cursor:pointer; }
-    .export-checkbox { width:18px; height:18px; background:#f8fbf8; border:1px solid #c8dfc8; border-radius:5px; cursor:pointer; accent-color:#2e8b4a; }
-    .export-checkbox-label { font-size:13px; color:#5a8068; cursor:pointer; }
+    .export-filters-inner { display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:start; }
+    @media(max-width:480px){ .export-filters-inner{grid-template-columns:1fr;} }
     .export-count-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px; }
     @media(max-width:600px){ .export-count-row{grid-template-columns:1fr;} }
     .export-count-box { background:rgba(46,139,74,0.06); border:1px solid rgba(46,139,74,0.18); border-radius:14px; padding:14px 18px; }
@@ -267,7 +266,7 @@ export default function DataExport() {
                                 {PHILIPPINE_PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
                             </select>
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <div className="export-filters-inner">
                             <div>
                                 <span className="export-field-label">Severity (Detection)</span>
                                 <select className="export-select" value={severityFilter} onChange={e => setSeverityFilter(e.target.value)}>
@@ -288,7 +287,6 @@ export default function DataExport() {
                             </div>
                         </div>
                     </div>
-
                 </div>
 
                 <div className="export-count-row">
