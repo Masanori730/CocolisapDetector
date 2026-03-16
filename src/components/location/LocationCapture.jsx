@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { motion, AnimatePresence } from 'framer-motion';
 
+const BACKEND_URL = 'https://cocolisap-detector-398384683490.asia-southeast1.run.app';
+
 const PHILIPPINE_PROVINCES = [
     "Abra", "Agusan del Norte", "Agusan del Sur", "Aklan", "Albay", "Antique", "Apayao", "Aurora",
     "Basilan", "Bataan", "Batanes", "Batangas", "Benguet", "Biliran", "Bohol", "Bukidnon",
@@ -27,6 +29,7 @@ const PHILIPPINE_PROVINCES = [
 export default function LocationCapture({ onLocationChange }) {
     const [mode, setMode] = useState('manual');
     const [capturing, setCapturing] = useState(false);
+    const [geocoding, setGeocoding] = useState(false);
     const [message, setMessage] = useState(null);
     const [accuracy, setAccuracy] = useState(null);
     const [locationData, setLocationData] = useState({
@@ -51,7 +54,6 @@ export default function LocationCapture({ onLocationChange }) {
         setMessage(null);
         setAccuracy(null);
 
-        // Watch position for better accuracy
         const watchId = navigator.geolocation.watchPosition(
             (position) => {
                 const newData = {
@@ -63,17 +65,16 @@ export default function LocationCapture({ onLocationChange }) {
                 setLocationData(newData);
                 onLocationChange(newData);
                 setAccuracy(position.coords.accuracy);
-                
-                const accuracyStatus = position.coords.accuracy < 10 ? 'Excellent' : 
-                                      position.coords.accuracy < 30 ? 'Good' : 
+
+                const accuracyStatus = position.coords.accuracy < 10 ? 'Excellent' :
+                                      position.coords.accuracy < 30 ? 'Good' :
                                       position.coords.accuracy < 100 ? 'Fair' : 'Poor';
-                
-                setMessage({ 
-                    type: 'success', 
-                    text: `GPS locked! Accuracy: ${accuracyStatus} (±${position.coords.accuracy.toFixed(1)}m)` 
+
+                setMessage({
+                    type: 'success',
+                    text: `GPS locked! Accuracy: ${accuracyStatus} (±${position.coords.accuracy.toFixed(1)}m)`
                 });
-                
-                // Stop watching after getting good accuracy
+
                 if (position.coords.accuracy < 50) {
                     navigator.geolocation.clearWatch(watchId);
                     setCapturing(false);
@@ -81,48 +82,66 @@ export default function LocationCapture({ onLocationChange }) {
             },
             (error) => {
                 let errorMessage = 'Unable to get GPS location. ';
-                if (error.code === 1) {
-                    errorMessage += 'Please enable location permissions in your browser settings.';
-                } else if (error.code === 2) {
-                    errorMessage += 'Location unavailable. Make sure GPS is enabled and you\'re outdoors.';
-                } else if (error.code === 3) {
-                    errorMessage += 'GPS timeout. Try moving outdoors with clear sky view.';
-                } else {
-                    errorMessage += 'Please try manual entry instead.';
-                }
+                if (error.code === 1) errorMessage += 'Please enable location permissions.';
+                else if (error.code === 2) errorMessage += 'Location unavailable. Make sure GPS is enabled.';
+                else if (error.code === 3) errorMessage += 'GPS timeout. Try moving outdoors.';
+                else errorMessage += 'Please try manual entry instead.';
                 setMessage({ type: 'error', text: errorMessage });
                 navigator.geolocation.clearWatch(watchId);
                 setCapturing(false);
             },
-            { 
-                enableHighAccuracy: true, 
-                timeout: 30000,
-                maximumAge: 0
-            }
+            { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 }
         );
 
-        // Auto-stop after 30 seconds
         setTimeout(() => {
-            if (capturing) {
-                navigator.geolocation.clearWatch(watchId);
-                setCapturing(false);
-                if (!locationData.latitude || locationData.latitude === 12.8797) {
-                    setMessage({ type: 'error', text: 'GPS timeout. Please ensure you\'re outdoors and try again.' });
-                }
-            }
+            navigator.geolocation.clearWatch(watchId);
+            setCapturing(false);
         }, 30000);
     };
 
-    const handleInputChange = (field, value) => {
-        const newData = { ...locationData, [field]: value };
-        if (field === 'province' || field === 'municipality' || field === 'barangay') {
-            newData.locationMethod = 'manual';
-            // Clear GPS coordinates when manually entering location
-            newData.latitude = null;
-            newData.longitude = null;
+    // Auto-geocode when province/municipality/barangay changes
+    const geocodeLocation = async (data) => {
+        if (!data.province) return;
+        setGeocoding(true);
+        try {
+            const res = await fetch(`${BACKEND_URL}/geocode`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    barangay: data.barangay || '',
+                    city: data.municipality || '',
+                    province: data.province || '',
+                    region: '',
+                    country: 'Philippines'
+                })
+            });
+            if (res.ok) {
+                const geo = await res.json();
+                if (geo.latitude && geo.longitude) {
+                    const updated = { ...data, latitude: geo.latitude, longitude: geo.longitude };
+                    setLocationData(updated);
+                    onLocationChange(updated);
+                    setMessage({ type: 'success', text: `📍 Location found: ${geo.display_name?.split(',').slice(0, 2).join(',')}` });
+                }
+            }
+        } catch (e) {
+            console.error('Geocoding failed:', e);
+        } finally {
+            setGeocoding(false);
         }
+    };
+
+    const handleInputChange = (field, value) => {
+        const newData = { ...locationData, [field]: value, locationMethod: 'manual' };
         setLocationData(newData);
         onLocationChange(newData);
+
+        // Trigger geocoding when province or municipality changes
+        if (field === 'province' || field === 'municipality' || field === 'barangay') {
+            const updated = { ...newData, [field]: value };
+            // Debounce geocoding slightly
+            setTimeout(() => geocodeLocation(updated), 500);
+        }
     };
 
     return (
@@ -131,6 +150,10 @@ export default function LocationCapture({ onLocationChange }) {
                 <div className="flex items-center gap-2">
                     <MapPin className="w-5 h-5 text-emerald-600" />
                     <h3 className="font-semibold text-stone-800">Location Information</h3>
+                    {geocoding && <span style={{ fontSize: 11, color: '#8aaa96', fontFamily: 'monospace' }}>Geocoding...</span>}
+                    {locationData.latitude && !geocoding && (
+                        <span style={{ fontSize: 11, color: '#2e8b4a', fontFamily: 'monospace' }}>✓ GPS ready</span>
+                    )}
                 </div>
                 <div className="flex gap-2">
                     <Button
@@ -182,7 +205,7 @@ export default function LocationCapture({ onLocationChange }) {
                         <Navigation className={`w-4 h-4 ${capturing ? 'animate-pulse' : ''}`} />
                         {capturing ? 'Capturing GPS...' : 'Capture GPS Location'}
                     </Button>
-                    
+
                     {capturing && (
                         <div className="p-3 bg-blue-50 rounded-lg border border-blue-200 text-center">
                             <p className="text-sm text-blue-800">
@@ -190,7 +213,7 @@ export default function LocationCapture({ onLocationChange }) {
                             </p>
                         </div>
                     )}
-                    
+
                     {locationData.latitude && locationData.longitude && locationData.locationMethod === 'gps' && (
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95 }}
@@ -204,22 +227,19 @@ export default function LocationCapture({ onLocationChange }) {
                                     <p><strong>Longitude:</strong> {locationData.longitude.toFixed(6)}°</p>
                                     {accuracy && (
                                         <p>
-                                            <strong>Accuracy:</strong> ±{accuracy.toFixed(0)}m 
+                                            <strong>Accuracy:</strong> ±{accuracy.toFixed(0)}m
                                             <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${
                                                 accuracy < 20 ? 'bg-green-200 text-green-800' :
                                                 accuracy < 50 ? 'bg-blue-200 text-blue-800' :
                                                 accuracy < 100 ? 'bg-yellow-200 text-yellow-800' :
                                                 'bg-red-200 text-red-800'
                                             }`}>
-                                                {accuracy < 20 ? 'Excellent' : 
-                                                 accuracy < 50 ? 'Good' : 
-                                                 accuracy < 100 ? 'Fair' : 'Poor'}
+                                                {accuracy < 20 ? 'Excellent' : accuracy < 50 ? 'Good' : accuracy < 100 ? 'Fair' : 'Poor'}
                                             </span>
                                         </p>
                                     )}
                                 </div>
                             </div>
-                            
                             <a
                                 href={`https://www.google.com/maps?q=${locationData.latitude},${locationData.longitude}`}
                                 target="_blank"
@@ -230,7 +250,7 @@ export default function LocationCapture({ onLocationChange }) {
                             </a>
                         </motion.div>
                     )}
-                    
+
                     <div className="text-xs text-stone-500 p-3 bg-stone-50 rounded-lg">
                         <p className="font-medium mb-1">💡 Tips for better GPS accuracy:</p>
                         <ul className="list-disc list-inside space-y-0.5">
@@ -275,6 +295,11 @@ export default function LocationCapture({ onLocationChange }) {
                             />
                         </div>
                     </div>
+                    {locationData.latitude && (
+                        <div className="p-2 bg-emerald-50 rounded-lg border border-emerald-200 text-xs text-emerald-700">
+                            📍 Coordinates auto-detected: {locationData.latitude.toFixed(4)}, {locationData.longitude.toFixed(4)}
+                        </div>
+                    )}
                 </div>
             )}
 
