@@ -3,6 +3,7 @@ import FuzzyLogic from './pages/FuzzyLogic';
 import Home from './pages/Home';
 import ImageDetection from './pages/ImageDetection';
 import MapDashboard from './pages/MapDashboard';
+import RegionalReport from './pages/RegionalReport';
 import Layout from './Layout.jsx';
 
 export const PAGES = {
@@ -11,6 +12,7 @@ export const PAGES = {
     "MapDashboard": MapDashboard,
     "FuzzyLogic": FuzzyLogic,
     "DataExport": DataExport,
+    "RegionalReport": RegionalReport,
 }
 
 export const pagesConfig = {

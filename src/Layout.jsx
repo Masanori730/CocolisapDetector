@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Map, FlaskConical, Download, ScanSearch } from 'lucide-react';
+import { Home, Map, FlaskConical, Download, ScanSearch, FileBarChart } from 'lucide-react';
 import { Leaf } from 'lucide-react';
 
 export default function Layout({ children, currentPageName }) {
@@ -10,6 +10,7 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Detection', icon: ScanSearch, path: '/ImageDetection' },
         { name: 'Map Dashboard', icon: Map, path: '/MapDashboard' },
         { name: 'Fuzzy Logic', icon: FlaskConical, path: '/FuzzyLogic' },
+        { name: 'Regional Report', icon: FileBarChart, path: '/RegionalReport' },
         { name: 'Data Export', icon: Download, path: '/DataExport' },
     ];
     return (
@@ -28,7 +29,7 @@ export default function Layout({ children, currentPageName }) {
                 .app-nav-link:hover { background: rgba(46,139,74,0.08); color: #1a3326; }
                 .app-nav-link.active { background: rgba(46,139,74,0.10); color: #2e8b4a; border-color: rgba(46,139,74,0.25); }
                 .app-nav-link svg { width: 15px; height: 15px; }
-                @media(max-width:640px){ .app-nav-link span { display:none; } .app-nav-link { padding:8px 10px; } }
+                @media(max-width:768px){ .app-nav-link span { display:none; } .app-nav-link { padding:8px 10px; } }
             `}</style>
             <nav className="app-nav">
                 <div className="app-nav-inner">
