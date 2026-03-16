@@ -4,12 +4,12 @@ import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { Map, TrendingUp, AlertTriangle, BarChart3, MapPin } from 'lucide-react';
 import { format } from 'date-fns';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import MarkerClusterGroup from 'react-leaflet-cluster';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
-import TrendChart from '@/components/analytics/TrendChart';
-import ProvinceAnalysis from '@/components/analytics/ProvinceAnalysis';
-import AnalyticsExport from '@/components/analytics/AnalyticsExport';
+import MapSearch from '@/components/map/MapSearch';
+import DetectionDetailPanel from '@/components/map/DetectionDetailPanel';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -18,12 +18,14 @@ L.Icon.Default.mergeOptions({
     shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-const createCustomIcon = (severity) => {
+const createCustomIcon = (severity, isHighlighted = false) => {
     const colors = { severe: '#e05555', moderate: '#e8a440', low: '#4caf72' };
+    const c = colors[severity] || '#4caf72';
+    const size = isHighlighted ? 26 : 20;
     return L.divIcon({
         className: 'custom-marker',
-        html: `<div style="width:20px;height:20px;background:${colors[severity]};border:2px solid #ffffff;border-radius:50%;box-shadow:0 0 8px ${colors[severity]}88;"></div>`,
-        iconSize: [20, 20], iconAnchor: [10, 10],
+        html: `<div style="width:${size}px;height:${size}px;background:${c};border:${isHighlighted ? '3px' : '2px'} solid #ffffff;border-radius:50%;box-shadow:0 0 ${isHighlighted ? 14 : 8}px ${c}88;transition:all .2s;"></div>`,
+        iconSize: [size, size], iconAnchor: [size / 2, size / 2],
     });
 };
 
@@ -32,7 +34,6 @@ const PHILIPPINE_PROVINCES = [
 ];
 
 const mapStyles = `
-    @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap');
     .map-root { background:#f4f7f4; min-height:100vh; color:#1a3326; font-family:'Outfit',sans-serif; }
     .map-root::before { content:''; position:fixed; inset:0; pointer-events:none; z-index:0; background: radial-gradient(ellipse 80% 60% at 15% 10%,rgba(46,139,74,0.04) 0%,transparent 60%); }
     .map-page { position:relative; z-index:1; max-width:1280px; margin:0 auto; padding:32px 24px 80px; }
@@ -59,7 +60,7 @@ const mapStyles = `
     .map-stat-value.blue { color:#3b82f6; } .map-stat-value.red { color:#dc2626; } .map-stat-value.amber { color:#d97706; } .map-stat-value.green { color:#2e8b4a; }
     .map-card { background:#ffffff; border:1px solid #d6e8d6; border-radius:16px; overflow:hidden; position:relative; box-shadow:0 1px 6px rgba(0,0,0,0.05); }
     .map-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,#2e8b4a,transparent); z-index:1; }
-    .map-card-header { padding:18px 22px; border-bottom:1px solid #eaf2ea; display:flex; align-items:center; justify-content:space-between; }
+    .map-card-header { padding:18px 22px; border-bottom:1px solid #eaf2ea; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
     .map-card-title { font-size:14px; font-weight:600; color:#1a3326; display:flex; align-items:center; gap:8px; }
     .map-card-body { padding:20px; }
     .map-filters-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
@@ -69,10 +70,6 @@ const mapStyles = `
     .map-select:focus { border-color:#2e8b4a; }
     .map-date-input { width:100%; background:#f8fbf8; border:1px solid #c8dfc8; border-radius:10px; color:#1a3326; font-family:'DM Mono',monospace; font-size:13px; padding:10px 14px; outline:none; transition:border-color .2s; }
     .map-date-input:focus { border-color:#2e8b4a; }
-    .map-analytics-btn { display:flex; align-items:center; gap:8px; padding:10px 18px; border-radius:10px; font-family:'Outfit',sans-serif; font-size:13px; font-weight:500; cursor:pointer; transition:background .2s,color .2s; border:1px solid #c8dfc8; background:transparent; color:#5a8068; }
-    .map-analytics-btn.active { background:#2e8b4a; color:#fff; border-color:#2e8b4a; }
-    .map-analytics-btn:hover { background:rgba(46,139,74,0.08); color:#1a3326; }
-    .map-analytics-btn.active:hover { background:#25763e; }
     .map-main-grid { display:grid; grid-template-columns:1fr 320px; gap:20px; }
     @media(max-width:1000px){ .map-main-grid{grid-template-columns:1fr;} }
     .map-side-grid { display:flex; flex-direction:column; gap:20px; }
@@ -84,8 +81,9 @@ const mapStyles = `
     .map-province-rank { width:24px; height:24px; border-radius:8px; background:rgba(46,139,74,0.10); color:#2e8b4a; font-size:11px; font-weight:700; font-family:'DM Mono',monospace; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
     .map-province-name { font-size:13px; color:#1a3326; margin-left:10px; flex:1; }
     .map-province-count { font-family:'DM Mono',monospace; font-size:12px; background:rgba(46,139,74,0.08); border:1px solid rgba(46,139,74,0.20); border-radius:6px; padding:2px 8px; color:#2e8b4a; }
-    .map-recent-item { padding-bottom:12px; border-bottom:1px solid #eaf2ea; margin-bottom:12px; }
-    .map-recent-item:last-child { border:0; margin:0; padding:0; }
+    .map-recent-item { padding-bottom:12px; border-bottom:1px solid #eaf2ea; margin-bottom:12px; cursor:pointer; border-radius:8px; padding:8px; margin:-8px; transition:background .15s; }
+    .map-recent-item:last-child { border:0; margin-bottom:-8px; }
+    .map-recent-item:hover { background:rgba(46,139,74,0.05); }
     .map-severity-pill { display:inline-flex; align-items:center; gap:5px; border-radius:100px; padding:3px 10px; font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; }
     .map-severity-pill::before { content:''; width:5px; height:5px; border-radius:50%; flex-shrink:0; }
     .map-severity-pill.severe { background:rgba(220,38,38,.10); color:#dc2626; border:1px solid rgba(220,38,38,.25); }
@@ -100,26 +98,29 @@ const mapStyles = `
     .leaflet-control-attribution a { color:#2e8b4a!important; }
     .leaflet-popup-content-wrapper { background:#ffffff!important; border:1px solid #d6e8d6!important; color:#1a3326!important; border-radius:12px!important; box-shadow:0 4px 16px rgba(0,0,0,0.12)!important; }
     .leaflet-popup-tip { background:#ffffff!important; }
+    .marker-cluster-small, .marker-cluster-medium, .marker-cluster-large { background:rgba(46,139,74,0.18) !important; }
+    .marker-cluster-small div, .marker-cluster-medium div, .marker-cluster-large div { background:rgba(46,139,74,0.85) !important; color:#fff !important; font-family:'DM Mono',monospace !important; font-size:12px !important; font-weight:700 !important; }
 `;
 
 export default function MapDashboard() {
+    const [allDetections, setAllDetections] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [severityFilter, setSeverityFilter] = useState('all');
     const [dateFilter, setDateFilter] = useState('all');
     const [provinceFilter, setProvinceFilter] = useState('all');
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');
-    const [showAnalytics, setShowAnalytics] = useState(false);
-    const [allDetections, setAllDetections] = useState([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [selectedDetectionId, setSelectedDetectionId] = useState(null);
 
     useEffect(() => {
         const fetchDetections = async () => {
             try {
                 const q = query(collection(db, 'detections'), orderBy('created_date', 'desc'), limit(500));
                 const snapshot = await getDocs(q);
-                setAllDetections(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+                const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setAllDetections(data);
             } catch (e) {
-                console.error('Failed to fetch detections:', e);
+                console.error('Error fetching detections:', e);
             } finally {
                 setIsLoading(false);
             }
@@ -171,23 +172,23 @@ export default function MapDashboard() {
         if (!detectionsWithGPS.length) return [12.8797, 121.7740];
         return [
             detectionsWithGPS.reduce((s, d) => s + d.latitude, 0) / detectionsWithGPS.length,
-            detectionsWithGPS.reduce((s, d) => s + d.longitude, 0) / detectionsWithGPS.length
+            detectionsWithGPS.reduce((s, d) => s + d.longitude, 0) / detectionsWithGPS.length,
         ];
     }, [detectionsWithGPS]);
 
-    if (isLoading) {
-        return (
-            <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f4f7f4' }}>
-                <p style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, color: '#8aaa96' }}>Loading detections...</p>
-            </div>
-        );
-    }
+    const selectedDetection = useMemo(() => allDetections.find(d => d.id === selectedDetectionId), [allDetections, selectedDetectionId]);
+
+    if (isLoading) return (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+            <div style={{ width: 32, height: 32, border: '3px solid #d6e8d6', borderTopColor: '#2e8b4a', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        </div>
+    );
 
     return (
         <div className="map-root">
             <style>{mapStyles}</style>
             <div className="map-page">
-
                 {/* Header */}
                 <div style={{ marginBottom: 28 }}>
                     <div className="map-header-badge">Monitoring System</div>
@@ -196,10 +197,6 @@ export default function MapDashboard() {
                             <h1 className="map-h1">Detection <em>Map</em> Dashboard</h1>
                             <p className="map-sub">Cocolisap infestation monitoring across Philippine coconut farms</p>
                         </div>
-                        <button className={`map-analytics-btn${showAnalytics ? ' active' : ''}`} onClick={() => setShowAnalytics(!showAnalytics)}>
-                            <BarChart3 style={{ width: 15, height: 15 }} />
-                            {showAnalytics ? 'Hide' : 'Show'} Analytics
-                        </button>
                     </div>
                 </div>
                 <div className="map-divider" />
@@ -265,17 +262,6 @@ export default function MapDashboard() {
                     </div>
                 </div>
 
-                {/* Analytics */}
-                {showAnalytics && (
-                    <div style={{ marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 20 }}>
-                        <TrendChart detections={filteredDetections} dateRange={dateFilter} />
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 20 }}>
-                            <ProvinceAnalysis detections={filteredDetections} />
-                            <AnalyticsExport detections={filteredDetections} stats={stats} topProvinces={topProvinces} />
-                        </div>
-                    </div>
-                )}
-
                 {/* Map + Side */}
                 <div className="map-main-grid">
                     <div className="map-card">
@@ -283,7 +269,7 @@ export default function MapDashboard() {
                             <span className="map-card-title"><MapPin style={{ width: 15, height: 15, color: '#2e8b4a' }} />Interactive Map View</span>
                             <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: '#8aaa96' }}>{detectionsWithGPS.length} locations</span>
                         </div>
-                        <div style={{ height: 420, position: 'relative' }}>
+                        <div style={{ height: 480, position: 'relative' }}>
                             {detectionsWithGPS.length > 0 ? (
                                 <MapContainer center={mapCenter} zoom={6} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
                                     <TileLayer
@@ -291,20 +277,43 @@ export default function MapDashboard() {
                                         url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
                                         subdomains="abcd"
                                     />
-                                    {detectionsWithGPS.map(d => (
-                                        <Marker key={d.id} position={[d.latitude, d.longitude]} icon={createCustomIcon(d.severity)}>
-                                            <Popup>
-                                                <div style={{ padding: '6px 2px', minWidth: 180, fontFamily: "'Outfit',sans-serif" }}>
-                                                    <span className={`map-severity-pill ${d.severity}`}>{d.severity?.toUpperCase()}</span>
-                                                    {d.province && <p style={{ fontWeight: 600, color: '#1a3326', margin: '8px 0 4px', fontSize: 13 }}>{d.province}</p>}
-                                                    {d.municipality && <p style={{ fontSize: 12, color: '#5a8068', margin: '0 0 8px' }}>{d.municipality}{d.barangay && `, ${d.barangay}`}</p>}
-                                                    <p style={{ fontSize: 13, color: '#1a3326', margin: 0 }}><strong style={{ color: '#2e8b4a' }}>{d.total_detections}</strong> insects</p>
-                                                    <p style={{ fontSize: 11, color: '#8aaa96', marginTop: 4, fontFamily: "'DM Mono',monospace" }}>{format(new Date(d.created_date), 'MMM d, yyyy · h:mm a')}</p>
-                                                    {d.farmName && <p style={{ fontSize: 11, color: '#8aaa96', marginTop: 6, paddingTop: 6, borderTop: '1px solid #eaf2ea', fontFamily: "'DM Mono',monospace" }}>Farm: {d.farmName}</p>}
-                                                </div>
-                                            </Popup>
-                                        </Marker>
-                                    ))}
+                                    <MarkerClusterGroup chunkedLoading>
+                                        {detectionsWithGPS.map(d => (
+                                            <Marker
+                                                key={d.id}
+                                                position={[d.latitude, d.longitude]}
+                                                icon={createCustomIcon(d.severity, d.id === selectedDetectionId)}
+                                                eventHandlers={{ click: () => setSelectedDetectionId(d.id) }}
+                                            >
+                                                <Popup>
+                                                    <div style={{ padding: '6px 2px', minWidth: 160, fontFamily: "'Outfit',sans-serif" }}>
+                                                        <span className={`map-severity-pill ${d.severity}`}>{d.severity?.toUpperCase()}</span>
+                                                        {d.province && <p style={{ fontWeight: 600, color: '#1a3326', margin: '8px 0 4px', fontSize: 13 }}>{d.province}</p>}
+                                                        <p style={{ fontSize: 13, color: '#1a3326', margin: 0 }}><strong style={{ color: '#2e8b4a' }}>{d.total_detections}</strong> insects</p>
+                                                        <button
+                                                            onClick={() => setSelectedDetectionId(d.id)}
+                                                            style={{ marginTop: 8, fontSize: 11, color: '#2e8b4a', background: 'rgba(46,139,74,0.08)', border: '1px solid rgba(46,139,74,0.25)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontFamily: "'Outfit',sans-serif" }}
+                                                        >
+                                                            View Details →
+                                                        </button>
+                                                    </div>
+                                                </Popup>
+                                            </Marker>
+                                        ))}
+                                    </MarkerClusterGroup>
+
+                                    <MapSearch
+                                        detections={detectionsWithGPS}
+                                        onSelect={d => setSelectedDetectionId(d.id)}
+                                        selectedId={selectedDetectionId}
+                                    />
+
+                                    {selectedDetection && (
+                                        <DetectionDetailPanel
+                                            detection={selectedDetection}
+                                            onClose={() => setSelectedDetectionId(null)}
+                                        />
+                                    )}
                                 </MapContainer>
                             ) : (
                                 <div className="map-empty-state">
@@ -342,12 +351,15 @@ export default function MapDashboard() {
                             <div className="map-card-header"><span className="map-card-title">Recent Detections</span></div>
                             <div className="map-card-body">
                                 {recentDetections.length > 0 ? recentDetections.map(d => (
-                                    <div key={d.id} className="map-recent-item">
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                                    <div key={d.id} className="map-recent-item" onClick={() => setSelectedDetectionId(d.id)}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                                             <span className={`map-severity-pill ${d.severity}`}>{d.severity}</span>
-                                            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: '#8aaa96' }}>{format(new Date(d.created_date), 'MMM d')}</span>
+                                            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: '#8aaa96' }}>
+                                                {d.created_date ? format(new Date(d.created_date), 'MMM d') : '—'}
+                                            </span>
                                         </div>
                                         <p style={{ fontSize: 13, color: '#1a3326', margin: 0 }}>{d.province || 'Unknown'} · {d.total_detections} insects</p>
+                                        {d.farmName && <p style={{ fontSize: 11, color: '#8aaa96', margin: '2px 0 0', fontFamily: "'DM Mono',monospace" }}>{d.farmName}</p>}
                                     </div>
                                 )) : <p style={{ fontSize: 13, color: '#8aaa96', textAlign: 'center', padding: '16px 0', fontFamily: "'DM Mono',monospace" }}>No recent detections</p>}
                             </div>
