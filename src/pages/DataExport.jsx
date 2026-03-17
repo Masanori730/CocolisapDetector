@@ -146,13 +146,13 @@ export default function DataExport() {
 
     const handleDetectionCSV = () => {
         if (!filteredDetections.length) { setExportMessage({ type: 'error', text: 'No image detections match current filters.' }); return; }
-        const headers = ['Detection ID', 'Date', 'Time', 'Province', 'Municipality', 'Barangay', 'Latitude', 'Longitude', 'Severity', 'Total Insects Detected', 'Avg Confidence (%)', 'Processing Time (s)', 'Location Method'];
+        const headers = ['Detection ID', 'Date', 'Time', 'Province', 'Municipality', 'Barangay', 'Farm Name', 'Farm Owner', 'Latitude', 'Longitude', 'Severity', 'Total Insects Detected', 'Avg Confidence (%)', 'Processing Time (s)', 'Location Method'];
         const rows = [headers, ...filteredDetections.map((d, i) => {
             const dt = new Date(d.created_date);
             const severity = d.severity ? d.severity.charAt(0).toUpperCase() + d.severity.slice(1) : 'N/A';
             const confidence = d.avg_confidence ? (d.avg_confidence * 100).toFixed(1) : 'N/A';
             const procTime = d.processing_time ? (d.processing_time / 1000).toFixed(2) : 'N/A';
-            return [`DET-${String(i + 1).padStart(3, '0')}`, format(dt, 'yyyy-MM-dd'), format(dt, 'HH:mm:ss'), ns(d.province), ns(d.municipality), ns(d.barangay), ns(d.latitude), ns(d.longitude), severity, d.total_detections || 0, confidence, procTime, ns(d.locationMethod)];
+            return [`DET-${String(i + 1).padStart(3, '0')}`, format(dt, 'yyyy-MM-dd'), format(dt, 'HH:mm:ss'), ns(d.province), ns(d.municipality), ns(d.barangay), ns(d.farmName), ns(d.farmOwner), ns(d.latitude), ns(d.longitude), severity, d.total_detections || 0, confidence, procTime, ns(d.locationMethod)];
         })];
         downloadXLSX(rows, `cocolisap-image-detections-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
         setExportMessage({ type: 'success', text: `Exported ${filteredDetections.length} image detections to Excel.` });
