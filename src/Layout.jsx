@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Map, FlaskConical, Download, ScanSearch, FileBarChart } from 'lucide-react';
+import { Home, Map, FlaskConical, Download, ScanSearch } from 'lucide-react';
 import { Leaf } from 'lucide-react';
 
 export default function Layout({ children, currentPageName }) {
@@ -10,7 +10,6 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Detection', icon: ScanSearch, path: '/ImageDetection' },
         { name: 'Map Dashboard', icon: Map, path: '/MapDashboard' },
         { name: 'Fuzzy Logic', icon: FlaskConical, path: '/FuzzyLogic' },
-        { name: 'Regional Report', icon: FileBarChart, path: '/RegionalReport' },
         { name: 'Data Export', icon: Download, path: '/DataExport' },
     ];
     return (

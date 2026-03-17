@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Leaf, ScanSearch, Map, FlaskConical, Download, ArrowRight, ShieldAlert, Wind, Thermometer, TreePine, FileBarChart } from 'lucide-react';
+import { ScanSearch, Map, FlaskConical, Download, ArrowRight, ShieldAlert, Wind, Thermometer, TreePine } from 'lucide-react';
 
 const homeStyles = `
     @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap');
@@ -25,9 +25,8 @@ const homeStyles = `
     .landing-section-title { font-family:'DM Serif Display',serif; font-size:clamp(26px,4vw,38px); font-weight:400; color:#1a3326; text-align:center; margin:0 0 8px; letter-spacing:-.02em; }
     .landing-section-title em { font-style:italic; color:#2e8b4a; }
     .landing-section-sub { font-size:14px; color:#5a8068; text-align:center; margin:0 auto 48px; max-width:500px; line-height:1.6; }
-    .landing-features-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; }
-    @media(max-width:900px){ .landing-features-grid { grid-template-columns:repeat(2,1fr); } }
-    @media(max-width:600px){ .landing-features-grid { grid-template-columns:1fr; } }
+    .landing-features-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:20px; }
+    @media(max-width:700px){ .landing-features-grid { grid-template-columns:1fr; } }
     .landing-feature-card { background:#ffffff; border:1px solid #d6e8d6; border-radius:20px; padding:28px 28px 24px; position:relative; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,0.05); text-decoration:none; color:inherit; display:block; transition:transform .2s,box-shadow .2s; }
     .landing-feature-card:hover { transform:translateY(-3px); box-shadow:0 8px 24px rgba(0,0,0,0.10); }
     .landing-feature-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
@@ -35,13 +34,11 @@ const homeStyles = `
     .landing-feature-card.blue::before { background:linear-gradient(90deg,#3b82f6,transparent); }
     .landing-feature-card.amber::before { background:linear-gradient(90deg,#d97706,transparent); }
     .landing-feature-card.purple::before { background:linear-gradient(90deg,#8b5cf6,transparent); }
-    .landing-feature-card.teal::before { background:linear-gradient(90deg,#0d9488,transparent); }
     .landing-feature-icon { width:48px; height:48px; border-radius:14px; display:flex; align-items:center; justify-content:center; margin-bottom:16px; }
     .landing-feature-icon.green { background:rgba(46,139,74,0.10); }
     .landing-feature-icon.blue { background:rgba(59,130,246,0.10); }
     .landing-feature-icon.amber { background:rgba(217,119,6,0.10); }
     .landing-feature-icon.purple { background:rgba(139,92,246,0.10); }
-    .landing-feature-icon.teal { background:rgba(13,148,136,0.10); }
     .landing-feature-title { font-size:16px; font-weight:600; color:#1a3326; margin:0 0 6px; }
     .landing-feature-desc { font-size:13px; color:#5a8068; line-height:1.6; margin:0 0 16px; }
     .landing-feature-link { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; letter-spacing:.04em; }
@@ -49,7 +46,6 @@ const homeStyles = `
     .landing-feature-link.blue { color:#3b82f6; }
     .landing-feature-link.amber { color:#d97706; }
     .landing-feature-link.purple { color:#8b5cf6; }
-    .landing-feature-link.teal { color:#0d9488; }
     .landing-about-grid { display:grid; grid-template-columns:1fr 1fr; gap:32px; align-items:center; }
     @media(max-width:700px){ .landing-about-grid { grid-template-columns:1fr; } }
     .landing-about-card { background:#ffffff; border:1px solid #d6e8d6; border-radius:20px; padding:36px; box-shadow:0 1px 6px rgba(0,0,0,0.05); }
@@ -75,7 +71,7 @@ const features = [
         color: 'green',
         icon: <ScanSearch style={{ width: 22, height: 22, color: '#2e8b4a' }} />,
         title: 'AI Image Detection',
-        desc: 'Upload coconut leaf photos for real-time Cocolisap detection using YOLOv11 instance segmentation with 87.4% mAP accuracy.',
+        desc: 'Upload a photo of a coconut leaf to detect cocolisap insects. The system counts the insects and tells you if the infestation is low, moderate, or severe.',
         link: '/ImageDetection',
         linkLabel: 'Start Detection',
     },
@@ -83,7 +79,7 @@ const features = [
         color: 'blue',
         icon: <Map style={{ width: 22, height: 22, color: '#3b82f6' }} />,
         title: 'Map Dashboard',
-        desc: 'Visualize infestation data geographically across Philippine coconut farms with severity-coded markers and analytics.',
+        desc: 'See all detections on a map. Shows where infestations have been found across the Philippines.',
         link: '/MapDashboard',
         linkLabel: 'View Map',
     },
@@ -96,18 +92,10 @@ const features = [
         linkLabel: 'Run Assessment',
     },
     {
-        color: 'teal',
-        icon: <FileBarChart style={{ width: 22, height: 22, color: '#0d9488' }} />,
-        title: 'Regional Report',
-        desc: 'View province-level infestation breakdowns, monthly trends, severity charts, and download PDF reports for PCA documentation.',
-        link: '/RegionalReport',
-        linkLabel: 'View Report',
-    },
-    {
         color: 'purple',
         icon: <Download style={{ width: 22, height: 22, color: '#8b5cf6' }} />,
         title: 'Data Export',
-        desc: 'Export detection records and fuzzy logic assessments as Excel reports for documentation and analysis.',
+        desc: 'Download detection records and assessment results as Excel or text files for reporting and documentation.',
         link: '/DataExport',
         linkLabel: 'Export Data',
     },
@@ -157,7 +145,7 @@ export default function Home() {
             <motion.div className="landing-section" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15, duration: 0.5 }}>
                 <p className="landing-section-label">Platform Features</p>
                 <h2 className="landing-section-title">Everything you need to <em>monitor</em> infestations</h2>
-                <p className="landing-section-sub">Five integrated tools working together to give a complete picture of Cocolisap spread and risk.</p>
+                <p className="landing-section-sub">Four integrated tools working together to give a complete picture of Cocolisap spread and risk.</p>
                 <div className="landing-features-grid">
                     {features.map((f, i) => (
                         <motion.div key={f.title} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 + i * 0.07 }}>
