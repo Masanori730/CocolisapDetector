@@ -100,7 +100,52 @@ const mapStyles = `
     .leaflet-popup-tip { background:#ffffff!important; }
     .marker-cluster-small, .marker-cluster-medium, .marker-cluster-large { background:rgba(46,139,74,0.18) !important; }
     .marker-cluster-small div, .marker-cluster-medium div, .marker-cluster-large div { background:rgba(46,139,74,0.85) !important; color:#fff !important; font-family:'DM Mono',monospace !important; font-size:12px !important; font-weight:700 !important; }
+    .mobile-detail-panel { display:none; }
+    @media(max-width:768px){
+        .desktop-detail-panel { display:none !important; }
+        .mobile-detail-panel { display:block; margin-top:16px; }
+    }
 `;
+
+// Mobile-friendly detail card shown below map
+function MobileDetailCard({ detection, onClose }) {
+    if (!detection) return null;
+    const severityColors = {
+        severe: { color: '#dc2626', bg: 'rgba(220,38,38,0.08)', border: 'rgba(220,38,38,0.25)' },
+        moderate: { color: '#d97706', bg: 'rgba(217,119,6,0.08)', border: 'rgba(217,119,6,0.25)' },
+        low: { color: '#2e8b4a', bg: 'rgba(46,139,74,0.08)', border: 'rgba(46,139,74,0.25)' },
+    };
+    const cfg = severityColors[detection.severity] || severityColors.low;
+    return (
+        <div style={{ background: '#fff', border: '1px solid #d6e8d6', borderRadius: 16, padding: 20, boxShadow: '0 2px 12px rgba(0,0,0,0.08)', fontFamily: "'Outfit',sans-serif" }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <div>
+                    <div style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: '#8aaa96', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 4 }}>Detection Details</div>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: cfg.bg, border: `1px solid ${cfg.border}`, borderRadius: 100, padding: '3px 10px', fontSize: 11, fontWeight: 600, color: cfg.color, textTransform: 'uppercase' }}>
+                        {detection.severity}
+                    </span>
+                </div>
+                <button onClick={onClose} style={{ background: 'none', border: '1px solid #d6e8d6', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', color: '#8aaa96', fontSize: 12 }}>✕ Close</button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
+                <div style={{ background: 'rgba(46,139,74,0.06)', border: '1px solid rgba(46,139,74,0.15)', borderRadius: 10, padding: '10px 12px' }}>
+                    <div style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", color: '#8aaa96', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 4 }}>Insects</div>
+                    <div style={{ fontSize: 22, fontFamily: "'DM Serif Display',serif", color: '#2e8b4a' }}>{detection.total_detections ?? '—'}</div>
+                </div>
+                <div style={{ background: 'rgba(46,139,74,0.06)', border: '1px solid rgba(46,139,74,0.15)', borderRadius: 10, padding: '10px 12px' }}>
+                    <div style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", color: '#8aaa96', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 4 }}>Confidence</div>
+                    <div style={{ fontSize: 22, fontFamily: "'DM Serif Display',serif", color: '#2e8b4a' }}>{detection.avg_confidence ? `${(detection.avg_confidence * 100).toFixed(1)}%` : '—'}</div>
+                </div>
+            </div>
+            {[detection.barangay, detection.municipality, detection.province].filter(Boolean).length > 0 && (
+                <div style={{ fontSize: 13, color: '#1a3326', marginBottom: 6 }}>📍 {[detection.barangay, detection.municipality, detection.province].filter(Boolean).join(', ')}</div>
+            )}
+            {detection.farmName && <div style={{ fontSize: 13, color: '#5a8068', marginBottom: 4 }}>🌿 {detection.farmName}</div>}
+            {detection.farmOwner && <div style={{ fontSize: 13, color: '#5a8068', marginBottom: 4 }}>👤 {detection.farmOwner}</div>}
+            {detection.created_date && <div style={{ fontSize: 12, color: '#8aaa96', fontFamily: "'DM Mono',monospace" }}>🕐 {format(new Date(detection.created_date), 'MMM d, yyyy · h:mm a')}</div>}
+        </div>
+    );
+}
 
 export default function MapDashboard() {
     const [allDetections, setAllDetections] = useState([]);
@@ -294,7 +339,7 @@ export default function MapDashboard() {
                                                             onClick={() => setSelectedDetectionId(d.id)}
                                                             style={{ marginTop: 8, fontSize: 11, color: '#2e8b4a', background: 'rgba(46,139,74,0.08)', border: '1px solid rgba(46,139,74,0.25)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontFamily: "'Outfit',sans-serif" }}
                                                         >
-                                                            View Details →
+                                                            View Details ↓
                                                         </button>
                                                     </div>
                                                 </Popup>
@@ -308,11 +353,14 @@ export default function MapDashboard() {
                                         selectedId={selectedDetectionId}
                                     />
 
+                                    {/* Desktop only detail panel inside map */}
                                     {selectedDetection && (
-                                        <DetectionDetailPanel
-                                            detection={selectedDetection}
-                                            onClose={() => setSelectedDetectionId(null)}
-                                        />
+                                        <div className="desktop-detail-panel">
+                                            <DetectionDetailPanel
+                                                detection={selectedDetection}
+                                                onClose={() => setSelectedDetectionId(null)}
+                                            />
+                                        </div>
                                     )}
                                 </MapContainer>
                             ) : (
@@ -323,6 +371,19 @@ export default function MapDashboard() {
                                 </div>
                             )}
                         </div>
+
+                        {/* Mobile detail card — shows BELOW map, not overlapping */}
+                        <div className="mobile-detail-panel">
+                            {selectedDetection && (
+                                <div style={{ padding: '0 16px 16px' }}>
+                                    <MobileDetailCard
+                                        detection={selectedDetection}
+                                        onClose={() => setSelectedDetectionId(null)}
+                                    />
+                                </div>
+                            )}
+                        </div>
+
                         <div className="map-legend">
                             {[{ color: '#e05555', label: 'Severe (10+)' }, { color: '#e8a440', label: 'Moderate (5–9)' }, { color: '#4caf72', label: 'Low (1–4)' }].map(l => (
                                 <div key={l.label} className="map-legend-item"><div className="map-legend-dot" style={{ background: l.color, boxShadow: `0 0 6px ${l.color}88` }} />{l.label}</div>
