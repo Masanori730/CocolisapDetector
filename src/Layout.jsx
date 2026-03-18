@@ -27,15 +27,16 @@ export default function Layout({ children, currentPageName }) {
                 .app-nav-link.active { background: rgba(46,139,74,0.10); color: #2e8b4a; border-color: rgba(46,139,74,0.25); }
                 .app-nav-link svg { width: 15px; height: 15px; }
                 @media(max-width:768px){
-                    .app-nav-inner { padding: 0 10px; }
+                    .app-nav-inner { padding: 0 12px; }
                     .app-nav-link span { display: none; }
-                    .app-nav-link { padding: 7px 9px; }
+                    .app-nav-link { padding: 8px 12px; }
                     .app-nav-brand-text { font-size: 15px; }
-                    .app-nav-links { gap: 1px; }
+                    .app-nav-links { gap: 4px; }
                 }
                 @media(max-width:400px){
                     .app-nav-brand-text { font-size: 13px; }
-                    .app-nav-link { padding: 6px 7px; }
+                    .app-nav-link { padding: 7px 10px; }
+                    .app-nav-links { gap: 2px; }
                 }
             `}</style>
             <nav className="app-nav">
