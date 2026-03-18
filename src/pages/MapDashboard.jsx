@@ -116,33 +116,54 @@ function MobileDetailCard({ detection, onClose }) {
         low: { color: '#2e8b4a', bg: 'rgba(46,139,74,0.08)', border: 'rgba(46,139,74,0.25)' },
     };
     const cfg = severityColors[detection.severity] || severityColors.low;
+
+    const Row = ({ label, value }) => {
+        if (!value) return null;
+        return (
+            <div style={{ padding: '8px 0', borderBottom: '1px solid #eaf2ea' }}>
+                <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: '#8aaa96', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 2 }}>{label}</div>
+                <div style={{ fontSize: 13, color: '#1a3326', fontWeight: 500 }}>{value}</div>
+            </div>
+        );
+    };
+
     return (
-        <div style={{ background: '#fff', border: '1px solid #d6e8d6', borderRadius: 16, padding: 20, boxShadow: '0 2px 12px rgba(0,0,0,0.08)', fontFamily: "'Outfit',sans-serif" }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+        <div style={{ background: '#fff', border: '1px solid #d6e8d6', borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.08)', fontFamily: "'Outfit',sans-serif" }}>
+            <div style={{ padding: '14px 16px', borderBottom: '1px solid #eaf2ea', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#f8fbf8' }}>
                 <div>
                     <div style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: '#8aaa96', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 4 }}>Detection Details</div>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: cfg.bg, border: `1px solid ${cfg.border}`, borderRadius: 100, padding: '3px 10px', fontSize: 11, fontWeight: 600, color: cfg.color, textTransform: 'uppercase' }}>
                         {detection.severity}
                     </span>
                 </div>
-                <button onClick={onClose} style={{ background: 'none', border: '1px solid #d6e8d6', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', color: '#8aaa96', fontSize: 12 }}>✕ Close</button>
+                <button onClick={onClose} style={{ background: 'none', border: '1px solid #d6e8d6', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', color: '#8aaa96', fontSize: 12, fontFamily: "'Outfit',sans-serif" }}>✕ Close</button>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
-                <div style={{ background: 'rgba(46,139,74,0.06)', border: '1px solid rgba(46,139,74,0.15)', borderRadius: 10, padding: '10px 12px' }}>
-                    <div style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", color: '#8aaa96', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 4 }}>Insects</div>
-                    <div style={{ fontSize: 22, fontFamily: "'DM Serif Display',serif", color: '#2e8b4a' }}>{detection.total_detections ?? '—'}</div>
+            {detection.image_url && (
+                <div style={{ height: 180, overflow: 'hidden' }}>
+                    <img src={detection.image_url} alt="Detection" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
-                <div style={{ background: 'rgba(46,139,74,0.06)', border: '1px solid rgba(46,139,74,0.15)', borderRadius: 10, padding: '10px 12px' }}>
-                    <div style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", color: '#8aaa96', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 4 }}>Confidence</div>
-                    <div style={{ fontSize: 22, fontFamily: "'DM Serif Display',serif", color: '#2e8b4a' }}>{detection.avg_confidence ? `${(detection.avg_confidence * 100).toFixed(1)}%` : '—'}</div>
-                </div>
-            </div>
-            {[detection.barangay, detection.municipality, detection.province].filter(Boolean).length > 0 && (
-                <div style={{ fontSize: 13, color: '#1a3326', marginBottom: 6 }}>📍 {[detection.barangay, detection.municipality, detection.province].filter(Boolean).join(', ')}</div>
             )}
-            {detection.farmName && <div style={{ fontSize: 13, color: '#5a8068', marginBottom: 4 }}>🌿 {detection.farmName}</div>}
-            {detection.farmOwner && <div style={{ fontSize: 13, color: '#5a8068', marginBottom: 4 }}>👤 {detection.farmOwner}</div>}
-            {detection.created_date && <div style={{ fontSize: 12, color: '#8aaa96', fontFamily: "'DM Mono',monospace" }}>🕐 {format(new Date(detection.created_date), 'MMM d, yyyy · h:mm a')}</div>}
+            <div style={{ padding: '12px 16px 16px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+                    <div style={{ background: 'rgba(46,139,74,0.06)', border: '1px solid rgba(46,139,74,0.15)', borderRadius: 10, padding: '10px 12px' }}>
+                        <div style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", color: '#8aaa96', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 4 }}>Insects</div>
+                        <div style={{ fontSize: 22, fontFamily: "'DM Serif Display',serif", color: '#2e8b4a' }}>{detection.total_detections ?? '—'}</div>
+                    </div>
+                    <div style={{ background: 'rgba(46,139,74,0.06)', border: '1px solid rgba(46,139,74,0.15)', borderRadius: 10, padding: '10px 12px' }}>
+                        <div style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", color: '#8aaa96', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 4 }}>Confidence</div>
+                        <div style={{ fontSize: 22, fontFamily: "'DM Serif Display',serif", color: '#2e8b4a' }}>{detection.avg_confidence ? `${(detection.avg_confidence * 100).toFixed(1)}%` : '—'}</div>
+                    </div>
+                </div>
+                <Row label="Location" value={[detection.barangay, detection.municipality, detection.province].filter(Boolean).join(', ')} />
+                <Row label="Farm Name" value={detection.farmName} />
+                <Row label="Farm Owner" value={detection.farmOwner} />
+                <Row label="Date & Time" value={detection.created_date ? format(new Date(detection.created_date), 'MMM d, yyyy · h:mm a') : null} />
+                <Row label="Location Method" value={detection.locationMethod === 'gps' ? 'GPS Captured' : detection.locationMethod === 'manual' ? 'Manually Entered' : null} />
+                {detection.latitude && detection.longitude && (
+                    <Row label="Coordinates" value={`${detection.latitude.toFixed(5)}, ${detection.longitude.toFixed(5)}`} />
+                )}
+                <Row label="Notes" value={detection.notes} />
+            </div>
         </div>
     );
 }
