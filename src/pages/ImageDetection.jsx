@@ -1,14 +1,12 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Leaf, Info, RefreshCw, ChevronDown, ExternalLink, MessageSquare, Layers } from 'lucide-react';
+import { Info, RefreshCw, ChevronDown, Layers } from 'lucide-react';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import ImageUploader from "@/components/detection/ImageUploader";
 import DetectionResults from "@/components/detection/DetectionResults";
 import ProcessingOverlay from "@/components/detection/ProcessingOverlay";
-import DetectionReport from "@/components/detection/DetectionReport";
-import FeedbackDialog from "@/components/detection/FeedbackDialog";
 import BatchUploader from "@/components/detection/BatchUploader";
 import LocationCapture from "@/components/location/LocationCapture";
 import EnhancedDetectionResults from "@/components/detection/EnhancedDetectionResults";
@@ -20,7 +18,6 @@ import { collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, limit } fr
 const API_BASE_URL = 'https://cocolisap-detector-398384683490.asia-southeast1.run.app';
 
 const homeStyles = `
-    @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap');
     .home-root { background: #f4f7f4; min-height: 100vh; color: #1a3326; font-family: 'Outfit', sans-serif; }
     .home-hero { padding: 56px 24px 48px; max-width: 900px; margin: 0 auto; position: relative; }
     .home-hero::before { content:''; position:fixed; inset:0; pointer-events:none; z-index:0; background: radial-gradient(ellipse 80% 60% at 15% 10%,rgba(46,139,74,0.05) 0%,transparent 60%), radial-gradient(ellipse 50% 40% at 85% 80%,rgba(46,139,74,0.04) 0%,transparent 55%); }
@@ -43,8 +40,6 @@ const homeStyles = `
     .home-detect-btn { width:100%; padding:15px; background:#2e8b4a; color:#fff; border:none; border-radius:12px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:600; letter-spacing:.04em; cursor:pointer; transition:background .2s,transform .15s,box-shadow .2s; margin-top:20px; }
     .home-detect-btn:hover { background:#25763e; transform:translateY(-1px); box-shadow:0 6px 20px rgba(46,139,74,.25); }
     .home-detect-btn:disabled { opacity:.5; cursor:not-allowed; transform:none; }
-    .home-action-btn { flex:1; display:flex; align-items:center; justify-content:center; gap:8px; padding:11px 20px; background:transparent; border:1px solid #c8dfc8; border-radius:10px; color:#5a8068; font-family:'Outfit',sans-serif; font-size:13px; font-weight:500; cursor:pointer; transition:background .2s,color .2s,border-color .2s; }
-    .home-action-btn:hover { background:rgba(46,139,74,0.07); color:#1a3326; border-color:rgba(46,139,74,0.35); }
     .home-info-card { background:#fffbf0; border:1px solid #f0dfa0; border-radius:16px; padding:20px; display:flex; gap:16px; }
     .home-info-icon { padding:10px; background:#fef3c7; border-radius:10px; height:fit-content; flex-shrink:0; }
     .home-info-title { font-size:14px; font-weight:600; color:#92610a; margin:0 0 6px; }
@@ -109,8 +104,6 @@ export default function Home() {
     const [processingStage, setProcessingStage] = useState('');
     const [results, setResults] = useState(null);
     const [error, setError] = useState(null);
-    const [reportDetection, setReportDetection] = useState(null);
-    const [feedbackDetectionId, setFeedbackDetectionId] = useState(null);
     const [activeTab, setActiveTab] = useState('single');
     const [locationData, setLocationData] = useState(null);
     const [currentDetectionId, setCurrentDetectionId] = useState(null);
@@ -211,7 +204,13 @@ export default function Home() {
 
     const handleSelectFromHistory = (detection) => {
         setImagePreview(detection.image_url);
-        const detections = detection.detections_data ? JSON.parse(detection.detections_data) : [];
+        let detections = [];
+        try {
+            detections = detection.detections_data ? JSON.parse(detection.detections_data) : [];
+            if (!Array.isArray(detections)) detections = [];
+        } catch (e) {
+            detections = [];
+        }
         setResults({
             detections,
             severity: detection.severity,
@@ -221,7 +220,6 @@ export default function Home() {
                 processingTime: detection.processing_time,
             }
         });
-        setFeedbackDetectionId(null);
     };
 
     const handleDeleteHistory = async (id) => {
@@ -338,14 +336,6 @@ export default function Home() {
                                     <DetectionResults originalImage={imagePreview} detections={results.detections} />
                                 </div>
                                 <EnhancedDetectionResults results={results} locationData={locationData} detectionId={currentDetectionId} />
-                                <div style={{ display: 'flex', gap: 12 }}>
-                                    <button className="home-action-btn" onClick={() => setReportDetection({ ...results, image_url: imagePreview, total_detections: results.stats.totalDetections, avg_confidence: results.stats.avgConfidence, processing_time: results.stats.processingTime, id: currentDetectionId || 'temp', ...locationData })}>
-                                        <ExternalLink style={{ width: 15, height: 15 }} />Generate Report
-                                    </button>
-                                    <button className="home-action-btn" onClick={() => setFeedbackDetectionId(currentDetectionId || 'temp')}>
-                                        <MessageSquare style={{ width: 15, height: 15 }} />Give Feedback
-                                    </button>
-                                </div>
                             </motion.div>
                         )}
 
@@ -394,19 +384,11 @@ export default function Home() {
                             detections={history}
                             onSelect={handleSelectFromHistory}
                             onDelete={handleDeleteHistory}
-                            onGenerateReport={setReportDetection}
                             onClearAll={handleClearAllHistory}
                         />
                     </motion.div>
                 </div>
             </main>
-
-            <DetectionReport detection={reportDetection} open={!!reportDetection} onClose={() => setReportDetection(null)} />
-            <FeedbackDialog
-                open={!!feedbackDetectionId}
-                onClose={() => setFeedbackDetectionId(null)}
-                onSubmit={(feedback, notes) => console.log('Feedback:', feedback, notes)}
-            />
         </div>
     );
 }
