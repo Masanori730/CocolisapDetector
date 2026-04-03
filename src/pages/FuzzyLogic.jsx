@@ -37,7 +37,7 @@ const fuzzyStyles = `
   .fl-header {padding:56px 0 40px;display:flex;flex-direction:column;gap:10px;}
   .fl-badge {
     display:inline-flex;align-items:center;gap:8px;
-    background:rgba(76,175,114,0.08);border:1px solid var(--border2);
+    background:rgba(46,139,74,0.08);border:1px solid var(--border2);
     border-radius:100px;padding:5px 14px;width:fit-content;
     font-family:var(--mono);font-size:11px;letter-spacing:.08em;
     color:var(--green);text-transform:uppercase;
@@ -68,12 +68,12 @@ const fuzzyStyles = `
     transition:background .2s,color .2s;white-space:nowrap;
   }
   .fl-mode-btn svg {width:15px;height:15px;flex-shrink:0;opacity:.6;transition:opacity .2s;}
-  .fl-mode-btn.active {background:var(--surface2);color:var(--green-bright);box-shadow:0 1px 6px rgba(0,0,0,.3);}
+  .fl-mode-btn.active {background:var(--surface2);color:var(--green-bright);box-shadow:0 1px 6px rgba(0,0,0,.1);}
   .fl-mode-btn.active svg {opacity:1;}
   .fl-form-card {
     background:var(--surface);border:1px solid var(--border);
     border-radius:var(--rl);padding:36px 40px;position:relative;overflow:hidden;
-    box-shadow:0 2px 10px rgba(0,0,0,0.06);
+    box-shadow:0 2px 12px rgba(0,0,0,0.06);
   }
   .fl-form-card::before {
     content:'';position:absolute;top:0;left:0;right:0;height:2px;
@@ -120,12 +120,12 @@ const fuzzyStyles = `
   .fl-card-sep {height:1px;background:var(--border);margin:28px 0;}
   .fl-fetch-btn {
     display:flex;align-items:center;gap:8px;padding:11px 22px;
-    background:var(--blue-dim);border:1px solid rgba(74,158,221,.30);
+    background:var(--blue-dim);border:1px solid rgba(59,130,246,.25);
     border-radius:var(--r);color:var(--blue);font-family:var(--sans);
     font-size:13px;font-weight:600;cursor:pointer;
     transition:background .2s,border-color .2s,transform .15s;white-space:nowrap;
   }
-  .fl-fetch-btn:hover {background:rgba(74,158,221,.20);border-color:rgba(74,158,221,.50);transform:translateY(-1px);}
+  .fl-fetch-btn:hover {background:rgba(59,130,246,.15);border-color:rgba(59,130,246,.40);transform:translateY(-1px);}
   .fl-fetch-btn:disabled {opacity:.45;cursor:not-allowed;transform:none;}
   .fl-fetch-btn svg {width:15px;height:15px;}
   .fl-submit-btn {
@@ -134,7 +134,7 @@ const fuzzyStyles = `
     padding:14px 36px;cursor:pointer;transition:background .2s,transform .15s,box-shadow .2s;
     position:relative;overflow:hidden;
   }
-  .fl-submit-btn:hover {background:var(--green-bright);transform:translateY(-1px);box-shadow:0 6px 20px rgba(46,139,74,.30);}
+  .fl-submit-btn:hover {background:var(--green-bright);transform:translateY(-1px);box-shadow:0 6px 20px rgba(46,139,74,.25);}
   .fl-submit-btn:disabled {opacity:.5;cursor:not-allowed;transform:none;}
   .fl-submit-row {margin-top:32px;display:flex;align-items:center;gap:16px;}
   .fl-spin {
@@ -142,43 +142,43 @@ const fuzzyStyles = `
     border-radius:50%;animation:fl-spin .7s linear infinite;flex-shrink:0;
   }
   .fl-wx-preview {
-    margin-top:20px;background:var(--blue-bg);border:1px solid rgba(74,158,221,.25);
+    margin-top:20px;background:var(--blue-bg);border:1px solid rgba(59,130,246,.20);
     border-radius:var(--r);padding:18px 20px;animation:fl-fadein .35s ease;
   }
   .fl-wx-label {
     font-family:var(--mono);font-size:9px;letter-spacing:.14em;color:var(--blue);
     text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px;
   }
-  .fl-wx-label::after {content:'';flex:1;height:1px;background:rgba(74,158,221,.20);}
+  .fl-wx-label::after {content:'';flex:1;height:1px;background:rgba(59,130,246,.15);}
   .fl-chips {display:flex;gap:12px;flex-wrap:wrap;}
   .fl-chip {
-    display:flex;flex-direction:column;gap:3px;background:rgba(74,158,221,.08);
-    border:1px solid rgba(74,158,221,.18);border-radius:8px;padding:10px 16px;min-width:110px;
+    display:flex;flex-direction:column;gap:3px;background:rgba(59,130,246,.06);
+    border:1px solid rgba(59,130,246,.15);border-radius:8px;padding:10px 16px;min-width:110px;
   }
-  .fl-chip-l {font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:rgba(74,158,221,.7);}
+  .fl-chip-l {font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:rgba(59,130,246,.7);}
   .fl-chip-v {font-family:var(--mono);font-size:18px;font-weight:500;color:var(--blue);}
   .fl-chip-v span {font-size:11px;opacity:.7;}
   .fl-loc-res {font-family:var(--mono);font-size:11px;color:var(--text-muted);margin-top:10px;line-height:1.5;}
   .fl-err-toast {
-    margin-top:16px;padding:14px 18px;background:rgba(224,85,85,.10);
-    border:1px solid rgba(224,85,85,.30);border-radius:var(--r);
+    margin-top:16px;padding:14px 18px;background:rgba(220,38,38,.06);
+    border:1px solid rgba(220,38,38,.20);border-radius:var(--r);
     color:var(--red);font-size:13px;font-family:var(--mono);
     animation:fl-fadein .3s ease;
   }
   .fl-inline-err {
-    margin-top:14px;padding:12px 16px;background:rgba(224,85,85,.10);
-    border:1px solid rgba(224,85,85,.25);border-radius:var(--r);
+    margin-top:14px;padding:12px 16px;background:rgba(220,38,38,.06);
+    border:1px solid rgba(220,38,38,.18);border-radius:var(--r);
     color:var(--red);font-family:var(--mono);font-size:12px;
     animation:fl-fadein .3s ease;
   }
   .fl-results {margin-top:32px;animation:fl-fadein .5s ease;}
   .fl-score-card {
     border-radius:var(--rl);padding:36px 40px;position:relative;overflow:hidden;
-    border:1px solid transparent;
+    border:1px solid transparent;box-shadow:0 2px 12px rgba(0,0,0,0.06);
   }
-  .fl-score-card.low {background:linear-gradient(135deg,rgba(46,139,74,.08),rgba(46,139,74,.03));border-color:rgba(46,139,74,.25);}
-  .fl-score-card.moderate {background:linear-gradient(135deg,rgba(217,119,6,.08),rgba(217,119,6,.03));border-color:rgba(217,119,6,.25);}
-  .fl-score-card.high {background:linear-gradient(135deg,rgba(220,38,38,.08),rgba(220,38,38,.03));border-color:rgba(220,38,38,.25);}
+  .fl-score-card.low {background:linear-gradient(135deg,rgba(46,139,74,.07),rgba(46,139,74,.02));border-color:rgba(46,139,74,.22);}
+  .fl-score-card.moderate {background:linear-gradient(135deg,rgba(217,119,6,.07),rgba(217,119,6,.02));border-color:rgba(217,119,6,.22);}
+  .fl-score-card.high {background:linear-gradient(135deg,rgba(220,38,38,.07),rgba(220,38,38,.02));border-color:rgba(220,38,38,.22);}
   .fl-score-card::before {content:'';position:absolute;top:0;left:0;right:0;height:2px;}
   .fl-score-card.low::before {background:linear-gradient(90deg,var(--green),transparent);}
   .fl-score-card.moderate::before {background:linear-gradient(90deg,var(--amber),transparent);}
@@ -194,26 +194,26 @@ const fuzzyStyles = `
     display:inline-flex;align-items:center;gap:6px;border-radius:100px;
     padding:7px 16px;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
   }
-  .fl-badge-pill.low {background:rgba(46,139,74,.12);color:var(--green);border:1px solid rgba(46,139,74,.28);}
-  .fl-badge-pill.moderate {background:rgba(217,119,6,.10);color:var(--amber);border:1px solid rgba(217,119,6,.28);}
-  .fl-badge-pill.high {background:rgba(220,38,38,.10);color:var(--red);border:1px solid rgba(220,38,38,.28);}
+  .fl-badge-pill.low {background:rgba(46,139,74,.10);color:var(--green);border:1px solid rgba(46,139,74,.25);}
+  .fl-badge-pill.moderate {background:rgba(217,119,6,.08);color:var(--amber);border:1px solid rgba(217,119,6,.25);}
+  .fl-badge-pill.high {background:rgba(220,38,38,.08);color:var(--red);border:1px solid rgba(220,38,38,.25);}
   .fl-badge-pill::before {content:'';width:6px;height:6px;border-radius:50%;}
   .fl-badge-pill.low::before {background:var(--green);}
   .fl-badge-pill.moderate::before {background:var(--amber);}
   .fl-badge-pill.high::before {background:var(--red);}
-  .fl-progress-track {margin-top:28px;height:6px;background:rgba(0,0,0,.08);border-radius:10px;overflow:hidden;}
+  .fl-progress-track {margin-top:28px;height:6px;background:rgba(0,0,0,.07);border-radius:10px;overflow:hidden;}
   .fl-progress-fill {height:100%;border-radius:10px;transition:width 1s cubic-bezier(.4,0,.2,1);}
   .fl-progress-fill.low {background:linear-gradient(90deg,#a7d4b4,var(--green));}
   .fl-progress-fill.moderate {background:linear-gradient(90deg,#fde68a,var(--amber));}
   .fl-progress-fill.high {background:linear-gradient(90deg,#fca5a5,var(--red));}
   .fl-stats-row {display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:24px;}
-  .fl-stat-box {background:rgba(0,0,0,.04);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px;}
+  .fl-stat-box {background:rgba(0,0,0,.03);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px;}
   .fl-stat-box-l {font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;}
   .fl-stat-box-v {font-family:var(--mono);font-size:18px;font-weight:500;color:var(--text);letter-spacing:-.02em;}
   .fl-advisory {margin-top:20px;padding:16px 20px;border-radius:var(--r);font-size:13px;line-height:1.6;border-left:3px solid transparent;}
-  .fl-advisory.low {background:rgba(76,175,114,.07);border-color:var(--green);}
-  .fl-advisory.moderate {background:rgba(232,164,64,.07);border-color:var(--amber);}
-  .fl-advisory.high {background:rgba(224,85,85,.08);border-color:var(--red);}
+  .fl-advisory.low {background:rgba(46,139,74,.06);border-color:var(--green);}
+  .fl-advisory.moderate {background:rgba(217,119,6,.06);border-color:var(--amber);}
+  .fl-advisory.high {background:rgba(220,38,38,.06);border-color:var(--red);}
   .fl-advisory strong {display:block;margin-bottom:4px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;}
   .fl-advisory.low strong {color:var(--green);}
   .fl-advisory.moderate strong {color:var(--amber);}
@@ -221,20 +221,57 @@ const fuzzyStyles = `
   .fl-detail-grid {display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:20px;}
   .fl-drow {
     display:flex;justify-content:space-between;align-items:center;
-    padding:9px 14px;background:rgba(0,0,0,.03);border:1px solid var(--border);border-radius:8px;
+    padding:9px 14px;background:rgba(0,0,0,.02);border:1px solid var(--border);border-radius:8px;
   }
   .fl-drow.wide {grid-column:1/-1;}
   .fl-dkey {color:var(--text-dim);font-family:var(--mono);font-size:11px;}
   .fl-dval {color:var(--text);font-family:var(--mono);font-size:12px;font-weight:500;}
+
+  /* ── RISK SCORE SUB-BOX ── */
+  .fl-risk-subbox {
+    margin-top:20px;background:rgba(0,0,0,.02);
+    border:1px solid var(--border2);border-radius:var(--r);overflow:hidden;
+  }
+  .fl-risk-subbox-header {
+    display:flex;align-items:center;justify-content:space-between;
+    padding:10px 18px;border-bottom:1px solid var(--border);
+    background:rgba(0,0,0,.03);
+  }
+  .fl-risk-subbox-eyebrow {
+    font-family:var(--mono);font-size:10px;letter-spacing:.14em;
+    color:var(--text-dim);text-transform:uppercase;
+  }
+  .fl-risk-subbox-body {padding:16px 18px 14px;}
+  .fl-risk-subbox-score-row {display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin-bottom:12px;}
+  .fl-risk-subbox-num {
+    font-family:var(--serif);font-size:clamp(32px,5vw,44px);
+    line-height:1;letter-spacing:-.02em;
+  }
+  .fl-risk-subbox-num.low {color:var(--green);}
+  .fl-risk-subbox-num.moderate {color:var(--amber);}
+  .fl-risk-subbox-num.high {color:var(--red);}
+  .fl-risk-subbox-trees {display:flex;flex-direction:column;gap:6px;flex:1;}
+  .fl-risk-tree-item {
+    display:flex;justify-content:space-between;align-items:center;
+    background:rgba(0,0,0,.03);border:1px solid var(--border);
+    border-radius:6px;padding:7px 12px;
+  }
+  .fl-risk-tree-l {font-family:var(--mono);font-size:9px;letter-spacing:.10em;text-transform:uppercase;color:var(--text-dim);}
+  .fl-risk-tree-v {font-family:var(--mono);font-size:13px;font-weight:500;color:var(--text);}
+  .fl-risk-subbox-note {
+    font-size:10px;color:var(--text-dim);font-family:var(--mono);line-height:1.6;
+    border-top:1px solid var(--border);padding-top:10px;margin-top:4px;
+  }
+
   .fl-spread-trigger {
     width:100%;display:flex;align-items:center;justify-content:center;gap:10px;
-    padding:17px 24px;background:rgba(76,175,114,.05);
+    padding:17px 24px;background:rgba(46,139,74,.04);
     border:1px dashed var(--border2);border-radius:var(--rl);
     color:var(--green);font-family:var(--sans);font-size:14px;font-weight:500;
     cursor:pointer;transition:background .2s,border-color .2s,transform .15s;letter-spacing:.02em;
     margin-top:20px;
   }
-  .fl-spread-trigger:hover {background:rgba(76,175,114,.12);border-color:var(--green);transform:translateY(-1px);}
+  .fl-spread-trigger:hover {background:rgba(46,139,74,.09);border-color:var(--green);transform:translateY(-1px);}
   .fl-spread-trigger:disabled {opacity:.4;cursor:not-allowed;transform:none;}
   .fl-spread-trigger svg {width:18px;height:18px;flex-shrink:0;}
   .fl-spread-card {
@@ -279,7 +316,7 @@ const fuzzyStyles = `
     .fl-form-card{padding:24px 20px;}
     .fl-mode-btn{padding:10px 14px;font-size:12px;}
     .fl-stats-row{grid-template-columns:1fr;}
-    .fl-detail-grid{grid-template-columns:1fr;}
+    .fl-detail-grid{grid-column:1/-1;}
     .fl-spread-meta{grid-template-columns:1fr;}
   }
 `;
@@ -358,7 +395,7 @@ function SpreadLayers({ cone, pred }) {
       <Circle center={cone.origin} radius={cone.cone_length_km * 1000}
         pathOptions={{ color: RC, weight: 1, opacity: 0.14, fillOpacity: 0, dashArray: '5,9' }} />
       <Polyline positions={[cone.origin, cone.tail_point]}
-        pathOptions={{ color: 'rgba(109,221,150,0.45)', weight: 1.5, dashArray: '4,7' }} />
+        pathOptions={{ color: 'rgba(46,139,74,0.35)', weight: 1.5, dashArray: '4,7' }} />
       <Marker position={cone.origin} icon={originIcon} />
     </>
   );
@@ -393,10 +430,17 @@ export default function FuzzyLogic() {
   const resultsRef = useRef(null);
   const spreadCardRef = useRef(null);
 
-  const scoreAnim = useCountUp(pred ? pred.degree_of_infestation_pct : null);
+  // Base score animates for Infestation Suitability
+  const baseScoreAnim = useCountUp(pred ? pred.fuzzy_base_score : null);
+  // Adjusted score animates for Risk Score sub-box
+  const adjScoreAnim = useCountUp(pred ? pred.adjusted_risk_score : null);
   const infectedAnim = useCountUp(pred ? pred.estimated_infected_trees : null);
   const healthyAnim = useCountUp(pred ? pred.estimated_healthy_trees : null);
-  const lc = pred ? pred.adjusted_risk_label.toLowerCase() : 'low';
+
+  // Base label for main card colouring
+  const baseLc = pred ? pred.fuzzy_base_label.toLowerCase() : 'low';
+  // Adjusted label for sub-box
+  const adjLc = pred ? pred.adjusted_risk_label.toLowerCase() : 'low';
 
   function switchMode(m) {
     setMode(m);
@@ -549,14 +593,15 @@ export default function FuzzyLogic() {
     <div className="fl-root">
       <style>{fuzzyStyles}</style>
 
+      {/* Decorative leaf */}
       <svg style={{ position: 'fixed', right: '-40px', top: '50%', transform: 'translateY(-50%)', width: '220px', opacity: '.04', pointerEvents: 'none', zIndex: 0 }}
         viewBox="0 0 200 400" fill="none">
-        <path d="M100 380 C100 380 10 280 10 180 C10 80 55 20 100 20 C145 20 190 80 190 180 C190 280 100 380 100 380Z" fill="#4caf72" />
-        <line x1="100" y1="380" x2="100" y2="20" stroke="#4caf72" strokeWidth="3" />
-        <line x1="100" y1="150" x2="50" y2="100" stroke="#4caf72" strokeWidth="1.5" />
-        <line x1="100" y1="200" x2="150" y2="150" stroke="#4caf72" strokeWidth="1.5" />
-        <line x1="100" y1="250" x2="55" y2="210" stroke="#4caf72" strokeWidth="1.5" />
-        <line x1="100" y1="300" x2="145" y2="260" stroke="#4caf72" strokeWidth="1.5" />
+        <path d="M100 380 C100 380 10 280 10 180 C10 80 55 20 100 20 C145 20 190 80 190 180 C190 280 100 380 100 380Z" fill="#2e8b4a" />
+        <line x1="100" y1="380" x2="100" y2="20" stroke="#2e8b4a" strokeWidth="3" />
+        <line x1="100" y1="150" x2="50" y2="100" stroke="#2e8b4a" strokeWidth="1.5" />
+        <line x1="100" y1="200" x2="150" y2="150" stroke="#2e8b4a" strokeWidth="1.5" />
+        <line x1="100" y1="250" x2="55" y2="210" stroke="#2e8b4a" strokeWidth="1.5" />
+        <line x1="100" y1="300" x2="145" y2="260" stroke="#2e8b4a" strokeWidth="1.5" />
       </svg>
 
       <div className="fl-page">
@@ -573,6 +618,7 @@ export default function FuzzyLogic() {
         </header>
         <div className="fl-divider" />
 
+        {/* Mode toggle */}
         <div className="fl-mode-toggle">
           <button className={`fl-mode-btn${mode === 'manual' ? ' active' : ''}`} onClick={() => switchMode('manual')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -592,6 +638,8 @@ export default function FuzzyLogic() {
 
         <form onSubmit={handleSubmit}>
           <div className="fl-form-card">
+
+            {/* ── SMART MODE ── */}
             {mode === 'smart' && (
               <div>
                 <span className="fl-sec-label">Farm Location — Philippine Address</span>
@@ -660,14 +708,18 @@ export default function FuzzyLogic() {
                   <div className="fl-ig full">
                     <label className="fl-label">Days Without Intervention <span className="fl-unit">0 = N/A</span></label>
                     <input className={`fl-input${errs.sDays ? ' error' : ''}`} type="number" placeholder="0"
-                      min={0} step={1} value={sDays} onChange={e => setSDays(e.target.value === "" ? "" : parseInt(e.target.value) || 0)} onFocus={e => e.target.select()} />
-                    <span className="fl-hint">Days farm was at HIGH risk without action. Field data: 14+ days → 90%+ tree loss.</span>
+                      min={0} step={1} value={sDays}
+                      onChange={e => setSDays(e.target.value === "" ? "" : parseInt(e.target.value) || 0)}
+                      onFocus={e => e.target.select()} />
+                    {/* FIXED: 21+ days */}
+                    <span className="fl-hint">Days farm was at HIGH risk without action. Field data: 21+ days → 90%+ tree loss.</span>
                     {errs.sDays && <span className="fl-ferr">{errs.sDays}</span>}
                   </div>
                 </div>
               </div>
             )}
 
+            {/* ── MANUAL MODE ── */}
             {mode === 'manual' && (
               <div>
                 <span className="fl-sec-label">Environmental Parameters</span>
@@ -691,8 +743,11 @@ export default function FuzzyLogic() {
                   <div className="fl-ig full">
                     <label className="fl-label">Days Without Intervention <span className="fl-unit">0 = N/A</span></label>
                     <input className={`fl-input${errs.days ? ' error' : ''}`} type="number" placeholder="0"
-                      min={0} step={1} value={days} onChange={e => setDays(e.target.value === "" ? "" : parseInt(e.target.value) || 0)} onFocus={e => e.target.select()} />
-                    <span className="fl-hint">Number of days at HIGH risk without action. Field data: 14+ days → 90%+ tree loss.</span>
+                      min={0} step={1} value={days}
+                      onChange={e => setDays(e.target.value === "" ? "" : parseInt(e.target.value) || 0)}
+                      onFocus={e => e.target.select()} />
+                    {/* FIXED: 21+ days */}
+                    <span className="fl-hint">Number of days at HIGH risk without action. Field data: 21+ days → 90%+ tree loss.</span>
                     {errs.days && <span className="fl-ferr">{errs.days}</span>}
                   </div>
                 </div>
@@ -707,47 +762,69 @@ export default function FuzzyLogic() {
           </div>
         </form>
 
+        {/* ── RESULTS ── */}
         {pred && (
           <div className="fl-results" ref={resultsRef}>
-            <div className={`fl-score-card ${lc}`}>
+
+            {/* Main card — Infestation Suitability (base fuzzy score) */}
+            <div className={`fl-score-card ${baseLc}`}>
               <div className="fl-score-top">
                 <div>
-                  <div className="fl-score-eyebrow">Degree of Infestation</div>
-                  <div className={`fl-score-num ${lc}`}>
-                    <span>{scoreAnim.toFixed(2)}</span><sup>%</sup>
+                  {/* FIXED: label changed to Infestation Suitability */}
+                  <div className="fl-score-eyebrow">Infestation Suitability</div>
+                  <div className={`fl-score-num ${baseLc}`}>
+                    <span>{baseScoreAnim.toFixed(2)}</span><sup>%</sup>
                   </div>
                 </div>
-                <span className={`fl-badge-pill ${lc}`}>{pred.adjusted_risk_label}</span>
+                <span className={`fl-badge-pill ${baseLc}`}>{pred.fuzzy_base_label}</span>
               </div>
               <div className="fl-progress-track">
-                <div className={`fl-progress-fill ${lc}`} style={{ width: `${Math.min(pred.degree_of_infestation_pct, 100)}%` }} />
+                <div className={`fl-progress-fill ${baseLc}`} style={{ width: `${Math.min(pred.fuzzy_base_score, 100)}%` }} />
               </div>
-              <div className="fl-stats-row">
-                <div className="fl-stat-box">
-                  <div className="fl-stat-box-l">Estimated Infected</div>
-                  <div className="fl-stat-box-v">{Math.round(infectedAnim).toLocaleString()}</div>
-                </div>
-                <div className="fl-stat-box">
-                  <div className="fl-stat-box-l">Estimated Healthy</div>
-                  <div className="fl-stat-box-v">{Math.round(healthyAnim).toLocaleString()}</div>
-                </div>
-                <div className="fl-stat-box">
-                  <div className="fl-stat-box-l">Fuzzy Base Score</div>
-                  <div className="fl-stat-box-v">{pred.fuzzy_base_score.toFixed(2)}%</div>
-                </div>
-              </div>
-              <div className={`fl-advisory ${lc}`}>
-                <strong>{pred.adjusted_risk_label} Risk Advisory</strong>
+              <div className={`fl-advisory ${baseLc}`}>
+                <strong>{pred.fuzzy_base_label} Risk Advisory</strong>
                 <span>{pred.intervention_note}</span>
               </div>
               <div className="fl-detail-grid">
                 <div className="fl-drow"><span className="fl-dkey">Spread Factor</span><span className="fl-dval">{pred.spread_factor.toFixed(4)}</span></div>
                 <div className="fl-drow"><span className="fl-dkey">Intervention Mult.</span><span className="fl-dval">×{pred.intervention_multiplier.toFixed(4)}</span></div>
-                <div className="fl-drow"><span className="fl-dkey">Risk Label</span><span className="fl-dval">{pred.adjusted_risk_label}</span></div>
+                <div className="fl-drow"><span className="fl-dkey">Base Risk Label</span><span className="fl-dval">{pred.fuzzy_base_label}</span></div>
                 <div className="fl-drow"><span className="fl-dkey">Total Trees</span><span className="fl-dval">{pred.inputs.total_trees.toLocaleString()}</span></div>
+              </div>
+
+              {/* NEW: Risk Score Sub-box (adjusted/calibrated score) */}
+              <div className="fl-risk-subbox">
+                <div className="fl-risk-subbox-header">
+                  <span className="fl-risk-subbox-eyebrow">Adjusted Risk Score</span>
+                  <span className={`fl-badge-pill ${adjLc}`} style={{ fontSize: '10px', padding: '4px 12px' }}>
+                    {pred.adjusted_risk_label}
+                  </span>
+                </div>
+                <div className="fl-risk-subbox-body">
+                  <div className="fl-risk-subbox-score-row">
+                    <div className={`fl-risk-subbox-num ${adjLc}`}>
+                      {adjScoreAnim.toFixed(2)}%
+                    </div>
+                    <div className="fl-risk-subbox-trees">
+                      <div className="fl-risk-tree-item">
+                        <span className="fl-risk-tree-l">Estimated Infected</span>
+                        <span className="fl-risk-tree-v">{Math.round(infectedAnim).toLocaleString()} trees</span>
+                      </div>
+                      <div className="fl-risk-tree-item">
+                        <span className="fl-risk-tree-l">Estimated Healthy</span>
+                        <span className="fl-risk-tree-v">{Math.round(healthyAnim).toLocaleString()} trees</span>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="fl-risk-subbox-note">
+                    Possible degree of infestation if the farm is left unattended under current conditions for a prolonged period.
+                    Score is calibrated using intervention delay multiplier and sigmoid spread factor.
+                  </p>
+                </div>
               </div>
             </div>
 
+            {/* Spread visualization trigger — Smart mode only */}
             {showSpread && (
               <div style={{ marginTop: '20px' }}>
                 <button className="fl-spread-trigger" onClick={openSpreadMap} disabled={spreadLoading}>
@@ -791,21 +868,21 @@ export default function FuzzyLogic() {
                     </div>
                     <div className="fl-spread-legend">
                       <div className="fl-leg-item">
-                        <div className="fl-leg-dot" style={{ background: '#4caf72', boxShadow: '0 0 6px #4caf72' }} />
+                        <div className="fl-leg-dot" style={{ background: '#2e8b4a', boxShadow: '0 0 6px rgba(46,139,74,0.5)' }} />
                         Origin (Infected Farm)
                       </div>
                       <div className="fl-leg-item">
-                        <div className="fl-leg-sw" style={{ background: 'rgba(232,164,64,0.35)', border: '1px solid rgba(232,164,64,0.8)' }} />
+                        <div className="fl-leg-sw" style={{ background: 'rgba(232,164,64,0.3)', border: '1px solid rgba(232,164,64,0.7)' }} />
                         Spread Cone
                       </div>
                       <div className="fl-leg-item">
-                        <div className="fl-leg-sw" style={{ background: 'rgba(224,85,85,0.25)', border: '1px solid rgba(224,85,85,0.7)' }} />
+                        <div className="fl-leg-sw" style={{ background: 'rgba(220,38,38,0.2)', border: '1px solid rgba(220,38,38,0.6)' }} />
                         High-Risk Core
                       </div>
                       <div className="fl-leg-item">
                         <svg width="24" height="12" viewBox="0 0 24 12">
-                          <line x1="0" y1="6" x2="18" y2="6" stroke="#4a9edd" strokeWidth="2" strokeDasharray="5,3" />
-                          <polygon points="16,2 24,6 16,10" fill="#4a9edd" />
+                          <line x1="0" y1="6" x2="18" y2="6" stroke="#3b82f6" strokeWidth="2" strokeDasharray="5,3" />
+                          <polygon points="16,2 24,6 16,10" fill="#3b82f6" />
                         </svg>
                         Wind Direction
                       </div>
@@ -815,7 +892,7 @@ export default function FuzzyLogic() {
                       <div className="fl-drow"><span className="fl-dkey">Cone Width</span><span className="fl-dval">±{cone.cone_half_angle}°</span></div>
                       <div className="fl-drow"><span className="fl-dkey">Wind From</span><span className="fl-dval">{cone.wind_from_compass} · {cone.wind_from_deg}°</span></div>
                       <div className="fl-drow"><span className="fl-dkey">Dispersal Bearing</span><span className="fl-dval">{cone.wind_to_compass} · {cone.wind_to_bearing}°</span></div>
-                      <div className="fl-drow wide" style={{ background: 'rgba(46,139,74,0.06)', borderColor: 'rgba(46,139,74,0.20)', gap: '12px', flexWrap: 'wrap' }}>
+                      <div className="fl-drow wide" style={{ background: 'rgba(46,139,74,0.04)', borderColor: 'rgba(46,139,74,0.18)', gap: '12px', flexWrap: 'wrap' }}>
                         <span className="fl-dkey">PCA Guidance</span>
                         <span className="fl-dval" style={{ color: '#5a8068', fontWeight: 400, fontSize: '11px', textAlign: 'right', flex: 1 }}>{guidance}</span>
                       </div>
