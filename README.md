@@ -29,8 +29,10 @@ CocolisapScan allows users to upload photos of coconut leaves to detect cocolisa
 ## Getting Started
 
 ### Prerequisites
-- Node.js
+- Node.js (already installed)
 - A Firebase project with Firestore enabled
+- A Roboflow account with a trained YOLOv11 model
+- A Google Cloud Run backend deployed
 
 ### Installation
 
