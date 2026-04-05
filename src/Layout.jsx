@@ -13,19 +13,86 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Data Export', icon: Download, path: '/DataExport' },
     ];
     return (
-        <div style={{ minHeight: '100vh', background: '#f4f7f4', color: '#1a3326', fontFamily: "'Outfit', sans-serif" }}>
+        <div style={{ minHeight: '100vh', background: '#f4f7f4', color: '#1a3326', fontFamily: "'Outfit', sans-serif", overflowX: 'hidden', width: '100%' }}>
             <style>{`
-                body { background: #f4f7f4 !important; }
-                .app-nav { background: #ffffff; border-bottom: 1px solid #d6e8d6; position: sticky; top: 0; z-index: 50; box-shadow: 0 1px 6px rgba(0,0,0,0.06); }
-                .app-nav-inner { max-width: 1280px; margin: 0 auto; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; height: 60px; }
-                .app-nav-brand { display: flex; align-items: center; gap: 8px; text-decoration: none; flex-shrink: 0; }
-                @keyframes nav-pulse { 0%,100%{opacity:1}50%{opacity:.5} }
-                .app-nav-brand-text { font-family: 'DM Serif Display', serif; font-size: 18px; color: #1a3326; font-weight: 400; letter-spacing: -0.02em; }
-                .app-nav-links { display: flex; gap: 2px; }
-                .app-nav-link { display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: 500; color: #5a8068; transition: background 0.2s, color 0.2s; border: 1px solid transparent; }
+                *, *::before, *::after { box-sizing: border-box; }
+                html, body {
+                    overflow-x: hidden !important;
+                    width: 100% !important;
+                    max-width: 100vw !important;
+                    background: #f4f7f4 !important;
+                    margin: 0;
+                    padding: 0;
+                }
+                .app-nav {
+                    background: #ffffff;
+                    border-bottom: 1px solid #d6e8d6;
+                    position: sticky;
+                    top: 0;
+                    z-index: 50;
+                    box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+                    width: 100%;
+                    overflow: hidden;
+                }
+                .app-nav-inner {
+                    max-width: 1280px;
+                    margin: 0 auto;
+                    padding: 0 16px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    height: 60px;
+                    width: 100%;
+                }
+                .app-nav-brand {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    text-decoration: none;
+                    flex-shrink: 0;
+                    -webkit-tap-highlight-color: transparent;
+                    touch-action: manipulation;
+                }
+                .app-nav-brand-text {
+                    font-family: 'DM Serif Display', serif;
+                    font-size: 18px;
+                    color: #1a3326;
+                    font-weight: 400;
+                    letter-spacing: -0.02em;
+                }
+                .app-nav-links {
+                    display: flex;
+                    gap: 2px;
+                    overflow: hidden;
+                }
+                .app-nav-link {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    padding: 8px 14px;
+                    border-radius: 8px;
+                    text-decoration: none;
+                    font-size: 13px;
+                    font-weight: 500;
+                    color: #5a8068;
+                    transition: background 0.2s, color 0.2s;
+                    border: 1px solid transparent;
+                    /* FIX: single tap response on mobile */
+                    -webkit-tap-highlight-color: transparent;
+                    touch-action: manipulation;
+                    cursor: pointer;
+                    user-select: none;
+                    -webkit-user-select: none;
+                }
                 .app-nav-link:hover { background: rgba(46,139,74,0.08); color: #1a3326; }
                 .app-nav-link.active { background: rgba(46,139,74,0.10); color: #2e8b4a; border-color: rgba(46,139,74,0.25); }
-                .app-nav-link svg { width: 15px; height: 15px; }
+                .app-nav-link svg { width: 15px; height: 15px; flex-shrink: 0; }
+                /* FIX: main content never overflows horizontally */
+                main {
+                    width: 100%;
+                    max-width: 100vw;
+                    overflow-x: hidden;
+                }
                 @media(max-width:768px){
                     .app-nav-inner { padding: 0 12px; }
                     .app-nav-link span { display: none; }
@@ -42,7 +109,7 @@ export default function Layout({ children, currentPageName }) {
             <nav className="app-nav">
                 <div className="app-nav-inner">
                     <Link to="/Home" className="app-nav-brand">
-                        <Leaf style={{ width: 20, height: 20, color: '#4caf72' }} />
+                        <Leaf style={{ width: 20, height: 20, color: '#4caf72', flexShrink: 0 }} />
                         <span className="app-nav-brand-text">CocolisapScan</span>
                     </Link>
                     <div className="app-nav-links">

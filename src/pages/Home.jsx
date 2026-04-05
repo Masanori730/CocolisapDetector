@@ -182,7 +182,7 @@ export default function Home() {
                         </p>
                         <div className="landing-stat-row">
                             <div className="landing-stat-box">
-                                <div className="landing-stat-num">87.4%</div>
+                                <div className="landing-stat-num">89.9%</div>
                                 <div className="landing-stat-label">YOLOv11 mAP</div>
                             </div>
                             <div className="landing-stat-box">
@@ -190,7 +190,7 @@ export default function Home() {
                                 <div className="landing-stat-label">Fuzzy Rules</div>
                             </div>
                             <div className="landing-stat-box">
-                                <div className="landing-stat-num">1,608</div>
+                                <div className="landing-stat-num">670</div>
                                 <div className="landing-stat-label">Training Images</div>
                             </div>
                             <div className="landing-stat-box">
