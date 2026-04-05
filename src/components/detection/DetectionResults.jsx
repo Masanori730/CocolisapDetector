@@ -9,12 +9,10 @@ export default function DetectionResults({ originalImage, detections }) {
     const [zoom, setZoom] = useState(1);
     const [imageLoaded, setImageLoaded] = useState(false);
 
-    // Helper to extract x, y, w, h from either array or object bbox
     const parseBbox = (bbox) => {
         if (Array.isArray(bbox)) {
             return { x: bbox[0], y: bbox[1], w: bbox[2], h: bbox[3] };
         }
-        // Object format {x1, y1, x2, y2}
         const x = bbox.x1 ?? 0;
         const y = bbox.y1 ?? 0;
         const w = (bbox.x2 ?? 0) - x;
@@ -40,7 +38,6 @@ export default function DetectionResults({ originalImage, detections }) {
             const MAX_LABELS = 30;
             const sorted = [...detections].sort((a, b) => b.confidence - a.confidence);
 
-            // Pass 1: draw all masks/boxes
             detections.forEach((detection) => {
                 const { x, y, w, h } = parseBbox(detection.bbox);
 
@@ -61,7 +58,6 @@ export default function DetectionResults({ originalImage, detections }) {
                 }
             });
 
-            // Pass 2: draw labels for top MAX_LABELS
             const fontSize = Math.max(9, Math.min(img.width * 0.013, 14));
             ctx.font = `bold ${fontSize}px Inter, system-ui, sans-serif`;
 
@@ -117,28 +113,27 @@ export default function DetectionResults({ originalImage, detections }) {
             animate={{ opacity: 1 }}
             className="space-y-4"
         >
-            <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-stone-800">
-                    Detection Result
-                </h3>
+            {/* Header: stacks vertically on mobile */}
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <h3 className="text-base font-semibold text-stone-800">Detection Result</h3>
                 <div className="flex items-center gap-2">
                     <div className="flex items-center bg-stone-100 rounded-lg p-1">
-                        <Button variant="ghost" size="sm" onClick={handleZoomOut} className="h-8 w-8 p-0">
-                            <ZoomOut className="w-4 h-4" />
+                        <Button variant="ghost" size="sm" onClick={handleZoomOut} className="h-7 w-7 p-0">
+                            <ZoomOut className="w-3.5 h-3.5" />
                         </Button>
-                        <span className="px-2 text-sm font-medium text-stone-600 min-w-[50px] text-center">
+                        <span className="px-1.5 text-xs font-medium text-stone-600 min-w-[40px] text-center">
                             {Math.round(zoom * 100)}%
                         </span>
-                        <Button variant="ghost" size="sm" onClick={handleZoomIn} className="h-8 w-8 p-0">
-                            <ZoomIn className="w-4 h-4" />
+                        <Button variant="ghost" size="sm" onClick={handleZoomIn} className="h-7 w-7 p-0">
+                            <ZoomIn className="w-3.5 h-3.5" />
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={handleResetZoom} className="h-8 w-8 p-0">
-                            <RotateCcw className="w-4 h-4" />
+                        <Button variant="ghost" size="sm" onClick={handleResetZoom} className="h-7 w-7 p-0">
+                            <RotateCcw className="w-3.5 h-3.5" />
                         </Button>
                     </div>
-                    <Button onClick={handleDownload} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
-                        <Download className="w-4 h-4" />
-                        <span className="hidden sm:inline">Download</span>
+                    <Button onClick={handleDownload} size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700">
+                        <Download className="w-3.5 h-3.5" />
+                        <span>Download</span>
                     </Button>
                 </div>
             </div>
@@ -188,4 +183,4 @@ export default function DetectionResults({ originalImage, detections }) {
             )}
         </motion.div>
     );
-} 
+}
