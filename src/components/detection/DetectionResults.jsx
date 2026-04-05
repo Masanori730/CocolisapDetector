@@ -58,9 +58,11 @@ export default function DetectionResults({ originalImage, detections }) {
                 }
             });
 
-            // Use fixed font size relative to image width so labels look consistent
-            // regardless of whether it's single or batch detection
-            const fontSize = Math.max(8, Math.min(img.width * 0.008, 11));
+            // Normalize font size against a reference width (800px) so labels are
+            // consistent regardless of image resolution (single vs batch)
+            const referenceWidth = 800;
+            const scale = img.width / referenceWidth;
+            const fontSize = Math.max(8, Math.min(10 * scale, 11));
             ctx.font = `bold ${fontSize}px Inter, system-ui, sans-serif`;
 
             sorted.slice(0, MAX_LABELS).forEach((detection) => {

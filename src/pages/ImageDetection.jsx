@@ -51,7 +51,6 @@ const homeStyles = `
     [data-radix-tabs-list] { background:#f0f5f0 !important; border:1px solid #d6e8d6 !important; border-radius:10px !important; padding:4px !important; }
     [data-radix-tabs-trigger] { color:#5a8068 !important; font-family:'Outfit',sans-serif !important; font-size:13px !important; border-radius:8px !important; }
     [data-radix-tabs-trigger][data-state=active] { background:#ffffff !important; color:#2e8b4a !important; box-shadow:0 1px 4px rgba(0,0,0,.10) !important; }
-    /* FIX: grid layout mobile */
     .home-grid-layout { display: grid; grid-template-columns: 1fr 340px; gap: 24px; width: 100%; }
     @media(max-width:900px) {
         .home-grid-layout { grid-template-columns: 1fr !important; }
@@ -60,6 +59,14 @@ const homeStyles = `
         .home-card { padding: 20px; }
     }
 `;
+
+// Helper to clean up messy filenames (e.g. Messenger_creation_XXXX.jpg)
+const cleanFileName = (name) => {
+    return name
+        .replace(/^Messenger_creation_[A-Fa-f0-9-]+_?/i, '')
+        .replace(/\.[^.]+$/, '')
+        .trim() || name;
+};
 
 const detectWithYOLO = async (imageDataUrl) => {
     const response = await fetch(`${API_BASE_URL}/detect`, {
@@ -255,7 +262,6 @@ export default function Home() {
         document.getElementById('upload-section')?.scrollIntoView({ behavior: 'smooth' });
     };
 
-    // FIX: remove x animations that cause horizontal overflow on mobile
     const fadeUp = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 } };
 
     return (
@@ -287,7 +293,6 @@ export default function Home() {
             <main className="home-main" id="upload-section">
                 <div className="home-grid-layout">
 
-                    {/* Upload Card — FIX: no x animation */}
                     <motion.div {...fadeUp} transition={{ delay: 0.1 }} style={{ minWidth: 0, overflow: 'hidden' }}>
                         <div className="home-card">
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
@@ -356,7 +361,9 @@ export default function Home() {
                                     <p className="home-batch-title">Batch Results — {results.batchResults.length} image{results.batchResults.length > 1 ? 's' : ''} processed</p>
                                     {results.batchResults.map((item, index) => (
                                         <div key={index} className="home-batch-item">
-                                            <p className="home-batch-filename">{item.fileName}</p>
+                                            <p className="home-batch-filename">
+                                                {cleanFileName(item.fileName) || `Image ${index + 1}`}
+                                            </p>
                                             <DetectionResults originalImage={item.imagePreview} detections={item.detections} />
                                             <EnhancedDetectionResults results={item} locationData={locationData} />
                                         </div>
@@ -388,7 +395,7 @@ export default function Home() {
                         </div>
                     </motion.div>
 
-                    {/* History Sidebar — FIX: no x animation, minWidth:0 prevents overflow */}
+                    {/* History Sidebar */}
                     <motion.div {...fadeUp} transition={{ delay: 0.2 }} style={{ minWidth: 0, overflow: 'hidden' }}>
                         <DetectionHistory
                             detections={history}
