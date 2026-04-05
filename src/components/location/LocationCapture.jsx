@@ -297,11 +297,17 @@ export default function LocationCapture({ onLocationChange }) {
     };
 
     const handleInputChange = (field, value) => {
-        const newData = { ...locationData, [field]: value, locationMethod: 'manual' };
+        const locationFields = ['province', 'municipality', 'barangay'];
+        const newData = {
+            ...locationData,
+            [field]: value,
+            // Only reset to manual if a location field changed, not farmName/farmOwner/notes
+            ...(locationFields.includes(field) ? { locationMethod: 'manual' } : {})
+        };
         setLocationData(newData);
         onLocationChange(newData);
 
-        if (field === 'province' || field === 'municipality' || field === 'barangay') {
+        if (locationFields.includes(field)) {
             setTimeout(() => geocodeLocation({ ...newData, [field]: value }), 600);
         }
     };
