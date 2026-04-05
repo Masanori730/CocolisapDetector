@@ -1,3 +1,7 @@
+if (window.location.protocol === 'http:' && window.location.hostname !== 'localhost') {
+  window.location.replace(window.location.href.replace('http://', 'https://'));
+}
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from '@/App.jsx'
