@@ -44,7 +44,7 @@ export default function LocationCapture({ onLocationChange }) {
         locationMethod: 'manual'
     });
 
-    // Strip "Province of X" or "X Province" → just "X", then match against known list
+    // Strip "Province of X" or "X Province" → just "X"
     const cleanProvince = (raw) => {
         if (!raw) return '';
         return raw
@@ -80,12 +80,15 @@ export default function LocationCapture({ onLocationChange }) {
                 const data = await res.json();
                 const addr = data.address || {};
 
-                // Try all fields Nominatim might use for province
+                // ✅ FIX: In the Philippines, Nominatim puts:
+                //   - Region (e.g. "Calabarzon") in addr.state
+                //   - Province (e.g. "Quezon") in addr.state_district
+                // So we must prioritize state_district over state.
                 const rawProvince =
                     addr.province ||
-                    addr.state ||
+                    addr.state_district ||   // ← PH province lives here
                     addr.county ||
-                    addr.region || '';
+                    addr.state || '';        // state = region in PH, last resort
 
                 const province = matchProvince(rawProvince);
 
@@ -96,11 +99,14 @@ export default function LocationCapture({ onLocationChange }) {
                     addr.village ||
                     addr.suburb || '';
 
+                // ✅ FIX: barangay — prefer neighbourhood/quarter over suburb
+                // (suburb often duplicates municipality)
                 const barangay =
-                    addr.suburb ||
                     addr.neighbourhood ||
                     addr.quarter ||
-                    addr.village || '';
+                    addr.hamlet ||
+                    addr.village ||
+                    addr.suburb || '';
 
                 return { province, municipality, barangay };
             }
@@ -299,6 +305,7 @@ export default function LocationCapture({ onLocationChange }) {
                                     <p><strong>Longitude:</strong> {locationData.longitude.toFixed(6)}°</p>
                                     {locationData.province && <p><strong>Province:</strong> {locationData.province}</p>}
                                     {locationData.municipality && <p><strong>Municipality:</strong> {locationData.municipality}</p>}
+                                    {locationData.barangay && <p><strong>Barangay:</strong> {locationData.barangay}</p>}
                                     {accuracy && (
                                         <p>
                                             <strong>Accuracy:</strong> ±{accuracy.toFixed(0)}m
