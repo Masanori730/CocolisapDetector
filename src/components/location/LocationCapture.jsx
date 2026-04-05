@@ -44,7 +44,6 @@ export default function LocationCapture({ onLocationChange }) {
         locationMethod: 'manual'
     });
 
-    // Strip "Province of X" or "X Province" → just "X"
     const cleanProvince = (raw) => {
         if (!raw) return '';
         return raw
@@ -56,12 +55,10 @@ export default function LocationCapture({ onLocationChange }) {
     const matchProvince = (raw) => {
         const cleaned = cleanProvince(raw);
         if (!cleaned) return '';
-        // Exact match first (case-insensitive)
         const exact = PHILIPPINE_PROVINCES.find(
             p => p.toLowerCase() === cleaned.toLowerCase()
         );
         if (exact) return exact;
-        // Partial match fallback
         const partial = PHILIPPINE_PROVINCES.find(
             p => p.toLowerCase().includes(cleaned.toLowerCase()) ||
                  cleaned.toLowerCase().includes(p.toLowerCase())
@@ -69,7 +66,14 @@ export default function LocationCapture({ onLocationChange }) {
         return partial || cleaned;
     };
 
-    // Reverse geocode: coordinates → province/municipality/barangay
+    // Only returns a value if it EXACTLY matches a known province (after cleaning)
+    const exactProvinceMatch = (raw) => {
+        const cleaned = cleanProvince(raw || '');
+        return PHILIPPINE_PROVINCES.find(
+            p => p.toLowerCase() === cleaned.toLowerCase()
+        ) || null;
+    };
+
     const reverseGeocode = async (lat, lng) => {
         try {
             const res = await fetch(
@@ -80,33 +84,33 @@ export default function LocationCapture({ onLocationChange }) {
                 const data = await res.json();
                 const addr = data.address || {};
 
-                // Log the full address object so we can see exactly what Nominatim returns
-                console.log('[LocationCapture] Nominatim raw address:', JSON.stringify(addr, null, 2));
+                console.log('[LocationCapture] Raw addr:', JSON.stringify(addr));
 
-                // ✅ BULLETPROOF PROVINCE DETECTION:
-                // Instead of guessing field names (which vary by country/region in OSM),
-                // scan ALL address fields and find the one whose value matches a known PH province.
-                let province = '';
-                const addrValues = Object.values(addr).filter(v => typeof v === 'string');
-                for (const val of addrValues) {
-                    const matched = matchProvince(val);
-                    if (PHILIPPINE_PROVINCES.includes(matched)) {
-                        province = matched;
-                        console.log('[LocationCapture] Province matched from addr field:', val, '→', matched);
-                        break;
+                // Step 1: Try specific known fields (exact match only)
+                let province =
+                    exactProvinceMatch(addr.province) ||
+                    exactProvinceMatch(addr.state_district) ||
+                    exactProvinceMatch(addr.county) ||
+                    null;
+
+                // Step 2: Scan ALL string fields for an exact province match
+                if (!province) {
+                    for (const val of Object.values(addr).filter(v => typeof v === 'string')) {
+                        const matched = exactProvinceMatch(val);
+                        if (matched) {
+                            province = matched;
+                            console.log('[LocationCapture] Province found by scan:', val, '->', matched);
+                            break;
+                        }
                     }
                 }
 
-                // Fallback: try known field names in priority order if scan found nothing
+                // Step 3: Last resort partial match on state (region in PH)
                 if (!province) {
-                    const rawProvince =
-                        addr.province ||
-                        addr.state_district ||
-                        addr.county ||
-                        addr.state || '';
-                    province = matchProvince(rawProvince);
-                    console.log('[LocationCapture] Province via fallback fields:', rawProvince, '→', province);
+                    province = matchProvince(addr.state || '');
                 }
+
+                console.log('[LocationCapture] Final province:', province);
 
                 const municipality =
                     addr.city ||
@@ -130,7 +134,6 @@ export default function LocationCapture({ onLocationChange }) {
         return { province: '', municipality: '', barangay: '' };
     };
 
-    // Forward geocode: province/municipality → coordinates
     const geocodeLocation = async (data) => {
         if (!data.province) return;
         setGeocoding(true);
@@ -185,7 +188,6 @@ export default function LocationCapture({ onLocationChange }) {
                     navigator.geolocation.clearWatch(watchId);
                     setCapturing(false);
 
-                    // Reverse geocode to fill in province/municipality/barangay
                     const place = await reverseGeocode(latitude, longitude);
 
                     const newData = {
@@ -230,7 +232,6 @@ export default function LocationCapture({ onLocationChange }) {
         setLocationData(newData);
         onLocationChange(newData);
 
-        // Auto-geocode when location fields change
         if (field === 'province' || field === 'municipality' || field === 'barangay') {
             setTimeout(() => geocodeLocation({ ...newData, [field]: value }), 600);
         }
