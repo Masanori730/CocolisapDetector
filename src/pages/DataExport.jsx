@@ -12,6 +12,15 @@ const ns = (v) => (v !== undefined && v !== null && v !== '') ? v : 'Not Specifi
 const pct = (n, total) => total > 0 ? ((n / total) * 100).toFixed(1) : '0.0';
 const avg = (arr, key) => arr.length > 0 ? (arr.reduce((s, d) => s + (d[key] || 0), 0) / arr.length) : 0;
 
+// Safely convert Firestore Timestamp, plain {seconds}, string, or number to a JS Date
+const toDate = (val) => {
+    if (!val) return null;
+    if (typeof val.toDate === 'function') return val.toDate();         // Firestore Timestamp
+    if (val.seconds !== undefined) return new Date(val.seconds * 1000); // plain {seconds, nanoseconds}
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? null : d;
+};
+
 const exportStyles = `
     @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap');
     .export-root { background:#f4f7f4; min-height:100vh; color:#1a3326; font-family:'Outfit',sans-serif; }
@@ -123,24 +132,44 @@ export default function DataExport() {
         fetchData();
     }, []);
 
+    // Fixed: handles Firestore Timestamp, {seconds}, string, and number
     const applyDateFilter = (items) => {
         let f = items;
-        if (dateFrom) f = f.filter(d => new Date(d.created_date) >= new Date(dateFrom));
-        if (dateTo) { const end = new Date(dateTo); end.setHours(23, 59, 59, 999); f = f.filter(d => new Date(d.created_date) <= end); }
+        if (dateFrom) {
+            const from = new Date(dateFrom);
+            f = f.filter(d => {
+                const dt = toDate(d.created_date);
+                return dt && dt >= from;
+            });
+        }
+        if (dateTo) {
+            const end = new Date(dateTo);
+            end.setHours(23, 59, 59, 999);
+            f = f.filter(d => {
+                const dt = toDate(d.created_date);
+                return dt && dt <= end;
+            });
+        }
         return f;
     };
 
     const filteredDetections = useMemo(() => {
         let f = applyDateFilter(allDetections);
         if (severityFilter !== 'all') f = f.filter(d => d.severity === severityFilter);
-        if (provinceFilter !== 'all') f = f.filter(d => d.province === provinceFilter);
+        // Fixed: case-insensitive partial match so "Quezon" matches "Quezon Province" etc.
+        if (provinceFilter !== 'all') f = f.filter(d =>
+            d.province?.toLowerCase().includes(provinceFilter.toLowerCase())
+        );
         return f;
     }, [allDetections, dateFrom, dateTo, severityFilter, provinceFilter]);
 
     const filteredAssessments = useMemo(() => {
         let f = applyDateFilter(allAssessments);
         if (riskFilter !== 'all') f = f.filter(a => a.adjusted_risk_label === riskFilter);
-        if (provinceFilter !== 'all') f = f.filter(a => a.province === provinceFilter);
+        // Fixed: case-insensitive partial match
+        if (provinceFilter !== 'all') f = f.filter(a =>
+            a.province?.toLowerCase().includes(provinceFilter.toLowerCase())
+        );
         return f;
     }, [allAssessments, dateFrom, dateTo, riskFilter, provinceFilter]);
 
@@ -148,7 +177,7 @@ export default function DataExport() {
         if (!filteredDetections.length) { setExportMessage({ type: 'error', text: 'No image detections match current filters.' }); return; }
         const headers = ['Detection ID', 'Date', 'Time', 'Province', 'Municipality', 'Barangay', 'Farm Name', 'Farm Owner', 'Latitude', 'Longitude', 'Severity', 'Total Insects Detected', 'Avg Confidence (%)', 'Processing Time (s)', 'Location Method'];
         const rows = [headers, ...filteredDetections.map((d, i) => {
-            const dt = new Date(d.created_date);
+            const dt = toDate(d.created_date) || new Date();
             const severity = d.severity ? d.severity.charAt(0).toUpperCase() + d.severity.slice(1) : 'N/A';
             const confidence = d.avg_confidence ? (d.avg_confidence * 100).toFixed(1) : 'N/A';
             const procTime = d.processing_time ? (d.processing_time / 1000).toFixed(2) : 'N/A';
@@ -171,16 +200,20 @@ export default function DataExport() {
         const pc = {};
         d.forEach(x => { if (x.province) pc[x.province] = (pc[x.province] || 0) + 1; });
         const topP = Object.entries(pc).sort((a, b) => b[1] - a[1]).slice(0, 3);
-        const dates = d.map(x => new Date(x.created_date)).sort((a, b) => a - b);
-        const earliest = format(dates[0], 'MMMM d, yyyy');
-        const latest = format(dates[dates.length - 1], 'MMMM d, yyyy');
+        // Fixed: use toDate() for sorting and formatting
+        const dates = d.map(x => toDate(x.created_date)).filter(Boolean).sort((a, b) => a - b);
+        const earliest = dates.length ? format(dates[0], 'MMMM d, yyyy') : 'N/A';
+        const latest = dates.length ? format(dates[dates.length - 1], 'MMMM d, yyyy') : 'N/A';
         const dayCounts = {};
-        d.forEach(x => { const day = format(new Date(x.created_date), 'yyyy-MM-dd'); dayCounts[day] = (dayCounts[day] || 0) + 1; });
+        d.forEach(x => {
+            const dt = toDate(x.created_date);
+            if (dt) { const day = format(dt, 'yyyy-MM-dd'); dayCounts[day] = (dayCounts[day] || 0) + 1; }
+        });
         const mostActiveDay = Object.entries(dayCounts).sort((a, b) => b[1] - a[1])[0];
         const rec = severe / total > 0.5 ? 'URGENT — majority of scans show severe infestation. Immediate field intervention required.' : moderate / total > 0.5 ? 'MODERATE RISK — schedule scouting within 1-2 weeks.' : 'LOW RISK — continue regular monitoring schedule.';
         const SEP = `================================================`;
         const SEC = `------------------------------------------------`;
-        const txt = [SEP, `  COCOLISAP IMAGE DETECTION REPORT`, `  Powered by YOLOv11 Instance Segmentation`, `  Generated: ${format(new Date(), 'MMMM d, yyyy h:mm a')}`, `  CocolisapScan Detection System v5.0`, SEP, ``, SEC, `📊 DETECTION STATISTICS`, SEC, `Total Scans Performed       : ${total}`, `Severe Infestations (>=10)  : ${severe} (${pct(severe, total)}%)`, `Moderate Infestations (5-9) : ${moderate} (${pct(moderate, total)}%)`, `Low Infestations (<5)       : ${low} (${pct(low, total)}%)`, `Average Insects per Scan    : ${avgInsects}`, `Average Confidence Score    : ${avgConf}%`, `Average Processing Time     : ${(avgProc / 1000).toFixed(2)}s`, ``, SEC, `📍 TOP AFFECTED PROVINCES`, SEC, ...(topP.length ? topP.map(([p, c], i) => `${i + 1}. ${p} - ${c} detections (${pct(c, total)}%)`) : ['No province data available.']), ``, SEC, `📅 DATE RANGE ANALYSIS`, SEC, `Earliest Detection          : ${earliest}`, `Latest Detection            : ${latest}`, `Most Active Day             : ${mostActiveDay ? format(new Date(mostActiveDay[0]), 'MMMM d, yyyy') + ` (${mostActiveDay[1]} scans)` : 'N/A'}`, ``, SEC, `⚠️ FIELD RECOMMENDATIONS`, SEC, rec, ``, SEP, `  CocolisapScan | Undergraduate Thesis Project`, `  YOLOv11 mAP: 87.4% | Dataset: 1,608 images`, SEP].join('\n');
+        const txt = [SEP, `  COCOLISAP IMAGE DETECTION REPORT`, `  Powered by YOLOv11 Instance Segmentation`, `  Generated: ${format(new Date(), 'MMMM d, yyyy h:mm a')}`, `  CocolisapScan Detection System v5.0`, SEP, ``, SEC, `DETECTION STATISTICS`, SEC, `Total Scans Performed       : ${total}`, `Severe Infestations (>=10)  : ${severe} (${pct(severe, total)}%)`, `Moderate Infestations (5-9) : ${moderate} (${pct(moderate, total)}%)`, `Low Infestations (<5)       : ${low} (${pct(low, total)}%)`, `Average Insects per Scan    : ${avgInsects}`, `Average Confidence Score    : ${avgConf}%`, `Average Processing Time     : ${(avgProc / 1000).toFixed(2)}s`, ``, SEC, `TOP AFFECTED PROVINCES`, SEC, ...(topP.length ? topP.map(([p, c], i) => `${i + 1}. ${p} - ${c} detections (${pct(c, total)}%)`) : ['No province data available.']), ``, SEC, `DATE RANGE ANALYSIS`, SEC, `Earliest Detection          : ${earliest}`, `Latest Detection            : ${latest}`, `Most Active Day             : ${mostActiveDay ? format(new Date(mostActiveDay[0]), 'MMMM d, yyyy') + ` (${mostActiveDay[1]} scans)` : 'N/A'}`, ``, SEC, `FIELD RECOMMENDATIONS`, SEC, rec, ``, SEP, `  CocolisapScan | Undergraduate Thesis Project`, `  YOLOv11 mAP: 87.4% | Dataset: 1,608 images`, SEP].join('\n');
         downloadText(txt, `cocolisap-image-detection-summary-${format(new Date(), 'yyyy-MM-dd')}.txt`);
         setExportMessage({ type: 'success', text: 'Image detection summary report generated.' });
     };
@@ -189,7 +222,7 @@ export default function DataExport() {
         if (!filteredAssessments.length) { setExportMessage({ type: 'error', text: 'No fuzzy logic assessments match current filters.' }); return; }
         const headers = ['Assessment ID', 'Date', 'Time', 'Province', 'Municipality', 'Barangay', 'Latitude', 'Longitude', 'Temperature (°C)', 'Humidity (%)', 'Wind Speed (km/h)', 'Planting Density (trees/ha)', 'Total Trees', 'Days Without Intervention', 'Fuzzy Base Score', 'Fuzzy Base Label', 'Intervention Multiplier', 'Adjusted Risk Score', 'Adjusted Risk Label', 'Degree of Infestation (%)', 'Estimated Infected Trees', 'Estimated Healthy Trees', 'Wind Direction', 'Intervention Note'];
         const rows = [headers, ...filteredAssessments.map((a, i) => {
-            const dt = new Date(a.created_date);
+            const dt = toDate(a.created_date) || new Date();
             return [`FZY-${String(i + 1).padStart(3, '0')}`, format(dt, 'yyyy-MM-dd'), format(dt, 'HH:mm:ss'), ns(a.province), ns(a.municipality), ns(a.barangay), ns(a.latitude), ns(a.longitude), a.temperature_c, a.humidity_pct, a.wind_speed_kmh, a.planting_density, a.total_trees, a.days_without_intervention, a.fuzzy_base_score?.toFixed(2), a.fuzzy_base_label, a.intervention_multiplier?.toFixed(4), a.adjusted_risk_score?.toFixed(2), a.adjusted_risk_label, a.degree_of_infestation_pct?.toFixed(2), a.estimated_infected_trees, a.estimated_healthy_trees, a.wind_direction_compass ? `${a.wind_direction_compass} (${a.wind_direction_deg}°)` : 'Not Specified', ns(a.intervention_note)];
         })];
         downloadXLSX(rows, `cocolisap-fuzzy-assessments-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
@@ -212,7 +245,7 @@ export default function DataExport() {
         const rec = high / total > 0.5 ? 'CRITICAL — majority of assessments indicate HIGH risk. Coordinate immediate farm-wide response with LGU.' : moderate / total > 0.5 ? 'ELEVATED RISK — schedule PCA field inspection within 2-4 weeks.' : 'MANAGEABLE — continue quarterly monitoring of coconut farms.';
         const SEP = `================================================`;
         const SEC = `------------------------------------------------`;
-        const txt = [SEP, `  COCOLISAP FUZZY LOGIC ASSESSMENT REPORT`, `  Powered by Mamdani 81-Rule Inference`, `  Generated: ${format(new Date(), 'MMMM d, yyyy h:mm a')}`, `  CocolisapScan Expert System v5.0`, SEP, ``, SEC, `🧠 FUZZY LOGIC ASSESSMENT SUMMARY`, SEC, `Total Assessments Performed  : ${total}`, `HIGH Risk Assessments        : ${high} (${pct(high, total)}%)`, `MODERATE Risk Assessments    : ${moderate} (${pct(moderate, total)}%)`, `LOW Risk Assessments         : ${low} (${pct(low, total)}%)`, `Average Fuzzy Base Score     : ${avg(a, 'fuzzy_base_score').toFixed(2)}%`, `Average Adjusted Risk Score  : ${avg(a, 'adjusted_risk_score').toFixed(2)}%`, `Average Infestation Degree   : ${avg(a, 'degree_of_infestation_pct').toFixed(2)}%`, ``, SEC, `🌾 FARM IMPACT ANALYSIS`, SEC, `Total Trees Assessed         : ${totalTrees.toLocaleString()}`, `Estimated Infected Trees     : ${totalInfected.toLocaleString()} (${pct(totalInfected, totalTrees)}%)`, `Estimated Healthy Trees      : ${totalHealthy.toLocaleString()} (${pct(totalHealthy, totalTrees)}%)`, ``, SEC, `🌤️ AVERAGE ENVIRONMENTAL CONDITIONS`, SEC, `Average Temperature          : ${avg(a, 'temperature_c').toFixed(1)}°C`, `Average Humidity             : ${avg(a, 'humidity_pct').toFixed(1)}%`, `Average Wind Speed           : ${avg(a, 'wind_speed_kmh').toFixed(1)} km/h`, `Average Planting Density     : ${avg(a, 'planting_density').toFixed(1)} trees/ha`, ``, SEC, `📍 TOP HIGH-RISK PROVINCES`, SEC, ...(topP.length ? topP.map(([p, c], i) => `${i + 1}. ${p} - ${c} HIGH risk assessments`) : ['No high-risk province data available.']), ``, SEC, `🚨 PCA INTERVENTION RECOMMENDATIONS`, SEC, rec, ``, SEP, `  CocolisapScan | Undergraduate Thesis Project`, `  Mamdani Fuzzy Inference System | Rules: 81 | Variables: 4 inputs, 1 output`, SEP].join('\n');
+        const txt = [SEP, `  COCOLISAP FUZZY LOGIC ASSESSMENT REPORT`, `  Powered by Mamdani 81-Rule Inference`, `  Generated: ${format(new Date(), 'MMMM d, yyyy h:mm a')}`, `  CocolisapScan Expert System v5.0`, SEP, ``, SEC, `FUZZY LOGIC ASSESSMENT SUMMARY`, SEC, `Total Assessments Performed  : ${total}`, `HIGH Risk Assessments        : ${high} (${pct(high, total)}%)`, `MODERATE Risk Assessments    : ${moderate} (${pct(moderate, total)}%)`, `LOW Risk Assessments         : ${low} (${pct(low, total)}%)`, `Average Fuzzy Base Score     : ${avg(a, 'fuzzy_base_score').toFixed(2)}%`, `Average Adjusted Risk Score  : ${avg(a, 'adjusted_risk_score').toFixed(2)}%`, `Average Infestation Degree   : ${avg(a, 'degree_of_infestation_pct').toFixed(2)}%`, ``, SEC, `FARM IMPACT ANALYSIS`, SEC, `Total Trees Assessed         : ${totalTrees.toLocaleString()}`, `Estimated Infected Trees     : ${totalInfected.toLocaleString()} (${pct(totalInfected, totalTrees)}%)`, `Estimated Healthy Trees      : ${totalHealthy.toLocaleString()} (${pct(totalHealthy, totalTrees)}%)`, ``, SEC, `AVERAGE ENVIRONMENTAL CONDITIONS`, SEC, `Average Temperature          : ${avg(a, 'temperature_c').toFixed(1)}°C`, `Average Humidity             : ${avg(a, 'humidity_pct').toFixed(1)}%`, `Average Wind Speed           : ${avg(a, 'wind_speed_kmh').toFixed(1)} km/h`, `Average Planting Density     : ${avg(a, 'planting_density').toFixed(1)} trees/ha`, ``, SEC, `TOP HIGH-RISK PROVINCES`, SEC, ...(topP.length ? topP.map(([p, c], i) => `${i + 1}. ${p} - ${c} HIGH risk assessments`) : ['No high-risk province data available.']), ``, SEC, `PCA INTERVENTION RECOMMENDATIONS`, SEC, rec, ``, SEP, `  CocolisapScan | Undergraduate Thesis Project`, `  Mamdani Fuzzy Inference System | Rules: 81 | Variables: 4 inputs, 1 output`, SEP].join('\n');
         downloadText(txt, `cocolisap-fuzzy-assessment-summary-${format(new Date(), 'yyyy-MM-dd')}.txt`);
         setExportMessage({ type: 'success', text: 'Fuzzy logic assessment summary generated.' });
     };
@@ -240,7 +273,7 @@ export default function DataExport() {
         if (!combinedRec.length) combinedRec.push('MANAGEABLE — continue regular monitoring. Maintain quarterly inspections and early detection protocols.');
         const SEP = `================================================`;
         const SEC = `------------------------------------------------`;
-        const txt = [SEP, `  COCOLISAP INTEGRATED MONITORING REPORT`, `  YOLOv11 Detection + Mamdani Fuzzy Inference`, `  Generated: ${format(new Date(), 'MMMM d, yyyy h:mm a')}`, `  CocolisapScan Integrated Monitoring System v5.0`, SEP, ``, SEC, `📸 IMAGE DETECTION SUMMARY`, SEC, `Total Scans              : ${dTotal}`, `Severe Infestations      : ${severe} (${pct(severe, dTotal)}%)`, `Moderate Infestations    : ${moderate} (${pct(moderate, dTotal)}%)`, `Low Infestations         : ${low} (${pct(low, dTotal)}%)`, `Avg Insects per Scan     : ${dTotal > 0 ? avg(d, 'total_detections').toFixed(1) : 'N/A'}`, `Avg Confidence Score     : ${dTotal > 0 ? (avg(d, 'avg_confidence') * 100).toFixed(1) + '%' : 'N/A'}`, ``, SEC, `🧠 FUZZY LOGIC ASSESSMENT SUMMARY`, SEC, `Total Assessments        : ${aTotal}`, `HIGH Risk                : ${high} (${pct(high, aTotal)}%)`, `MODERATE Risk            : ${aModerate} (${pct(aModerate, aTotal)}%)`, `LOW Risk                 : ${aLow} (${pct(aLow, aTotal)}%)`, `Avg Fuzzy Score          : ${aTotal > 0 ? avg(a, 'fuzzy_base_score').toFixed(2) + '%' : 'N/A'}`, `Est. Total Infected Trees: ${totalInfected.toLocaleString()}`, `Est. Total Healthy Trees : ${totalHealthy.toLocaleString()}`, ``, SEC, `📍 TOP AFFECTED PROVINCES`, SEC, ...(topP.length ? topP.map(([p, v], i) => `${i + 1}. ${p} - ${v.det} detections, ${v.high} HIGH risk`) : ['No province data available.']), ``, SEC, `🌤️ ENVIRONMENTAL CONDITIONS`, SEC, `Avg Temperature          : ${aTotal > 0 ? avg(a, 'temperature_c').toFixed(1) + '°C' : 'N/A'}`, `Avg Humidity             : ${aTotal > 0 ? avg(a, 'humidity_pct').toFixed(1) + '%' : 'N/A'}`, `Avg Wind Speed           : ${aTotal > 0 ? avg(a, 'wind_speed_kmh').toFixed(1) + ' km/h' : 'N/A'}`, `Avg Planting Density     : ${aTotal > 0 ? avg(a, 'planting_density').toFixed(1) + ' trees/ha' : 'N/A'}`, ``, SEC, `🚨 INTEGRATED RECOMMENDATIONS`, SEC, ...combinedRec, ``, SEP, `  CocolisapScan | Undergraduate Thesis Project`, `  YOLOv11 mAP: 87.4% | Fuzzy Rules: 81`, SEP].join('\n');
+        const txt = [SEP, `  COCOLISAP INTEGRATED MONITORING REPORT`, `  YOLOv11 Detection + Mamdani Fuzzy Inference`, `  Generated: ${format(new Date(), 'MMMM d, yyyy h:mm a')}`, `  CocolisapScan Integrated Monitoring System v5.0`, SEP, ``, SEC, `IMAGE DETECTION SUMMARY`, SEC, `Total Scans              : ${dTotal}`, `Severe Infestations      : ${severe} (${pct(severe, dTotal)}%)`, `Moderate Infestations    : ${moderate} (${pct(moderate, dTotal)}%)`, `Low Infestations         : ${low} (${pct(low, dTotal)}%)`, `Avg Insects per Scan     : ${dTotal > 0 ? avg(d, 'total_detections').toFixed(1) : 'N/A'}`, `Avg Confidence Score     : ${dTotal > 0 ? (avg(d, 'avg_confidence') * 100).toFixed(1) + '%' : 'N/A'}`, ``, SEC, `FUZZY LOGIC ASSESSMENT SUMMARY`, SEC, `Total Assessments        : ${aTotal}`, `HIGH Risk                : ${high} (${pct(high, aTotal)}%)`, `MODERATE Risk            : ${aModerate} (${pct(aModerate, aTotal)}%)`, `LOW Risk                 : ${aLow} (${pct(aLow, aTotal)}%)`, `Avg Fuzzy Score          : ${aTotal > 0 ? avg(a, 'fuzzy_base_score').toFixed(2) + '%' : 'N/A'}`, `Est. Total Infected Trees: ${totalInfected.toLocaleString()}`, `Est. Total Healthy Trees : ${totalHealthy.toLocaleString()}`, ``, SEC, `TOP AFFECTED PROVINCES`, SEC, ...(topP.length ? topP.map(([p, v], i) => `${i + 1}. ${p} - ${v.det} detections, ${v.high} HIGH risk`) : ['No province data available.']), ``, SEC, `ENVIRONMENTAL CONDITIONS`, SEC, `Avg Temperature          : ${aTotal > 0 ? avg(a, 'temperature_c').toFixed(1) + '°C' : 'N/A'}`, `Avg Humidity             : ${aTotal > 0 ? avg(a, 'humidity_pct').toFixed(1) + '%' : 'N/A'}`, `Avg Wind Speed           : ${aTotal > 0 ? avg(a, 'wind_speed_kmh').toFixed(1) + ' km/h' : 'N/A'}`, `Avg Planting Density     : ${aTotal > 0 ? avg(a, 'planting_density').toFixed(1) + ' trees/ha' : 'N/A'}`, ``, SEC, `INTEGRATED RECOMMENDATIONS`, SEC, ...combinedRec, ``, SEP, `  CocolisapScan | Undergraduate Thesis Project`, `  YOLOv11 mAP: 87.4% | Fuzzy Rules: 81`, SEP].join('\n');
         downloadText(txt, `cocolisap-integrated-report-${format(new Date(), 'yyyy-MM-dd')}.txt`);
         setExportMessage({ type: 'success', text: 'Integrated monitoring report generated.' });
     };
