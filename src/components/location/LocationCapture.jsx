@@ -80,17 +80,33 @@ export default function LocationCapture({ onLocationChange }) {
                 const data = await res.json();
                 const addr = data.address || {};
 
-                // ✅ FIX: In the Philippines, Nominatim puts:
-                //   - Region (e.g. "Calabarzon") in addr.state
-                //   - Province (e.g. "Quezon") in addr.state_district
-                // So we must prioritize state_district over state.
-                const rawProvince =
-                    addr.province ||
-                    addr.state_district ||   // ← PH province lives here
-                    addr.county ||
-                    addr.state || '';        // state = region in PH, last resort
+                // Log the full address object so we can see exactly what Nominatim returns
+                console.log('[LocationCapture] Nominatim raw address:', JSON.stringify(addr, null, 2));
 
-                const province = matchProvince(rawProvince);
+                // ✅ BULLETPROOF PROVINCE DETECTION:
+                // Instead of guessing field names (which vary by country/region in OSM),
+                // scan ALL address fields and find the one whose value matches a known PH province.
+                let province = '';
+                const addrValues = Object.values(addr).filter(v => typeof v === 'string');
+                for (const val of addrValues) {
+                    const matched = matchProvince(val);
+                    if (PHILIPPINE_PROVINCES.includes(matched)) {
+                        province = matched;
+                        console.log('[LocationCapture] Province matched from addr field:', val, '→', matched);
+                        break;
+                    }
+                }
+
+                // Fallback: try known field names in priority order if scan found nothing
+                if (!province) {
+                    const rawProvince =
+                        addr.province ||
+                        addr.state_district ||
+                        addr.county ||
+                        addr.state || '';
+                    province = matchProvince(rawProvince);
+                    console.log('[LocationCapture] Province via fallback fields:', rawProvince, '→', province);
+                }
 
                 const municipality =
                     addr.city ||
@@ -99,8 +115,6 @@ export default function LocationCapture({ onLocationChange }) {
                     addr.village ||
                     addr.suburb || '';
 
-                // ✅ FIX: barangay — prefer neighbourhood/quarter over suburb
-                // (suburb often duplicates municipality)
                 const barangay =
                     addr.neighbourhood ||
                     addr.quarter ||
