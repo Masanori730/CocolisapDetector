@@ -308,8 +308,8 @@ export default function LocationCapture({ onLocationChange }) {
 
     return (
         <div className="bg-white rounded-2xl p-6 border border-stone-200">
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
+            <div className="mb-4">
+                <div className="flex items-center gap-2 mb-3">
                     <MapPin className="w-5 h-5 text-emerald-600" />
                     <h3 className="font-semibold text-stone-800">Location Information</h3>
                     {geocoding && <span style={{ fontSize: 11, color: '#8aaa96', fontFamily: 'monospace' }}>Finding coordinates...</span>}
@@ -317,12 +317,12 @@ export default function LocationCapture({ onLocationChange }) {
                         <span style={{ fontSize: 11, color: '#2e8b4a', fontFamily: 'monospace' }}>✓ GPS ready</span>
                     )}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 w-full">
                     <Button
                         variant={mode === 'gps' ? 'default' : 'outline'}
                         size="sm"
                         onClick={() => setMode('gps')}
-                        className={mode === 'gps' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+                        className={`flex-1 ${mode === 'gps' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}`}
                     >
                         <Navigation className="w-4 h-4 mr-1" />
                         GPS
@@ -331,7 +331,7 @@ export default function LocationCapture({ onLocationChange }) {
                         variant={mode === 'manual' ? 'default' : 'outline'}
                         size="sm"
                         onClick={() => setMode('manual')}
-                        className={mode === 'manual' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+                        className={`flex-1 ${mode === 'manual' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}`}
                     >
                         Manual
                     </Button>
