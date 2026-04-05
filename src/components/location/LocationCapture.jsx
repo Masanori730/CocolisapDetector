@@ -26,6 +26,84 @@ const PHILIPPINE_PROVINCES = [
     "Zamboanga Sibugay"
 ];
 
+// When Nominatim doesn't return a province, look up by city name
+// Cities in PH are often independent but we map known ones to their province
+const CITY_TO_PROVINCE = {
+    // Calabarzon
+    'lucena': 'Quezon',
+    'tayabas': 'Quezon',
+    'calamba': 'Laguna',
+    'san pablo': 'Laguna',
+    'santa rosa': 'Laguna',
+    'biñan': 'Laguna',
+    'cabuyao': 'Laguna',
+    'antipolo': 'Rizal',
+    'batangas': 'Batangas',
+    'lipa': 'Batangas',
+    'tanauan': 'Batangas',
+    'cavite': 'Cavite',
+    'bacoor': 'Cavite',
+    'dasmariñas': 'Cavite',
+    'imus': 'Cavite',
+    'general trias': 'Cavite',
+    'trece martires': 'Cavite',
+    // NCR
+    'manila': 'Metro Manila',
+    'quezon city': 'Metro Manila',
+    'makati': 'Metro Manila',
+    'pasig': 'Metro Manila',
+    'taguig': 'Metro Manila',
+    'parañaque': 'Metro Manila',
+    'las piñas': 'Metro Manila',
+    'muntinlupa': 'Metro Manila',
+    'marikina': 'Metro Manila',
+    'valenzuela': 'Metro Manila',
+    'caloocan': 'Metro Manila',
+    'malabon': 'Metro Manila',
+    'navotas': 'Metro Manila',
+    'mandaluyong': 'Metro Manila',
+    'san juan': 'Metro Manila',
+    'pasay': 'Metro Manila',
+    'pateros': 'Metro Manila',
+    // Central Luzon
+    'angeles': 'Pampanga',
+    'san fernando': 'Pampanga',
+    'olongapo': 'Zambales',
+    'cabanatuan': 'Nueva Ecija',
+    'malolos': 'Bulacan',
+    'meycauayan': 'Bulacan',
+    'san jose del monte': 'Bulacan',
+    // Ilocos
+    'laoag': 'Ilocos Norte',
+    'vigan': 'Ilocos Sur',
+    'san fernando la union': 'La Union',
+    // Cagayan Valley
+    'tuguegarao': 'Cagayan',
+    'cauayan': 'Isabela',
+    'santiago': 'Isabela',
+    // Bicol
+    'legazpi': 'Albay',
+    'naga': 'Camarines Sur',
+    'iriga': 'Camarines Sur',
+    // Visayas
+    'cebu': 'Cebu',
+    'mandaue': 'Cebu',
+    'lapu-lapu': 'Cebu',
+    'iloilo': 'Iloilo',
+    'bacolod': 'Negros Occidental',
+    'tacloban': 'Leyte',
+    'ormoc': 'Leyte',
+    // Mindanao
+    'davao': 'Davao del Sur',
+    'general santos': 'South Cotabato',
+    'cagayan de oro': 'Misamis Oriental',
+    'iligan': 'Lanao del Norte',
+    'zamboanga': 'Zamboanga del Sur',
+    'butuan': 'Agusan del Norte',
+    'surigao': 'Surigao del Norte',
+    'cotabato': 'Cotabato',
+};
+
 export default function LocationCapture({ onLocationChange }) {
     const [mode, setMode] = useState('manual');
     const [capturing, setCapturing] = useState(false);
@@ -52,21 +130,6 @@ export default function LocationCapture({ onLocationChange }) {
             .trim();
     };
 
-    const matchProvince = (raw) => {
-        const cleaned = cleanProvince(raw);
-        if (!cleaned) return '';
-        const exact = PHILIPPINE_PROVINCES.find(
-            p => p.toLowerCase() === cleaned.toLowerCase()
-        );
-        if (exact) return exact;
-        const partial = PHILIPPINE_PROVINCES.find(
-            p => p.toLowerCase().includes(cleaned.toLowerCase()) ||
-                 cleaned.toLowerCase().includes(p.toLowerCase())
-        );
-        return partial || cleaned;
-    };
-
-    // Only returns a value if it EXACTLY matches a known province (after cleaning)
     const exactProvinceMatch = (raw) => {
         const cleaned = cleanProvince(raw || '');
         return PHILIPPINE_PROVINCES.find(
@@ -86,31 +149,20 @@ export default function LocationCapture({ onLocationChange }) {
 
                 console.log('[LocationCapture] Raw addr:', JSON.stringify(addr));
 
-                // Step 1: Try specific known fields (exact match only)
+                // Step 1: Try exact province match from known fields
                 let province =
                     exactProvinceMatch(addr.province) ||
                     exactProvinceMatch(addr.state_district) ||
                     exactProvinceMatch(addr.county) ||
                     null;
 
-                // Step 2: Scan ALL string fields for an exact province match
+                // Step 2: Scan all string fields for exact province match
                 if (!province) {
                     for (const val of Object.values(addr).filter(v => typeof v === 'string')) {
                         const matched = exactProvinceMatch(val);
-                        if (matched) {
-                            province = matched;
-                            console.log('[LocationCapture] Province found by scan:', val, '->', matched);
-                            break;
-                        }
+                        if (matched) { province = matched; break; }
                     }
                 }
-
-                // Step 3: Last resort partial match on state (region in PH)
-                if (!province) {
-                    province = matchProvince(addr.state || '');
-                }
-
-                console.log('[LocationCapture] Final province:', province);
 
                 const municipality =
                     addr.city ||
@@ -119,6 +171,23 @@ export default function LocationCapture({ onLocationChange }) {
                     addr.village ||
                     addr.suburb || '';
 
+                // Step 3: Look up province by city name (handles independent cities like Lucena)
+                if (!province && municipality) {
+                    const cityKey = municipality.toLowerCase().trim();
+                    province = CITY_TO_PROVINCE[cityKey] || null;
+                    if (province) console.log('[LocationCapture] Province from city lookup:', municipality, '->', province);
+                }
+
+                // Step 4: Last resort - check display_name string for a province name
+                if (!province && data.display_name) {
+                    for (const part of data.display_name.split(',').map(s => s.trim())) {
+                        const matched = exactProvinceMatch(part);
+                        if (matched) { province = matched; break; }
+                    }
+                }
+
+                console.log('[LocationCapture] Final province:', province);
+
                 const barangay =
                     addr.neighbourhood ||
                     addr.quarter ||
@@ -126,7 +195,7 @@ export default function LocationCapture({ onLocationChange }) {
                     addr.village ||
                     addr.suburb || '';
 
-                return { province, municipality, barangay };
+                return { province: province || '', municipality, barangay };
             }
         } catch (e) {
             console.error('Reverse geocode failed:', e);
