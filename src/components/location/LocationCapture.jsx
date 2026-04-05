@@ -44,6 +44,31 @@ export default function LocationCapture({ onLocationChange }) {
         locationMethod: 'manual'
     });
 
+    // Strip "Province of X" or "X Province" → just "X", then match against known list
+    const cleanProvince = (raw) => {
+        if (!raw) return '';
+        return raw
+            .replace(/^Province of\s+/i, '')
+            .replace(/\s+Province$/i, '')
+            .trim();
+    };
+
+    const matchProvince = (raw) => {
+        const cleaned = cleanProvince(raw);
+        if (!cleaned) return '';
+        // Exact match first (case-insensitive)
+        const exact = PHILIPPINE_PROVINCES.find(
+            p => p.toLowerCase() === cleaned.toLowerCase()
+        );
+        if (exact) return exact;
+        // Partial match fallback
+        const partial = PHILIPPINE_PROVINCES.find(
+            p => p.toLowerCase().includes(cleaned.toLowerCase()) ||
+                 cleaned.toLowerCase().includes(p.toLowerCase())
+        );
+        return partial || cleaned;
+    };
+
     // Reverse geocode: coordinates → province/municipality/barangay
     const reverseGeocode = async (lat, lng) => {
         try {
@@ -54,11 +79,30 @@ export default function LocationCapture({ onLocationChange }) {
             if (res.ok) {
                 const data = await res.json();
                 const addr = data.address || {};
-                return {
-                    province: addr.province || addr.state || '',
-                    municipality: addr.city || addr.town || addr.municipality || addr.village || '',
-                    barangay: addr.suburb || addr.neighbourhood || addr.quarter || '',
-                };
+
+                // Try all fields Nominatim might use for province
+                const rawProvince =
+                    addr.province ||
+                    addr.state ||
+                    addr.county ||
+                    addr.region || '';
+
+                const province = matchProvince(rawProvince);
+
+                const municipality =
+                    addr.city ||
+                    addr.town ||
+                    addr.municipality ||
+                    addr.village ||
+                    addr.suburb || '';
+
+                const barangay =
+                    addr.suburb ||
+                    addr.neighbourhood ||
+                    addr.quarter ||
+                    addr.village || '';
+
+                return { province, municipality, barangay };
             }
         } catch (e) {
             console.error('Reverse geocode failed:', e);
