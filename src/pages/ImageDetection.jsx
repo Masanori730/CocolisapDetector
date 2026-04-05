@@ -18,7 +18,7 @@ import { collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, limit } fr
 const API_BASE_URL = 'https://cocolisap-detector-398384683490.asia-southeast1.run.app';
 
 const homeStyles = `
-    .home-root { background: #f4f7f4; min-height: 100vh; color: #1a3326; font-family: 'Outfit', sans-serif; }
+    .home-root { background: #f4f7f4; min-height: 100vh; color: #1a3326; font-family: 'Outfit', sans-serif; overflow-x: hidden; width: 100%; }
     .home-hero { padding: 56px 24px 48px; max-width: 900px; margin: 0 auto; position: relative; }
     .home-hero::before { content:''; position:fixed; inset:0; pointer-events:none; z-index:0; background: radial-gradient(ellipse 80% 60% at 15% 10%,rgba(46,139,74,0.05) 0%,transparent 60%), radial-gradient(ellipse 50% 40% at 85% 80%,rgba(46,139,74,0.04) 0%,transparent 55%); }
     .home-badge { display:inline-flex; align-items:center; gap:8px; background:rgba(46,139,74,0.10); border:1px solid rgba(46,139,74,0.25); border-radius:100px; padding:5px 14px; font-family:'DM Mono',monospace; font-size:11px; letter-spacing:.08em; color:#2e8b4a; text-transform:uppercase; margin-bottom:16px; }
@@ -28,16 +28,16 @@ const homeStyles = `
     .home-h1 em { font-style:italic; color:#2e8b4a; }
     .home-subtitle { font-size:15px; color:#5a8068; line-height:1.6; max-width:520px; margin-bottom:28px; }
     .home-divider { height:1px; background:linear-gradient(90deg,rgba(46,139,74,0.25),transparent 80%); margin:0 0 32px; }
-    .home-cta { display:inline-flex; align-items:center; gap:8px; padding:13px 32px; background:#2e8b4a; color:#fff; border:none; border-radius:12px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:600; letter-spacing:.04em; cursor:pointer; transition:background .2s,transform .15s,box-shadow .2s; }
+    .home-cta { display:inline-flex; align-items:center; gap:8px; padding:13px 32px; background:#2e8b4a; color:#fff; border:none; border-radius:12px; font-family:'Outfit',sans-serif; font-size:14px; font-weight:600; letter-spacing:.04em; cursor:pointer; transition:background .2s,transform .15s,box-shadow .2s; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
     .home-cta:hover { background:#25763e; transform:translateY(-1px); box-shadow:0 6px 20px rgba(46,139,74,.30); }
-    .home-main { max-width: 1200px; margin: 0 auto; padding: 0 24px 80px; position: relative; z-index: 1; }
+    .home-main { max-width: 1200px; margin: 0 auto; padding: 0 24px 80px; position: relative; z-index: 1; overflow-x: hidden; }
     .home-card { background:#ffffff; border:1px solid #d6e8d6; border-radius:20px; padding:32px; position:relative; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.05); }
     .home-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,#2e8b4a,transparent); }
     .home-card-title { font-size:17px; font-weight:600; color:#1a3326; margin:0 0 4px; }
     .home-card-sub { font-size:13px; color:#5a8068; }
-    .home-reset-btn { display:flex; align-items:center; gap:6px; padding:8px 16px; background:transparent; border:1px solid #c8dfc8; border-radius:10px; color:#5a8068; font-family:'Outfit',sans-serif; font-size:12px; font-weight:500; cursor:pointer; transition:background .2s,color .2s; }
+    .home-reset-btn { display:flex; align-items:center; gap:6px; padding:8px 16px; background:transparent; border:1px solid #c8dfc8; border-radius:10px; color:#5a8068; font-family:'Outfit',sans-serif; font-size:12px; font-weight:500; cursor:pointer; transition:background .2s,color .2s; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
     .home-reset-btn:hover { background:rgba(46,139,74,0.07); color:#1a3326; }
-    .home-detect-btn { width:100%; padding:15px; background:#2e8b4a; color:#fff; border:none; border-radius:12px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:600; letter-spacing:.04em; cursor:pointer; transition:background .2s,transform .15s,box-shadow .2s; margin-top:20px; }
+    .home-detect-btn { width:100%; padding:15px; background:#2e8b4a; color:#fff; border:none; border-radius:12px; font-family:'Outfit',sans-serif; font-size:15px; font-weight:600; letter-spacing:.04em; cursor:pointer; transition:background .2s,transform .15s,box-shadow .2s; margin-top:20px; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
     .home-detect-btn:hover { background:#25763e; transform:translateY(-1px); box-shadow:0 6px 20px rgba(46,139,74,.25); }
     .home-detect-btn:disabled { opacity:.5; cursor:not-allowed; transform:none; }
     .home-info-card { background:#fffbf0; border:1px solid #f0dfa0; border-radius:16px; padding:20px; display:flex; gap:16px; }
@@ -51,6 +51,14 @@ const homeStyles = `
     [data-radix-tabs-list] { background:#f0f5f0 !important; border:1px solid #d6e8d6 !important; border-radius:10px !important; padding:4px !important; }
     [data-radix-tabs-trigger] { color:#5a8068 !important; font-family:'Outfit',sans-serif !important; font-size:13px !important; border-radius:8px !important; }
     [data-radix-tabs-trigger][data-state=active] { background:#ffffff !important; color:#2e8b4a !important; box-shadow:0 1px 4px rgba(0,0,0,.10) !important; }
+    /* FIX: grid layout mobile */
+    .home-grid-layout { display: grid; grid-template-columns: 1fr 340px; gap: 24px; width: 100%; }
+    @media(max-width:900px) {
+        .home-grid-layout { grid-template-columns: 1fr !important; }
+        .home-main { padding: 0 16px 80px; }
+        .home-hero { padding: 40px 16px 32px; }
+        .home-card { padding: 20px; }
+    }
 `;
 
 const detectWithYOLO = async (imageDataUrl) => {
@@ -247,6 +255,9 @@ export default function Home() {
         document.getElementById('upload-section')?.scrollIntoView({ behavior: 'smooth' });
     };
 
+    // FIX: remove x animations that cause horizontal overflow on mobile
+    const fadeUp = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 } };
+
     return (
         <div className="home-root">
             <style>{homeStyles}</style>
@@ -274,11 +285,10 @@ export default function Home() {
 
             {/* Main */}
             <main className="home-main" id="upload-section">
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 24 }} className="home-grid-layout">
-                    <style>{`@media(max-width:900px){.home-grid-layout{grid-template-columns:1fr !important;}}`}</style>
+                <div className="home-grid-layout">
 
-                    {/* Upload Card */}
-                    <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}>
+                    {/* Upload Card — FIX: no x animation */}
+                    <motion.div {...fadeUp} transition={{ delay: 0.1 }} style={{ minWidth: 0, overflow: 'hidden' }}>
                         <div className="home-card">
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
                                 <div>
@@ -306,7 +316,7 @@ export default function Home() {
                                         <>
                                             <ImageUploader onImageSelect={handleImageSelect} isProcessing={isProcessing} />
                                             {selectedImage && !results && (
-                                                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ marginTop: 20 }}>
+                                                <motion.div {...fadeUp} style={{ marginTop: 20 }}>
                                                     <LocationCapture onLocationChange={setLocationData} />
                                                 </motion.div>
                                             )}
@@ -314,7 +324,7 @@ export default function Home() {
                                     )}
                                     {error && <Alert variant="destructive" style={{ marginTop: 16 }}><AlertDescription>{error}</AlertDescription></Alert>}
                                     {selectedImage && !results && (
-                                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                                        <motion.div {...fadeUp}>
                                             <button className="home-detect-btn" onClick={handleDetect} disabled={isProcessing}>
                                                 {isProcessing ? 'Processing...' : 'Detect Cocolisap'}
                                             </button>
@@ -331,7 +341,7 @@ export default function Home() {
 
                         {/* Single Results */}
                         {results && !results.isBatch && (
-                            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 20 }}>
+                            <motion.div {...fadeUp} style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 20 }}>
                                 <div className="home-card">
                                     <DetectionResults originalImage={imagePreview} detections={results.detections} />
                                 </div>
@@ -341,7 +351,7 @@ export default function Home() {
 
                         {/* Batch Results */}
                         {results && results.isBatch && (
-                            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ marginTop: 20 }}>
+                            <motion.div {...fadeUp} style={{ marginTop: 20 }}>
                                 <div className="home-card">
                                     <p className="home-batch-title">Batch Results — {results.batchResults.length} image{results.batchResults.length > 1 ? 's' : ''} processed</p>
                                     {results.batchResults.map((item, index) => (
@@ -356,7 +366,7 @@ export default function Home() {
                         )}
 
                         {/* Info Card */}
-                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} style={{ marginTop: 20 }}>
+                        <motion.div {...fadeUp} transition={{ delay: 0.3 }} style={{ marginTop: 20 }}>
                             <div className="home-info-card">
                                 <div className="home-info-icon">
                                     <Info style={{ width: 18, height: 18, color: '#e8a440' }} />
@@ -378,8 +388,8 @@ export default function Home() {
                         </div>
                     </motion.div>
 
-                    {/* History Sidebar */}
-                    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
+                    {/* History Sidebar — FIX: no x animation, minWidth:0 prevents overflow */}
+                    <motion.div {...fadeUp} transition={{ delay: 0.2 }} style={{ minWidth: 0, overflow: 'hidden' }}>
                         <DetectionHistory
                             detections={history}
                             onSelect={handleSelectFromHistory}
