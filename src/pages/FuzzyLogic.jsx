@@ -311,6 +311,26 @@ const fuzzyStyles = `
     display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;
   }
   .fl-wx-status {font-family:var(--mono);font-size:11px;color:var(--text-muted);}
+
+  /* ── PSGC CASCADING DROPDOWNS ── */
+  .fl-select {
+    background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);
+    color:var(--text);font-family:var(--mono);font-size:14px;padding:12px 36px 12px 16px;
+    width:100%;outline:none;cursor:pointer;appearance:none;-webkit-appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235a8068' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 14px center;
+    transition:border-color .2s,box-shadow .2s,background .2s;
+    box-sizing:border-box;
+  }
+  .fl-select:focus {border-color:var(--green);box-shadow:0 0 0 3px rgba(46,139,74,.10);background-color:var(--bg3);}
+  .fl-select:disabled {opacity:.45;cursor:not-allowed;}
+  .fl-select-wrap {position:relative;}
+  .fl-psgc-loading {
+    position:absolute;right:36px;top:50%;transform:translateY(-50%);
+    width:12px;height:12px;border:2px solid rgba(46,139,74,.2);border-top-color:var(--green);
+    border-radius:50%;animation:fl-spin .7s linear infinite;pointer-events:none;
+  }
+
   @media(max-width:600px){
     .fl-grid2{grid-template-columns:1fr;}
     .fl-form-card{padding:24px 20px;}
@@ -427,19 +447,30 @@ export default function FuzzyLogic() {
   const [errs, setErrs] = useState({});
   const [savedDocId, setSavedDocId] = useState(null);
 
+  // PSGC dropdown state
+  const [regions, setRegions] = useState([]);
+  const [provinces, setProvinces] = useState([]);
+  const [cities, setCities] = useState([]);
+  const [barangays, setBarangays] = useState([]);
+  const [psgcLoading, setPsgcLoading] = useState('');
+
   const resultsRef = useRef(null);
   const spreadCardRef = useRef(null);
 
-  // Base score animates for Infestation Suitability
+  // Load regions on mount
+  useEffect(() => {
+    fetch('https://psgc.cloud/api/regions')
+      .then(r => r.json())
+      .then(data => setRegions(data))
+      .catch(() => {});
+  }, []);
+
   const baseScoreAnim = useCountUp(pred ? pred.fuzzy_base_score : null);
-  // Adjusted score animates for Risk Score sub-box
   const adjScoreAnim = useCountUp(pred ? pred.adjusted_risk_score : null);
   const infectedAnim = useCountUp(pred ? pred.estimated_infected_trees : null);
   const healthyAnim = useCountUp(pred ? pred.estimated_healthy_trees : null);
 
-  // Base label for main card colouring
   const baseLc = pred ? pred.fuzzy_base_label.toLowerCase() : 'low';
-  // Adjusted label for sub-box
   const adjLc = pred ? pred.adjusted_risk_label.toLowerCase() : 'low';
 
   function switchMode(m) {
@@ -453,7 +484,7 @@ export default function FuzzyLogic() {
   }
 
   async function fetchWeather() {
-    if (!loc.city && !loc.province) { setWxErr('Please enter at least City/Municipality and Province.'); return; }
+    if (!loc.city && !loc.province) { setWxErr('Please select at least City/Municipality and Province.'); return; }
     setWxErr(''); setWx(null); setWxLoading(true); setWxStatus('Resolving address…');
     try {
       const gRes = await fetch(`${API}/geocode`, {
@@ -520,7 +551,6 @@ export default function FuzzyLogic() {
       if (mode === 'smart' && wx) setShowSpread(true);
       setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
 
-      // Save to Firebase
       const assessmentData = {
         temperature_c: payload.temperature,
         humidity_pct: payload.humidity,
@@ -593,7 +623,6 @@ export default function FuzzyLogic() {
     <div className="fl-root">
       <style>{fuzzyStyles}</style>
 
-      {/* Decorative leaf */}
       <svg style={{ position: 'fixed', right: '-40px', top: '50%', transform: 'translateY(-50%)', width: '220px', opacity: '.04', pointerEvents: 'none', zIndex: 0 }}
         viewBox="0 0 200 400" fill="none">
         <path d="M100 380 C100 380 10 280 10 180 C10 80 55 20 100 20 C145 20 190 80 190 180 C190 280 100 380 100 380Z" fill="#2e8b4a" />
@@ -618,7 +647,6 @@ export default function FuzzyLogic() {
         </header>
         <div className="fl-divider" />
 
-        {/* Mode toggle */}
         <div className="fl-mode-toggle">
           <button className={`fl-mode-btn${mode === 'manual' ? ' active' : ''}`} onClick={() => switchMode('manual')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -644,32 +672,143 @@ export default function FuzzyLogic() {
               <div>
                 <span className="fl-sec-label">Farm Location — Philippine Address</span>
                 <div className="fl-grid2">
-                  <div className="fl-ig">
-                    <label className="fl-label">Barangay</label>
-                    <input className="fl-input" type="text" placeholder="e.g. Brgy. San Isidro" value={loc.barangay}
-                      onChange={e => setLoc(l => ({ ...l, barangay: e.target.value }))} autoComplete="off" />
+
+                  {/* REGION */}
+                  <div className="fl-ig full">
+                    <label className="fl-label">Region</label>
+                    <div className="fl-select-wrap">
+                      <select
+                        className="fl-select"
+                        value={loc.region}
+                        onChange={async e => {
+                          const selected = regions.find(r => r.name === e.target.value);
+                          setLoc(l => ({ ...l, region: e.target.value, province: '', city: '', barangay: '' }));
+                          setProvinces([]); setCities([]); setBarangays([]);
+                          if (!selected) return;
+                          setPsgcLoading('provinces');
+                          try {
+                            const res = await fetch(`https://psgc.cloud/api/regions/${selected.code}/provinces`);
+                            const data = await res.json();
+                            if (!data.length) {
+                              // NCR-type region: no provinces, go straight to cities
+                              const res2 = await fetch(`https://psgc.cloud/api/regions/${selected.code}/cities-municipalities`);
+                              const data2 = await res2.json();
+                              setCities(data2);
+                            } else {
+                              setProvinces(data);
+                            }
+                          } catch {}
+                          setPsgcLoading('');
+                        }}
+                      >
+                        <option value="">Select Region</option>
+                        {regions.map(r => (
+                          <option key={r.code} value={r.name}>{r.name}</option>
+                        ))}
+                      </select>
+                      {psgcLoading === 'provinces' && <div className="fl-psgc-loading" />}
+                    </div>
                   </div>
+
+                  {/* PROVINCE */}
+                  <div className="fl-ig full">
+                    <label className="fl-label">Province</label>
+                    <div className="fl-select-wrap">
+                      <select
+                        className="fl-select"
+                        value={loc.province}
+                        disabled={!loc.region || (provinces.length === 0 && cities.length > 0)}
+                        onChange={async e => {
+                          const selected = provinces.find(p => p.name === e.target.value);
+                          setLoc(l => ({ ...l, province: e.target.value, city: '', barangay: '' }));
+                          setCities([]); setBarangays([]);
+                          if (!selected) return;
+                          setPsgcLoading('cities');
+                          try {
+                            const res = await fetch(`https://psgc.cloud/api/provinces/${selected.code}/cities-municipalities`);
+                            const data = await res.json();
+                            setCities(data);
+                          } catch {}
+                          setPsgcLoading('');
+                        }}
+                      >
+                        <option value="">
+                          {!loc.region
+                            ? 'Select Region first'
+                            : provinces.length === 0 && cities.length > 0
+                              ? 'No provinces (select city below)'
+                              : 'Select Province'}
+                        </option>
+                        {provinces.map(p => (
+                          <option key={p.code} value={p.name}>{p.name}</option>
+                        ))}
+                      </select>
+                      {psgcLoading === 'cities' && <div className="fl-psgc-loading" />}
+                    </div>
+                  </div>
+
+                  {/* CITY / MUNICIPALITY */}
                   <div className="fl-ig">
                     <label className="fl-label">City / Municipality</label>
-                    <input className="fl-input" type="text" placeholder="e.g. Lucena City" value={loc.city}
-                      onChange={e => setLoc(l => ({ ...l, city: e.target.value }))} autoComplete="off" />
+                    <div className="fl-select-wrap">
+                      <select
+                        className="fl-select"
+                        value={loc.city}
+                        disabled={!cities.length}
+                        onChange={async e => {
+                          const selected = cities.find(c => c.name === e.target.value);
+                          setLoc(l => ({ ...l, city: e.target.value, barangay: '' }));
+                          setBarangays([]);
+                          if (!selected) return;
+                          setPsgcLoading('barangays');
+                          try {
+                            const res = await fetch(`https://psgc.cloud/api/cities-municipalities/${selected.code}/barangays`);
+                            const data = await res.json();
+                            setBarangays(data);
+                          } catch {}
+                          setPsgcLoading('');
+                        }}
+                      >
+                        <option value="">
+                          {!cities.length ? 'Select Province first' : 'Select City / Municipality'}
+                        </option>
+                        {cities.map(c => (
+                          <option key={c.code} value={c.name}>{c.name}</option>
+                        ))}
+                      </select>
+                      {psgcLoading === 'barangays' && <div className="fl-psgc-loading" />}
+                    </div>
                   </div>
+
+                  {/* BARANGAY */}
                   <div className="fl-ig">
-                    <label className="fl-label">Province</label>
-                    <input className="fl-input" type="text" placeholder="e.g. Quezon" value={loc.province}
-                      onChange={e => setLoc(l => ({ ...l, province: e.target.value }))} autoComplete="off" />
+                    <label className="fl-label">Barangay</label>
+                    <div className="fl-select-wrap">
+                      <select
+                        className="fl-select"
+                        value={loc.barangay}
+                        disabled={!barangays.length}
+                        onChange={e => setLoc(l => ({ ...l, barangay: e.target.value }))}
+                      >
+                        <option value="">
+                          {!barangays.length ? 'Select City first' : 'Select Barangay'}
+                        </option>
+                        {barangays.map(b => (
+                          <option key={b.code} value={b.name}>{b.name}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                  <div className="fl-ig">
-                    <label className="fl-label">Region</label>
-                    <input className="fl-input" type="text" placeholder="e.g. CALABARZON" value={loc.region}
-                      onChange={e => setLoc(l => ({ ...l, region: e.target.value }))} autoComplete="off" />
-                  </div>
+
+                  {/* COUNTRY — read-only */}
                   <div className="fl-ig full">
                     <label className="fl-label">Country</label>
-                    <input className="fl-input" type="text" value={loc.country}
-                      onChange={e => setLoc(l => ({ ...l, country: e.target.value }))} autoComplete="off" />
+                    <input className="fl-input" type="text" value={loc.country} readOnly
+                      style={{ opacity: .6, cursor: 'default' }} />
                   </div>
+
                 </div>
+
                 <div style={{ marginTop: '20px', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
                   <button type="button" className="fl-fetch-btn" onClick={fetchWeather} disabled={wxLoading}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -680,6 +819,7 @@ export default function FuzzyLogic() {
                   {wxLoading && <div className="fl-spin" />}
                   <span className="fl-wx-status">{wxStatus}</span>
                 </div>
+
                 {wx && (
                   <div className="fl-wx-preview">
                     <div className="fl-wx-label">Live Weather Retrieved</div>
@@ -693,6 +833,7 @@ export default function FuzzyLogic() {
                   </div>
                 )}
                 {wxErr && <div className="fl-inline-err">{wxErr}</div>}
+
                 <div className="fl-card-sep" />
                 <span className="fl-sec-label">Additional Farm Parameters</span>
                 <div className="fl-grid2">
@@ -711,7 +852,6 @@ export default function FuzzyLogic() {
                       min={0} step={1} value={sDays}
                       onChange={e => setSDays(e.target.value === "" ? "" : parseInt(e.target.value) || 0)}
                       onFocus={e => e.target.select()} />
-                    {/* FIXED: 21+ days */}
                     <span className="fl-hint">Days farm was at HIGH risk without action. Field data: 21+ days → 90%+ tree loss.</span>
                     {errs.sDays && <span className="fl-ferr">{errs.sDays}</span>}
                   </div>
@@ -746,7 +886,6 @@ export default function FuzzyLogic() {
                       min={0} step={1} value={days}
                       onChange={e => setDays(e.target.value === "" ? "" : parseInt(e.target.value) || 0)}
                       onFocus={e => e.target.select()} />
-                    {/* FIXED: 21+ days */}
                     <span className="fl-hint">Number of days at HIGH risk without action. Field data: 21+ days → 90%+ tree loss.</span>
                     {errs.days && <span className="fl-ferr">{errs.days}</span>}
                   </div>
@@ -765,12 +904,9 @@ export default function FuzzyLogic() {
         {/* ── RESULTS ── */}
         {pred && (
           <div className="fl-results" ref={resultsRef}>
-
-            {/* Main card — Infestation Suitability (base fuzzy score) */}
             <div className={`fl-score-card ${baseLc}`}>
               <div className="fl-score-top">
                 <div>
-                  {/* FIXED: label changed to Infestation Suitability */}
                   <div className="fl-score-eyebrow">Infestation Suitability</div>
                   <div className={`fl-score-num ${baseLc}`}>
                     <span>{baseScoreAnim.toFixed(2)}</span><sup>%</sup>
@@ -792,7 +928,6 @@ export default function FuzzyLogic() {
                 <div className="fl-drow"><span className="fl-dkey">Total Trees</span><span className="fl-dval">{pred.inputs.total_trees.toLocaleString()}</span></div>
               </div>
 
-              {/* NEW: Risk Score Sub-box (adjusted/calibrated score) */}
               <div className="fl-risk-subbox">
                 <div className="fl-risk-subbox-header">
                   <span className="fl-risk-subbox-eyebrow">Adjusted Risk Score</span>
@@ -824,7 +959,6 @@ export default function FuzzyLogic() {
               </div>
             </div>
 
-            {/* Spread visualization trigger — Smart mode only */}
             {showSpread && (
               <div style={{ marginTop: '20px' }}>
                 <button className="fl-spread-trigger" onClick={openSpreadMap} disabled={spreadLoading}>
