@@ -107,7 +107,29 @@ const mapStyles = `
     }
 `;
 
-// Mobile-friendly detail card shown below map
+function HowToUse() {
+    const steps = [
+        { title: 'View the map', desc: 'Detections with GPS appear as colored pins — green (low), amber (moderate), red (severe).' },
+        { title: 'Filter results', desc: 'Narrow by severity, date range, or province using the filter dropdowns.' },
+        { title: 'Click a pin', desc: 'Select a marker to view detection details, insect count, farm info, and photo.' },
+        { title: 'Check the sidebar', desc: 'See top affected provinces and the 5 most recent detections at a glance.' },
+    ];
+    return (
+        <div style={{ background:'#fff', border:'1px solid #d6e8d6', borderRadius:16, padding:'18px 22px', marginBottom:20, position:'relative', overflow:'hidden', boxShadow:'0 1px 6px rgba(0,0,0,0.05)' }}>
+            <div style={{ position:'absolute', top:0, left:0, right:0, height:2, background:'linear-gradient(90deg,#2e8b4a,transparent)' }} />
+            <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, letterSpacing:'.14em', textTransform:'uppercase', color:'#8aaa96', marginBottom:12, display:'block' }}>How to Use — Map Dashboard</span>
+            <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
+                {steps.map((s, i) => (
+                    <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:10, flex:1, minWidth:180 }}>
+                        <div style={{ width:20, height:20, borderRadius:'50%', background:'#2e8b4a', color:'#fff', fontFamily:"'DM Mono',monospace", fontSize:10, fontWeight:600, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:2 }}>{i+1}</div>
+                        <div style={{ fontSize:12, color:'#5a8068', lineHeight:1.5 }}><strong style={{ color:'#1a3326', fontWeight:600, display:'block', marginBottom:2 }}>{s.title}</strong>{s.desc}</div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 function MobileDetailCard({ detection, onClose }) {
     if (!detection) return null;
     const severityColors = {
@@ -255,7 +277,6 @@ export default function MapDashboard() {
         <div className="map-root">
             <style>{mapStyles}</style>
             <div className="map-page">
-                {/* Header */}
                 <div style={{ marginBottom: 28 }}>
                     <div className="map-header-badge">Monitoring System</div>
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
@@ -266,6 +287,9 @@ export default function MapDashboard() {
                     </div>
                 </div>
                 <div className="map-divider" />
+
+                {/* How to Use */}
+                <HowToUse />
 
                 {/* Stats */}
                 <div className="map-stat-grid">
@@ -367,20 +391,10 @@ export default function MapDashboard() {
                                             </Marker>
                                         ))}
                                     </MarkerClusterGroup>
-
-                                    <MapSearch
-                                        detections={detectionsWithGPS}
-                                        onSelect={d => setSelectedDetectionId(d.id)}
-                                        selectedId={selectedDetectionId}
-                                    />
-
-                                    {/* Desktop only detail panel inside map */}
+                                    <MapSearch detections={detectionsWithGPS} onSelect={d => setSelectedDetectionId(d.id)} selectedId={selectedDetectionId} />
                                     {selectedDetection && (
                                         <div className="desktop-detail-panel">
-                                            <DetectionDetailPanel
-                                                detection={selectedDetection}
-                                                onClose={() => setSelectedDetectionId(null)}
-                                            />
+                                            <DetectionDetailPanel detection={selectedDetection} onClose={() => setSelectedDetectionId(null)} />
                                         </div>
                                     )}
                                 </MapContainer>
@@ -392,19 +406,13 @@ export default function MapDashboard() {
                                 </div>
                             )}
                         </div>
-
-                        {/* Mobile detail card — shows BELOW map, not overlapping */}
                         <div className="mobile-detail-panel">
                             {selectedDetection && (
                                 <div style={{ padding: '0 16px 16px' }}>
-                                    <MobileDetailCard
-                                        detection={selectedDetection}
-                                        onClose={() => setSelectedDetectionId(null)}
-                                    />
+                                    <MobileDetailCard detection={selectedDetection} onClose={() => setSelectedDetectionId(null)} />
                                 </div>
                             )}
                         </div>
-
                         <div className="map-legend">
                             {[{ color: '#e05555', label: 'Severe (10+)' }, { color: '#e8a440', label: 'Moderate (5–9)' }, { color: '#4caf72', label: 'Low (1–4)' }].map(l => (
                                 <div key={l.label} className="map-legend-item"><div className="map-legend-dot" style={{ background: l.color, boxShadow: `0 0 6px ${l.color}88` }} />{l.label}</div>
@@ -412,7 +420,6 @@ export default function MapDashboard() {
                         </div>
                     </div>
 
-                    {/* Side Panel */}
                     <div className="map-side-grid">
                         <div className="map-card">
                             <div className="map-card-header"><span className="map-card-title">Top Affected Provinces</span></div>
@@ -428,7 +435,6 @@ export default function MapDashboard() {
                                 )) : <p style={{ fontSize: 13, color: '#8aaa96', textAlign: 'center', padding: '16px 0', fontFamily: "'DM Mono',monospace" }}>No province data available</p>}
                             </div>
                         </div>
-
                         <div className="map-card">
                             <div className="map-card-header"><span className="map-card-title">Recent Detections</span></div>
                             <div className="map-card-body">

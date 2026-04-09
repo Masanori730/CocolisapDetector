@@ -58,9 +58,18 @@ const homeStyles = `
         .home-hero { padding: 40px 16px 32px; }
         .home-card { padding: 20px; }
     }
+
+    /* ── HOW TO USE ── */
+    .htu-wrap { background:#fff; border:1px solid #d6e8d6; border-radius:20px; padding:24px 28px; margin-bottom:24px; position:relative; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,0.05); }
+    .htu-wrap::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,#2e8b4a,transparent); }
+    .htu-label { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:#8aaa96; margin-bottom:14px; display:block; }
+    .htu-steps { display:flex; flex-direction:column; gap:10px; }
+    .htu-step { display:flex; align-items:flex-start; gap:12px; }
+    .htu-num { width:22px; height:22px; border-radius:50%; background:#2e8b4a; color:#fff; font-family:'DM Mono',monospace; font-size:11px; font-weight:600; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px; }
+    .htu-text { font-size:13px; color:#5a8068; line-height:1.6; }
+    .htu-text strong { color:#1a3326; font-weight:600; }
 `;
 
-// Helper to clean up messy filenames (e.g. Messenger_creation_XXXX.jpg)
 const cleanFileName = (name) => {
     return name
         .replace(/^Messenger_creation_[A-Fa-f0-9-]+_?/i, '')
@@ -111,6 +120,28 @@ const saveToHistory = async (detection) => {
         console.error('Failed to save to Firebase:', e);
     }
 };
+
+function HowToUse() {
+    const steps = [
+        { title: 'Upload a photo', desc: 'Select a clear photo of a coconut leaf showing scale insect activity. Use Single Image or Batch Upload for multiple files.' },
+        { title: 'Add location (optional)', desc: 'Capture GPS or manually enter the farm location. This saves the detection to the map.' },
+        { title: 'Click Detect Cocolisap', desc: 'The YOLOv26 model will analyze the image and count visible scale insects.' },
+        { title: 'Read the results', desc: 'Check the severity level (Low / Moderate / Severe) and insect count. Results are saved automatically to history.' },
+    ];
+    return (
+        <div className="htu-wrap">
+            <span className="htu-label">How to Use — Image Detection</span>
+            <div className="htu-steps">
+                {steps.map((s, i) => (
+                    <div key={i} className="htu-step">
+                        <div className="htu-num">{i + 1}</div>
+                        <div className="htu-text"><strong>{s.title} —</strong> {s.desc}</div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
 
 export default function Home() {
     const [selectedImage, setSelectedImage] = useState(null);
@@ -275,7 +306,7 @@ export default function Home() {
             <div className="home-hero" style={{ position: 'relative', zIndex: 1 }}>
                 <div className="home-badge">
                     <span className="home-badge-dot" />
-                    YOLOv11 Instance Segmentation
+                    YOLOv26 Instance Segmentation
                 </div>
                 <h1 className="home-h1">Cocolisap <em>Detection</em><br />System</h1>
                 <p className="home-subtitle">
@@ -291,6 +322,7 @@ export default function Home() {
 
             {/* Main */}
             <main className="home-main" id="upload-section">
+                <HowToUse />
                 <div className="home-grid-layout">
 
                     <motion.div {...fadeUp} transition={{ delay: 0.1 }} style={{ minWidth: 0, overflow: 'hidden' }}>
@@ -344,7 +376,6 @@ export default function Home() {
                             </Tabs>
                         </div>
 
-                        {/* Single Results */}
                         {results && !results.isBatch && (
                             <motion.div {...fadeUp} style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 20 }}>
                                 <div className="home-card">
@@ -354,7 +385,6 @@ export default function Home() {
                             </motion.div>
                         )}
 
-                        {/* Batch Results */}
                         {results && results.isBatch && (
                             <motion.div {...fadeUp} style={{ marginTop: 20 }}>
                                 <div className="home-card">
@@ -372,7 +402,6 @@ export default function Home() {
                             </motion.div>
                         )}
 
-                        {/* Info Card */}
                         <motion.div {...fadeUp} transition={{ delay: 0.3 }} style={{ marginTop: 20 }}>
                             <div className="home-info-card">
                                 <div className="home-info-icon">
@@ -390,12 +419,11 @@ export default function Home() {
                         </motion.div>
 
                         <div className="home-footer">
-                            <span>Cocolisap Detection System · YOLOv11 + Roboflow Dataset</span>
+                            <span>Cocolisap Detection System · YOLOv26 + Roboflow Dataset</span>
                             <span>Built for coconut pest management research</span>
                         </div>
                     </motion.div>
 
-                    {/* History Sidebar */}
                     <motion.div {...fadeUp} transition={{ delay: 0.2 }} style={{ minWidth: 0, overflow: 'hidden' }}>
                         <DetectionHistory
                             detections={history}
