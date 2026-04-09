@@ -352,7 +352,7 @@ export default function Home() {
       <motion.div className="landing-section" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.5 }}>
         <p className="landing-section-label">Model Performance</p>
         <h2 className="landing-section-title">YOLOv26 <em>Detection</em> Metrics</h2>
-        <p className="landing-section-sub">Trained on 670 annotated images of <em>Aspidiotus rigidus</em> across 85 epochs using instance segmentation.</p>
+        <p className="landing-section-sub">Trained on 8,658 annotated images of <em>Aspidiotus rigidus</em> across 85 epochs — 7,569 train · 730 validation · 362 test — using instance segmentation.</p>
 
         {/* Metric Cards */}
         <div className="lm-metrics-grid">
@@ -413,7 +413,7 @@ export default function Home() {
                 <div className="landing-stat-label">Fuzzy Rules</div>
               </div>
               <div className="landing-stat-box">
-                <div className="landing-stat-num">670</div>
+                <div className="landing-stat-num">8,658</div>
                 <div className="landing-stat-label">Training Images</div>
               </div>
               <div className="landing-stat-box">
