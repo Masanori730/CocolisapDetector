@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ScanSearch, Map, FlaskConical, Download, ArrowRight, ShieldAlert, Wind, Thermometer, TreePine, Bug, AlertTriangle, Microscope, Leaf } from 'lucide-react';
+import { ScanSearch, Map, FlaskConical, Download, ArrowRight, ShieldAlert, Wind, Thermometer, TreePine } from 'lucide-react';
 
 const homeStyles = `
     @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap');
@@ -102,30 +102,6 @@ const homeStyles = `
     .lm-cm-row-labels { display:flex; flex-direction:column; gap:4px; margin-right:8px; justify-content:space-around; }
     .lm-cm-row-label { font-family:'DM Mono',monospace; font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:#8aaa96; writing-mode:horizontal-tb; }
     .lm-cm-outer { display:flex; align-items:center; }
-
-    /* ── EDUCATIONAL SECTION ── */
-    .ledu-section { position:relative; z-index:1; max-width:1100px; margin:0 auto; padding:0 24px; }
-    .ledu-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:32px; }
-    @media(max-width:700px){ .ledu-grid { grid-template-columns:1fr; } }
-    .ledu-card { background:#fff; border:1px solid #d6e8d6; border-radius:18px; padding:28px; box-shadow:0 1px 6px rgba(0,0,0,0.05); }
-    .ledu-card-icon { width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; margin-bottom:14px; }
-    .ledu-card-title { font-size:15px; font-weight:600; color:#1a3326; margin:0 0 10px; }
-    .ledu-card-text { font-size:13px; color:#5a8068; line-height:1.8; margin:0; }
-    .ledu-lifecycle { display:flex; flex-direction:column; gap:10px; margin-top:8px; }
-    .ledu-lifecycle-step { display:flex; align-items:flex-start; gap:12px; }
-    .ledu-lifecycle-num { width:24px; height:24px; border-radius:50%; background:#2e8b4a; color:#fff; font-family:'DM Mono',monospace; font-size:11px; font-weight:500; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px; }
-    .ledu-lifecycle-text { font-size:13px; color:#5a8068; line-height:1.6; }
-    .ledu-lifecycle-text strong { color:#1a3326; font-weight:600; }
-    .ledu-symptoms { display:flex; flex-direction:column; gap:8px; margin-top:8px; }
-    .ledu-symptom { display:flex; align-items:flex-start; gap:10px; padding:10px 14px; background:#fef9f4; border:1px solid rgba(217,119,6,0.15); border-radius:10px; }
-    .ledu-symptom-dot { width:8px; height:8px; border-radius:50%; background:#d97706; flex-shrink:0; margin-top:4px; }
-    .ledu-symptom-text { font-size:13px; color:#5a8068; line-height:1.5; }
-    .ledu-full-card { background:#fff; border:1px solid #d6e8d6; border-radius:18px; padding:28px; box-shadow:0 1px 6px rgba(0,0,0,0.05); margin-top:20px; }
-    .ledu-impact-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:16px; }
-    @media(max-width:600px){ .ledu-impact-grid { grid-template-columns:1fr; } }
-    .ledu-impact-item { background:#f4f7f4; border:1px solid #d6e8d6; border-radius:12px; padding:16px; text-align:center; }
-    .ledu-impact-num { font-family:'DM Serif Display',serif; font-size:26px; color:#dc2626; line-height:1; margin-bottom:4px; }
-    .ledu-impact-label { font-family:'DM Mono',monospace; font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:#8aaa96; }
 `;
 
 // Training data approximated from the graph screenshot
@@ -275,21 +251,6 @@ const envFactors = [
   { icon: <TreePine style={{ width: 18, height: 18, color: '#2e8b4a' }} />, label: 'Density', val: '100–130 /ha' },
 ];
 
-const lifecycleSteps = [
-  { stage: 'Egg', text: 'Females lay 50–150 eggs under their protective waxy scale cover. Eggs hatch within 5–7 days in warm, humid conditions.' },
-  { stage: 'Crawler (1st instar)', text: 'Tiny mobile nymphs disperse by wind or physical contact to new host plants — the primary spread mechanism.' },
-  { stage: 'Sessile Nymph', text: 'Crawlers settle on leaf surfaces, insert stylets into plant tissue, and begin feeding. A waxy scale cover forms.' },
-  { stage: 'Adult', text: 'Females mature in 3–4 weeks. Males are short-lived and wingless. Females continue feeding and reproducing.' },
-];
-
-const symptoms = [
-  'Yellowing (chlorosis) of fronds starting from the underside of leaves',
-  'Premature drying and browning of leaflets, progressing from lower to upper fronds',
-  'White to grayish waxy scale deposits visible on the underside of leaflets',
-  'Premature dropping of coconuts and reduced nut production',
-  'Severe infestations cause complete frond desiccation and eventual tree death',
-];
-
 export default function Home() {
   return (
     <div className="landing-root">
@@ -395,13 +356,27 @@ export default function Home() {
           <div className="landing-about-card">
             <h3 className="landing-about-title">About <em>Cocolisap</em></h3>
             <p className="landing-about-text">
-              <em>Aspidiotus rigidus</em> (Cocolisap) is a coconut scale insect native to Southeast Asia.
-              It causes yellowing and premature drying of fronds, leading to significant yield loss
-              if left undetected. Early identification is critical for effective pest management.
+              <em>Aspidiotus rigidus</em> Reyne (Hemiptera: Diaspididae), locally known as <em>Cocolisap</em>,
+              is an armored scale insect that feeds exclusively on coconut palms (<em>Cocos nucifera</em>).
+              It was first recorded as a major pest in the Philippines in 2009, triggering a nationwide
+              outbreak that devastated coconut-farming communities across Laguna, Quezon, and neighboring provinces.
             </p>
             <p className="landing-about-text">
-              This system combines deep learning image analysis with fuzzy logic environmental modeling
-              to provide accurate, real-time infestation risk assessments for farm managers and PCA personnel.
+              The pest attacks by inserting its stylets into leaf tissue and extracting plant sap, causing
+              chlorosis (yellowing), premature frond drying, and in severe cases, complete tree death.
+              Infestations spread rapidly through wind-dispersed crawlers — the mobile first-instar nymphs —
+              making early detection essential before populations establish across an entire farm.
+            </p>
+            <p className="landing-about-text">
+              The Philippine Coconut Authority (PCA) has documented that farms left unattended at high
+              infestation levels for extended periods suffer catastrophic yield and tree losses.
+              Biological control using the parasitoid wasp <em>Comperiella calauanica</em> and chemical
+              control with white oil emulsion remain the primary management strategies recommended by PCA.
+            </p>
+            <p className="landing-about-text">
+              This system combines YOLOv26 deep learning image analysis with an 81-rule Mamdani fuzzy logic
+              environmental model to give farm managers and PCA personnel a fast, data-driven tool for
+              detecting infestations and assessing spread risk before it reaches critical levels.
             </p>
             <div className="landing-stat-row">
               <div className="landing-stat-box">
@@ -447,86 +422,6 @@ export default function Home() {
                 </p>
               </div>
             </div>
-          </div>
-        </div>
-      </motion.div>
-
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px' }}>
-        <div className="landing-divider" />
-      </div>
-
-      {/* Educational Section */}
-      <motion.div className="ledu-section" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35, duration: 0.5 }}>
-        <p className="landing-section-label">Know Your Pest</p>
-        <h2 className="landing-section-title">Understanding <em>Aspidiotus rigidus</em></h2>
-        <p className="landing-section-sub">Learn about the biology, life cycle, and damage caused by Cocolisap to better understand the threat it poses to coconut farms.</p>
-
-        <div className="ledu-grid">
-          {/* Life Cycle */}
-          <div className="ledu-card">
-            <div className="ledu-card-icon" style={{ background: 'rgba(46,139,74,0.10)' }}>
-              <Bug style={{ width: 20, height: 20, color: '#2e8b4a' }} />
-            </div>
-            <h4 className="ledu-card-title">Life Cycle</h4>
-            <div className="ledu-lifecycle">
-              {lifecycleSteps.map((s, i) => (
-                <div key={s.stage} className="ledu-lifecycle-step">
-                  <div className="ledu-lifecycle-num">{i + 1}</div>
-                  <div className="ledu-lifecycle-text"><strong>{s.stage} —</strong> {s.text}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Symptoms */}
-          <div className="ledu-card">
-            <div className="ledu-card-icon" style={{ background: 'rgba(217,119,6,0.10)' }}>
-              <AlertTriangle style={{ width: 20, height: 20, color: '#d97706' }} />
-            </div>
-            <h4 className="ledu-card-title">Signs & Symptoms</h4>
-            <p className="ledu-card-text" style={{ marginBottom: 12 }}>Recognizing early signs of infestation is critical for timely intervention:</p>
-            <div className="ledu-symptoms">
-              {symptoms.map((s, i) => (
-                <div key={i} className="ledu-symptom">
-                  <div className="ledu-symptom-dot" />
-                  <div className="ledu-symptom-text">{s}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Economic Impact */}
-        <div className="ledu-full-card">
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 16 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(220,38,38,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Leaf style={{ width: 20, height: 20, color: '#dc2626' }} />
-            </div>
-            <div>
-              <h4 style={{ fontSize: 15, fontWeight: 600, color: '#1a3326', margin: '0 0 4px' }}>Economic Impact in the Philippines</h4>
-              <p style={{ fontSize: 13, color: '#5a8068', margin: 0, lineHeight: 1.6 }}>
-                Cocolisap outbreaks have caused severe economic damage to coconut-dependent communities. The Philippine Coconut Authority (PCA) considers it one of the most serious coconut pest threats in recent history.
-              </p>
-            </div>
-          </div>
-          <div className="ledu-impact-grid">
-            <div className="ledu-impact-item">
-              <div className="ledu-impact-num">~1M</div>
-              <div className="ledu-impact-label">Coconut trees affected in 2010–2012 outbreak</div>
-            </div>
-            <div className="ledu-impact-item">
-              <div className="ledu-impact-num">90%+</div>
-              <div className="ledu-impact-label">Tree loss after 21+ days undetected at HIGH risk</div>
-            </div>
-            <div className="ledu-impact-item">
-              <div className="ledu-impact-num">3–4 wk</div>
-              <div className="ledu-impact-label">Time from crawler to reproducing adult</div>
-            </div>
-          </div>
-          <div style={{ marginTop: 16, padding: '14px 18px', background: 'rgba(46,139,74,0.05)', border: '1px solid rgba(46,139,74,0.18)', borderRadius: 12 }}>
-            <p style={{ fontSize: 12, color: '#5a8068', margin: 0, lineHeight: 1.7, fontFamily: "'DM Mono',monospace" }}>
-              <strong style={{ color: '#2e8b4a' }}>Management:</strong> Biological control using the parasitoid wasp <em>Comperiella calauanica</em> has proven effective. Chemical control with white oil emulsion (2%) applied to affected fronds is recommended for moderate to severe cases. Early detection using CocolisapScan enables timely intervention before populations reach damaging levels.
-            </p>
           </div>
         </div>
       </motion.div>
