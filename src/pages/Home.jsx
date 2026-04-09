@@ -356,27 +356,13 @@ export default function Home() {
           <div className="landing-about-card">
             <h3 className="landing-about-title">About <em>Cocolisap</em></h3>
             <p className="landing-about-text">
-              <em>Aspidiotus rigidus</em> Reyne (Hemiptera: Diaspididae), locally known as <em>Cocolisap</em>,
-              is an armored scale insect that feeds exclusively on coconut palms (<em>Cocos nucifera</em>).
-              It was first recorded as a major pest in the Philippines in 2009, triggering a nationwide
-              outbreak that devastated coconut-farming communities across Laguna, Quezon, and neighboring provinces.
+              <em>Aspidiotus rigidus</em> (Cocolisap) is a coconut scale insect native to Southeast Asia.
+              It causes yellowing and premature drying of fronds, leading to significant yield loss
+              if left undetected. Early identification is critical for effective pest management.
             </p>
             <p className="landing-about-text">
-              The pest attacks by inserting its stylets into leaf tissue and extracting plant sap, causing
-              chlorosis (yellowing), premature frond drying, and in severe cases, complete tree death.
-              Infestations spread rapidly through wind-dispersed crawlers — the mobile first-instar nymphs —
-              making early detection essential before populations establish across an entire farm.
-            </p>
-            <p className="landing-about-text">
-              The Philippine Coconut Authority (PCA) has documented that farms left unattended at high
-              infestation levels for extended periods suffer catastrophic yield and tree losses.
-              Biological control using the parasitoid wasp <em>Comperiella calauanica</em> and chemical
-              control with white oil emulsion remain the primary management strategies recommended by PCA.
-            </p>
-            <p className="landing-about-text">
-              This system combines YOLOv26 deep learning image analysis with an 81-rule Mamdani fuzzy logic
-              environmental model to give farm managers and PCA personnel a fast, data-driven tool for
-              detecting infestations and assessing spread risk before it reaches critical levels.
+              This system combines deep learning image analysis with fuzzy logic environmental modeling
+              to provide accurate, real-time infestation risk assessments for farm managers and PCA personnel.
             </p>
             <div className="landing-stat-row">
               <div className="landing-stat-box">
