@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ScanSearch, Map, FlaskConical, Download, ArrowRight, ShieldAlert, Wind, Thermometer, TreePine } from 'lucide-react';
@@ -67,142 +67,14 @@ const homeStyles = `
     .landing-footer-text { font-size:11px; color:#8aaa96; font-family:'DM Mono',monospace; }
 
     /* ── METRICS SECTION ── */
-    .lm-metrics-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:40px; }
+    .lm-metrics-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
     @media(max-width:700px){ .lm-metrics-grid { grid-template-columns:1fr 1fr; } }
     .lm-metric-card { background:#fff; border:1px solid #d6e8d6; border-radius:18px; padding:22px 20px; text-align:center; box-shadow:0 1px 6px rgba(0,0,0,0.05); position:relative; overflow:hidden; }
     .lm-metric-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,#2e8b4a,#6fcf8a); }
     .lm-metric-val { font-family:'DM Serif Display',serif; font-size:36px; color:#2e8b4a; line-height:1; margin-bottom:6px; }
     .lm-metric-label { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:#8aaa96; }
     .lm-metric-sub { font-size:11px; color:#a8c4b0; margin-top:4px; font-family:'DM Mono',monospace; }
-    .lm-charts-row { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
-    @media(max-width:800px){ .lm-charts-row { grid-template-columns:1fr; } }
-    /* FIX: padding-bottom increased so legend has breathing room */
-    .lm-chart-card { background:#fff; border:1px solid #d6e8d6; border-radius:18px; padding:24px 24px 32px; box-shadow:0 1px 6px rgba(0,0,0,0.05); }
-    .lm-chart-title { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:#8aaa96; margin-bottom:4px; }
-    .lm-chart-subtitle { font-size:13px; color:#5a8068; margin-bottom:20px; }
-
-    /* Training Chart — FIX: height:auto so container never clips the legend */
-    .lm-training-chart { width:100%; height:auto; position:relative; }
-    .lm-chart-svg { width:100%; height:100%; }
-    .lm-chart-legend { display:flex; gap:16px; margin-top:8px; padding:6px 4px 2px; }
-    .lm-legend-item { display:flex; align-items:center; gap:6px; font-family:'DM Mono',monospace; font-size:10px; color:#8aaa96; }
-    .lm-legend-dot { width:10px; height:3px; border-radius:2px; }
-
-    /* Confusion Matrix */
-    .lm-cm-wrap { display:flex; flex-direction:column; align-items:center; gap:8px; }
-    .lm-cm-grid { display:grid; grid-template-columns:1fr 1fr; gap:4px; width:100%; max-width:280px; }
-    .lm-cm-cell { border-radius:10px; padding:16px 12px; text-align:center; }
-    .lm-cm-cell-num { font-family:'DM Serif Display',serif; font-size:24px; line-height:1; margin-bottom:4px; }
-    .lm-cm-cell-label { font-family:'DM Mono',monospace; font-size:9px; letter-spacing:.1em; text-transform:uppercase; }
-    .lm-cm-tp { background:#1a6b8a; color:#fff; }
-    .lm-cm-fp { background:#f4b8cc; color:#6b1a35; }
-    .lm-cm-fn { background:#f4b8cc; color:#6b1a35; }
-    .lm-cm-tn { background:#f0f0f0; color:#888; }
-    .lm-cm-axis-row { display:flex; gap:4px; width:100%; max-width:280px; }
-    .lm-cm-axis-label { font-family:'DM Mono',monospace; font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:#8aaa96; text-align:center; flex:1; }
-    .lm-cm-row-labels { display:flex; flex-direction:column; gap:4px; margin-right:8px; justify-content:space-around; }
-    .lm-cm-row-label { font-family:'DM Mono',monospace; font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:#8aaa96; writing-mode:horizontal-tb; }
-    .lm-cm-outer { display:flex; align-items:center; }
 `;
-
-// Training data approximated from the graph screenshot
-const trainingData = [
-  [1,53,20],[3,47,17],[5,65,26],[6,65,27],[7,70,27],[8,68,26],[9,70,28],
-  [10,80,30],[11,80,32],[12,82,34],[13,83,35],[14,84,36],[15,85,37],[16,87,38],
-  [17,89,39],[18,90,40],[19,90,41],[20,91,42],[21,91,43],[22,91,44],[23,92,45],
-  [24,92,46],[25,92,47],[26,92,48],[27,93,49],[28,93,49],[30,93,50],[32,93,51],
-  [34,93,52],[35,93,52],[36,94,53],[37,94,57],[38,94,57],[40,94,57],[42,94,58],
-  [44,94,58],[46,94,59],[48,94,60],[50,94,60],[52,94,61],[54,94,61],[56,94,62],
-  [58,94,62],[60,94,62],[62,94,63],[64,94,63],[66,94,63],[68,94,64],[70,94,64],
-  [72,94,64],[74,94,64],[76,94,65],[78,95,65],[80,95,65],[82,95,65],[84,95,65],[85,95,65],
-];
-
-function TrainingChart() {
-  const W = 400, H = 168, PL = 36, PR = 12, PT = 10, PB = 28;
-  const chartW = W - PL - PR, chartH = H - PT - PB;
-  const maxEpoch = 85, minY = 10, maxY = 100;
-
-  const toX = ep => PL + ((ep - 1) / (maxEpoch - 1)) * chartW;
-  const toY = val => PT + chartH - ((val - minY) / (maxY - minY)) * chartH;
-
-  const mapPath = trainingData.map(([e, m], i) => `${i === 0 ? 'M' : 'L'}${toX(e).toFixed(1)},${toY(m).toFixed(1)}`).join(' ');
-  const map5095Path = trainingData.map(([e, , m], i) => `${i === 0 ? 'M' : 'L'}${toX(e).toFixed(1)},${toY(m).toFixed(1)}`).join(' ');
-
-  const yTicks = [20, 40, 60, 80, 100];
-  const xTicks = [1, 20, 40, 60, 85];
-
-  return (
-    <div className="lm-training-chart">
-      <svg viewBox={`0 0 ${W} ${H}`} className="lm-chart-svg" preserveAspectRatio="none">
-        {yTicks.map(v => (
-          <line key={v} x1={PL} y1={toY(v)} x2={W - PR} y2={toY(v)}
-            stroke="rgba(46,139,74,0.08)" strokeWidth="1" />
-        ))}
-        {yTicks.map(v => (
-          <text key={v} x={PL - 4} y={toY(v) + 3} textAnchor="end"
-            fill="#8aaa96" fontSize="8" fontFamily="DM Mono, monospace">{v}%</text>
-        ))}
-        {xTicks.map(v => (
-          <text key={v} x={toX(v)} y={H - 4} textAnchor="middle"
-            fill="#8aaa96" fontSize="8" fontFamily="DM Mono, monospace">{v}</text>
-        ))}
-        <path d={map5095Path} fill="none" stroke="#c8dfc8" strokeWidth="2" strokeLinejoin="round" />
-        <path d={mapPath} fill="none" stroke="#2e8b4a" strokeWidth="2.5" strokeLinejoin="round" />
-      </svg>
-      <div className="lm-chart-legend">
-        <div className="lm-legend-item">
-          <div className="lm-legend-dot" style={{ background: '#2e8b4a' }} /> mAP@50
-        </div>
-        <div className="lm-legend-item">
-          <div className="lm-legend-dot" style={{ background: '#c8dfc8' }} /> mAP@50:95
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ConfusionMatrix() {
-  return (
-    <div className="lm-cm-wrap">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontFamily: "'DM Mono',monospace", fontSize: 9, letterSpacing: '.1em', textTransform: 'uppercase', color: '#8aaa96', marginRight: 4 }}>
-          Actual
-        </div>
-        <div>
-          <div style={{ display: 'flex', gap: 4, marginBottom: 4, paddingLeft: 0 }}>
-            <div style={{ flex: 1, fontFamily: "'DM Mono',monospace", fontSize: 9, letterSpacing: '.1em', textTransform: 'uppercase', color: '#8aaa96', textAlign: 'center' }}>Predicted +</div>
-            <div style={{ flex: 1, fontFamily: "'DM Mono',monospace", fontSize: 9, letterSpacing: '.1em', textTransform: 'uppercase', color: '#8aaa96', textAlign: 'center' }}>Predicted −</div>
-          </div>
-          <div className="lm-cm-grid">
-            <div className="lm-cm-cell lm-cm-tp">
-              <div className="lm-cm-cell-num">12,811</div>
-              <div className="lm-cm-cell-label">True Positive</div>
-            </div>
-            <div className="lm-cm-cell lm-cm-fp">
-              <div className="lm-cm-cell-num">2,014</div>
-              <div className="lm-cm-cell-label">False Positive</div>
-            </div>
-            <div className="lm-cm-cell lm-cm-fn">
-              <div className="lm-cm-cell-num">542</div>
-              <div className="lm-cm-cell-label">False Negative</div>
-            </div>
-            <div className="lm-cm-cell lm-cm-tn">
-              <div className="lm-cm-cell-num">0</div>
-              <div className="lm-cm-cell-label">True Negative</div>
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
-            <div style={{ flex: 1, fontFamily: "'DM Mono',monospace", fontSize: 9, color: '#8aaa96', textAlign: 'center' }}>Actual +</div>
-            <div style={{ flex: 1, fontFamily: "'DM Mono',monospace", fontSize: 9, color: '#8aaa96', textAlign: 'center' }}>Actual −</div>
-          </div>
-        </div>
-      </div>
-      <p style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: '#8aaa96', textAlign: 'center', margin: '8px 0 0', lineHeight: 1.5 }}>
-        TN = 0 expected for single-class detection
-      </p>
-    </div>
-  );
-}
 
 const features = [
   {
@@ -304,13 +176,11 @@ export default function Home() {
         <div className="landing-divider" />
       </div>
 
-      {/* Model Performance Section */}
+      {/* Model Performance — metric cards only */}
       <motion.div className="landing-section" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.5 }}>
         <p className="landing-section-label">Model Performance</p>
         <h2 className="landing-section-title">YOLOv26 <em>Detection</em> Metrics</h2>
-        <p className="landing-section-sub">Trained on 8,658 annotated images of <em>Aspidiotus rigidus</em> across 85 epochs: 7,569 train · 730 validation · 362 test, using instance segmentation.</p>
-
-        {/* Metric Cards */}
+        <p className="landing-section-sub" style={{ marginBottom: 32 }}>Trained on 8,658 annotated images across 85 epochs using instance segmentation.</p>
         <div className="lm-metrics-grid">
           {[
             { val: '90.0%', label: 'mAP@50', sub: 'Mean Avg. Precision' },
@@ -324,20 +194,6 @@ export default function Home() {
               <div className="lm-metric-sub">{m.sub}</div>
             </div>
           ))}
-        </div>
-
-        {/* Charts Row */}
-        <div className="lm-charts-row">
-          <div className="lm-chart-card">
-            <div className="lm-chart-title">Training Curve</div>
-            <div className="lm-chart-subtitle">mAP over 85 training epochs</div>
-            <TrainingChart />
-          </div>
-          <div className="lm-chart-card">
-            <div className="lm-chart-title">Confusion Matrix</div>
-            <div className="lm-chart-subtitle">Prediction outcomes on test set</div>
-            <ConfusionMatrix />
-          </div>
         </div>
       </motion.div>
 
