@@ -10,7 +10,6 @@ const MapDashboard = (props) => (
     <Suspense fallback={
         <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'60vh' }}>
             <div style={{ width:32, height:32, border:'3px solid #d6e8d6', borderTopColor:'#2e8b4a', borderRadius:'50%', animation:'spin 0.8s linear infinite' }} />
-            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
     }>
         <MapDashboardLazy {...props} />
