@@ -57,9 +57,11 @@ const fuzzyStyles = `
   .fl-h1 em {font-style:italic;color:var(--green);}
   .fl-subtitle {font-size:14px;color:var(--text-muted);line-height:1.6;max-width:540px;}
   .fl-divider {height:1px;background:linear-gradient(90deg,var(--border2),transparent 80%);margin:8px 0 32px;}
+  /* FIX 4: added position:relative and z-index:2 so toggle is always above decorative elements */
   .fl-mode-toggle {
     display:flex;background:var(--bg2);border:1px solid var(--border);
     border-radius:var(--r);padding:4px;width:fit-content;margin-bottom:24px;
+    position:relative;z-index:2;
   }
   .fl-mode-btn {
     display:flex;align-items:center;gap:8px;padding:10px 22px;border-radius:9px;
@@ -427,7 +429,6 @@ export default function FuzzyLogic() {
   const [mode, setMode] = useState('manual');
   const [loc, setLoc] = useState({ barangay: '', city: '', province: '', region: '', country: 'Philippines' });
 
-  // PSGC dropdown state
   const [regions, setRegions] = useState([]);
   const [provinces, setProvinces] = useState([]);
   const [cities, setCities] = useState([]);
@@ -468,7 +469,6 @@ export default function FuzzyLogic() {
   const baseLc = pred ? pred.fuzzy_base_label.toLowerCase() : 'low';
   const adjLc = pred ? pred.adjusted_risk_label.toLowerCase() : 'low';
 
-  // Load regions on mount
   useEffect(() => {
     fetch('https://psgc.cloud/api/regions')
       .then(r => r.json())
@@ -476,7 +476,6 @@ export default function FuzzyLogic() {
       .catch(() => {});
   }, []);
 
-  // Region → Province (or City for NCR)
   async function handleRegionChange(regionCode) {
     const selected = regions.find(r => r.code === regionCode);
     setLoc(l => ({ ...l, region: selected?.name || '', province: '', city: '', barangay: '' }));
@@ -489,7 +488,6 @@ export default function FuzzyLogic() {
       if (Array.isArray(data) && data.length > 0) {
         setProvinces(data);
       } else {
-        // NCR or region with no provinces — go straight to cities
         const r2 = await fetch(`https://psgc.cloud/api/regions/${regionCode}/cities-municipalities`);
         const data2 = await r2.json();
         setCities(data2 || []);
@@ -498,7 +496,6 @@ export default function FuzzyLogic() {
     setPsgcLoading('');
   }
 
-  // Province → City
   async function handleProvinceChange(provinceCode) {
     const selected = provinces.find(p => p.code === provinceCode);
     setLoc(l => ({ ...l, province: selected?.name || '', city: '', barangay: '' }));
@@ -513,7 +510,6 @@ export default function FuzzyLogic() {
     setPsgcLoading('');
   }
 
-  // City → Barangay
   async function handleCityChange(cityCode) {
     const selected = cities.find(c => c.code === cityCode);
     setLoc(l => ({ ...l, city: selected?.name || '', barangay: '' }));
@@ -709,8 +705,8 @@ export default function FuzzyLogic() {
         <div className="fl-divider" />
 
         {/* ── HOW TO USE ── */}
-
-        <div style={{ background:'#fff', border:'1px solid rgba(46,139,74,0.18)', borderRadius:16, padding:'18px 22px', marginBottom:24, position:'relative', overflow:'hidden', boxShadow:'0 1px 6px rgba(0,0,0,0.05)' }}>
+        {/* FIX 4: added position relative + z-index so it stays above decorative overlay */}
+        <div style={{ background:'#fff', border:'1px solid rgba(46,139,74,0.18)', borderRadius:16, padding:'18px 22px', marginBottom:24, position:'relative', zIndex:2, overflow:'hidden', boxShadow:'0 1px 6px rgba(0,0,0,0.05)' }}>
           <div style={{ position:'absolute', top:0, left:0, right:0, height:2, background:'linear-gradient(90deg,#2e8b4a,transparent)' }} />
           <span style={{ fontFamily:"var(--mono)", fontSize:10, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--text-dim)', marginBottom:12, display:'block' }}>How to Use — Fuzzy Logic Analyzer</span>
           <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
@@ -728,7 +724,7 @@ export default function FuzzyLogic() {
           </div>
         </div>
 
-        {/* Mode toggle */}
+        {/* Mode toggle — FIX 4: z-index:2 applied via CSS */}
         <div className="fl-mode-toggle">
           <button className={`fl-mode-btn${mode === 'manual' ? ' active' : ''}`} onClick={() => switchMode('manual')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -755,7 +751,6 @@ export default function FuzzyLogic() {
                 <span className="fl-sec-label">Farm Location — Philippine Address</span>
                 <div className="fl-grid2">
 
-                  {/* Region */}
                   <div className="fl-ig">
                     <label className="fl-label">Region</label>
                     <div className="fl-select-wrap">
@@ -767,7 +762,6 @@ export default function FuzzyLogic() {
                     {psgcLoading === 'provinces' && <div className="fl-psgc-loading"><div className="fl-psgc-spin" />Loading provinces…</div>}
                   </div>
 
-                  {/* Province */}
                   <div className="fl-ig">
                     <label className="fl-label">Province</label>
                     <div className="fl-select-wrap">
@@ -779,7 +773,6 @@ export default function FuzzyLogic() {
                     {psgcLoading === 'cities' && <div className="fl-psgc-loading"><div className="fl-psgc-spin" />Loading cities…</div>}
                   </div>
 
-                  {/* City / Municipality */}
                   <div className="fl-ig">
                     <label className="fl-label">City / Municipality</label>
                     <div className="fl-select-wrap">
@@ -791,7 +784,6 @@ export default function FuzzyLogic() {
                     {psgcLoading === 'barangays' && <div className="fl-psgc-loading"><div className="fl-psgc-spin" />Loading barangays…</div>}
                   </div>
 
-                  {/* Barangay */}
                   <div className="fl-ig">
                     <label className="fl-label">Barangay</label>
                     <div className="fl-select-wrap">

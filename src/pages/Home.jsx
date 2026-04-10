@@ -83,7 +83,7 @@ const homeStyles = `
     /* Training Chart */
     .lm-training-chart { width:100%; height:200px; position:relative; }
     .lm-chart-svg { width:100%; height:100%; }
-    .lm-chart-legend { display:flex; gap:16px; margin-top:12px; }
+    .lm-chart-legend { display:flex; gap:16px; margin-top:8px; padding:6px 4px 2px; }
     .lm-legend-item { display:flex; align-items:center; gap:6px; font-family:'DM Mono',monospace; font-size:10px; color:#8aaa96; }
     .lm-legend-dot { width:10px; height:3px; border-radius:2px; }
 
@@ -117,7 +117,7 @@ const trainingData = [
 ];
 
 function TrainingChart() {
-  const W = 400, H = 180, PL = 36, PR = 12, PT = 10, PB = 28;
+  const W = 400, H = 168, PL = 36, PR = 12, PT = 10, PB = 28;
   const chartW = W - PL - PR, chartH = H - PT - PB;
   const maxEpoch = 85, minY = 10, maxY = 100;
 
@@ -127,31 +127,25 @@ function TrainingChart() {
   const mapPath = trainingData.map(([e, m], i) => `${i === 0 ? 'M' : 'L'}${toX(e).toFixed(1)},${toY(m).toFixed(1)}`).join(' ');
   const map5095Path = trainingData.map(([e, , m], i) => `${i === 0 ? 'M' : 'L'}${toX(e).toFixed(1)},${toY(m).toFixed(1)}`).join(' ');
 
-  // Y axis ticks
   const yTicks = [20, 40, 60, 80, 100];
   const xTicks = [1, 20, 40, 60, 85];
 
   return (
     <div className="lm-training-chart">
       <svg viewBox={`0 0 ${W} ${H}`} className="lm-chart-svg" preserveAspectRatio="none">
-        {/* Grid lines */}
         {yTicks.map(v => (
           <line key={v} x1={PL} y1={toY(v)} x2={W - PR} y2={toY(v)}
             stroke="rgba(46,139,74,0.08)" strokeWidth="1" />
         ))}
-        {/* Y axis labels */}
         {yTicks.map(v => (
           <text key={v} x={PL - 4} y={toY(v) + 3} textAnchor="end"
             fill="#8aaa96" fontSize="8" fontFamily="DM Mono, monospace">{v}%</text>
         ))}
-        {/* X axis labels */}
         {xTicks.map(v => (
           <text key={v} x={toX(v)} y={H - 4} textAnchor="middle"
             fill="#8aaa96" fontSize="8" fontFamily="DM Mono, monospace">{v}</text>
         ))}
-        {/* mAP@50:95 line */}
         <path d={map5095Path} fill="none" stroke="#c8dfc8" strokeWidth="2" strokeLinejoin="round" />
-        {/* mAP line */}
         <path d={mapPath} fill="none" stroke="#2e8b4a" strokeWidth="2.5" strokeLinejoin="round" />
       </svg>
       <div className="lm-chart-legend">
@@ -313,7 +307,8 @@ export default function Home() {
       <motion.div className="landing-section" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.5 }}>
         <p className="landing-section-label">Model Performance</p>
         <h2 className="landing-section-title">YOLOv26 <em>Detection</em> Metrics</h2>
-        <p className="landing-section-sub">Trained on 8,658 annotated images of <em>Aspidiotus rigidus</em> across 85 epochs — 7,569 train · 730 validation · 362 test — using instance segmentation.</p>
+        {/* FIX 3: removed em dashes, replaced with colon and comma */}
+        <p className="landing-section-sub">Trained on 8,658 annotated images of <em>Aspidiotus rigidus</em> across 85 epochs: 7,569 train · 730 validation · 362 test, using instance segmentation.</p>
 
         {/* Metric Cards */}
         <div className="lm-metrics-grid">
@@ -412,10 +407,10 @@ export default function Home() {
         </div>
       </motion.div>
 
-      {/* Footer */}
+      {/* FIX 1: Shortened footer text */}
       <div className="landing-footer">
-        <span className="landing-footer-text">Cocolisap Expert System · Undergraduate Thesis Project</span>
-        <span className="landing-footer-text">YOLOv26 · Mamdani Fuzzy Inference · Philippine Coconut Authority Reference Data</span>
+        <span className="landing-footer-text">Cocolisap Expert System · Undergraduate Thesis</span>
+        <span className="landing-footer-text">YOLOv26 · Mamdani Fuzzy Inference · PCA Reference Data</span>
       </div>
     </div>
   );
