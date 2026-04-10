@@ -1,14 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
-import { Download, FileSpreadsheet, CheckCircle, Info, Layers } from 'lucide-react';
+import { Download, FileSpreadsheet, CheckCircle, Info, Layers, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 
 const PHILIPPINE_PROVINCES = [
     "Abra","Agusan del Norte","Agusan del Sur","Aklan","Albay","Antique","Apayao","Aurora","Basilan","Bataan","Batanes","Batangas","Benguet","Biliran","Bohol","Bukidnon","Bulacan","Cagayan","Camarines Norte","Camarines Sur","Camiguin","Capiz","Catanduanes","Cavite","Cebu","Cotabato","Davao de Oro","Davao del Norte","Davao del Sur","Davao Occidental","Davao Oriental","Dinagat Islands","Eastern Samar","Guimaras","Ifugao","Ilocos Norte","Ilocos Sur","Iloilo","Isabela","Kalinga","La Union","Laguna","Lanao del Norte","Lanao del Sur","Leyte","Maguindanao","Marinduque","Masbate","Metro Manila","Misamis Occidental","Misamis Oriental","Mountain Province","Negros Occidental","Negros Oriental","Northern Samar","Nueva Ecija","Nueva Vizcaya","Occidental Mindoro","Oriental Mindoro","Palawan","Pampanga","Pangasinan","Quezon","Quirino","Rizal","Romblon","Samar","Sarangani","Siquijor","Sorsogon","South Cotabato","Southern Leyte","Sultan Kudarat","Sulu","Surigao del Norte","Surigao del Sur","Tarlac","Tawi-Tawi","Zambales","Zamboanga del Norte","Zamboanga del Sur","Zamboanga Sibugay"
 ];
 
-const ns = (v) => (v !== undefined && v !== null && v !== '') ? v : 'Not Specified';
+const ns = (v) => (v !== undefined && v !== null && v !== '') ? v : 'N/A';
 const avg = (arr, key) => arr.length > 0 ? (arr.reduce((s, d) => s + (d[key] || 0), 0) / arr.length) : 0;
 
 const toDate = (val) => {
@@ -17,6 +17,23 @@ const toDate = (val) => {
     if (val.seconds !== undefined) return new Date(val.seconds * 1000);
     const d = new Date(val);
     return isNaN(d.getTime()) ? null : d;
+};
+
+const severityColor = (s) => {
+    if (!s) return { bg: '#f1f5f9', color: '#64748b' };
+    const sl = s.toLowerCase();
+    if (sl === 'severe') return { bg: '#fee2e2', color: '#dc2626' };
+    if (sl === 'moderate') return { bg: '#fef9c3', color: '#ca8a04' };
+    if (sl === 'low') return { bg: '#dcfce7', color: '#16a34a' };
+    return { bg: '#f1f5f9', color: '#64748b' };
+};
+
+const riskColor = (r) => {
+    if (!r) return { bg: '#f1f5f9', color: '#64748b' };
+    if (r === 'HIGH') return { bg: '#fee2e2', color: '#dc2626' };
+    if (r === 'MODERATE') return { bg: '#fef9c3', color: '#ca8a04' };
+    if (r === 'LOW') return { bg: '#dcfce7', color: '#16a34a' };
+    return { bg: '#f1f5f9', color: '#64748b' };
 };
 
 const exportStyles = `
@@ -50,7 +67,7 @@ const exportStyles = `
     .export-toast { padding:14px 18px; border-radius:12px; font-family:'DM Mono',monospace; font-size:12px; margin-bottom:20px; display:flex; align-items:center; gap:10px; }
     .export-toast.success { background:rgba(46,139,74,0.08); border:1px solid rgba(46,139,74,0.22); color:#2e8b4a; }
     .export-toast.error { background:rgba(220,38,38,0.07); border:1px solid rgba(220,38,38,0.22); color:#dc2626; }
-    .export-options-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+    .export-options-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:28px; }
     @media(max-width:800px){ .export-options-grid{grid-template-columns:1fr;} }
     .export-option-card { background:#ffffff; border:1px solid #d6e8d6; border-radius:18px; padding:24px; position:relative; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,0.05); display:flex; flex-direction:column; }
     .export-option-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
@@ -77,6 +94,28 @@ const exportStyles = `
     .export-tips-list { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:5px; }
     .export-tips-list li { font-size:12px; color:#6090c0; font-family:'DM Mono',monospace; }
     .export-footer { border-top:1px solid #d6e8d6; padding-top:24px; margin-top:40px; font-size:11px; color:#8aaa96; font-family:'DM Mono',monospace; display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+
+    /* ── Preview Table styles ── */
+    .preview-section { background:#fff; border:1px solid #d6e8d6; border-radius:20px; overflow:hidden; margin-bottom:28px; box-shadow:0 1px 6px rgba(0,0,0,0.05); }
+    .preview-header { padding:18px 24px; border-bottom:1px solid #e8f0e8; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+    .preview-header-left { display:flex; align-items:center; gap:10px; }
+    .preview-header-icon { width:32px; height:32px; border-radius:10px; display:flex; align-items:center; justify-content:center; }
+    .preview-title { font-size:14px; font-weight:600; color:#1a3326; margin:0; }
+    .preview-count-pill { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:.08em; padding:3px 10px; border-radius:100px; }
+    .preview-count-pill.green { background:rgba(46,139,74,0.10); color:#2e8b4a; }
+    .preview-count-pill.blue { background:rgba(59,130,246,0.10); color:#3b82f6; }
+    .preview-table-wrap { overflow-x:auto; }
+    .preview-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .preview-table thead tr { background:#f8fbf8; }
+    .preview-table thead th { padding:12px 16px; text-align:left; font-family:'DM Mono',monospace; font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:#8aaa96; font-weight:500; border-bottom:1px solid #e8f0e8; white-space:nowrap; }
+    .preview-table tbody tr { border-bottom:1px solid #f0f6f0; transition:background .15s; }
+    .preview-table tbody tr:last-child { border-bottom:none; }
+    .preview-table tbody tr:hover { background:#f8fbf8; }
+    .preview-table tbody td { padding:12px 16px; color:#2d5040; font-size:13px; white-space:nowrap; }
+    .preview-table tbody td.mono { font-family:'DM Mono',monospace; font-size:12px; }
+    .preview-badge { display:inline-flex; align-items:center; padding:3px 10px; border-radius:100px; font-size:11px; font-weight:600; font-family:'DM Mono',monospace; }
+    .preview-empty { padding:40px; text-align:center; color:#8aaa96; font-family:'DM Mono',monospace; font-size:12px; }
+    .preview-footer { padding:12px 24px; border-top:1px solid #e8f0e8; background:#f8fbf8; font-family:'DM Mono',monospace; font-size:10px; color:#8aaa96; letter-spacing:.06em; }
 `;
 
 // ── XLSX HELPERS ──────────────────────────────────────────────────────────────
@@ -84,59 +123,26 @@ const exportStyles = `
 function buildStyledSheet(XLSX, headers, rows, headerColor = '2e8b4a') {
     const aoa = [headers, ...rows];
     const ws = XLSX.utils.aoa_to_sheet(aoa);
-
-    // Column widths
     ws['!cols'] = headers.map((h, i) => {
-        const maxLen = Math.max(
-            String(h).length,
-            ...rows.map(r => String(r[i] ?? '').length)
-        );
+        const maxLen = Math.max(String(h).length, ...rows.map(r => String(r[i] ?? '').length));
         return { wch: Math.min(Math.max(maxLen + 4, 12), 40) };
     });
-
-    // Freeze header row
     ws['!freeze'] = { xSplit: 0, ySplit: 1 };
-
     const range = XLSX.utils.decode_range(ws['!ref']);
-
     for (let R = range.s.r; R <= range.e.r; R++) {
         for (let C = range.s.c; C <= range.e.c; C++) {
             const cellAddr = XLSX.utils.encode_cell({ r: R, c: C });
             if (!ws[cellAddr]) ws[cellAddr] = { v: '', t: 's' };
-
             const isHeader = R === 0;
             const isEvenRow = R % 2 === 0 && R !== 0;
-
             ws[cellAddr].s = {
-                font: {
-                    name: 'Calibri',
-                    sz: isHeader ? 11 : 10,
-                    bold: isHeader,
-                    color: { rgb: isHeader ? 'FFFFFF' : '1a3326' },
-                },
-                fill: {
-                    patternType: 'solid',
-                    fgColor: {
-                        rgb: isHeader
-                            ? headerColor
-                            : isEvenRow
-                            ? 'f0f7f0'
-                            : 'FFFFFF',
-                    },
-                },
-                alignment: {
-                    vertical: 'center',
-                    horizontal: C === 0 ? 'center' : 'left',
-                    wrapText: false,
-                },
-                border: {
-                    bottom: { style: 'thin', color: { rgb: 'd6e8d6' } },
-                    right: { style: 'thin', color: { rgb: 'd6e8d6' } },
-                },
+                font: { name: 'Calibri', sz: isHeader ? 11 : 10, bold: isHeader, color: { rgb: isHeader ? 'FFFFFF' : '1a3326' } },
+                fill: { patternType: 'solid', fgColor: { rgb: isHeader ? headerColor : isEvenRow ? 'f0f7f0' : 'FFFFFF' } },
+                alignment: { vertical: 'center', horizontal: C === 0 ? 'center' : 'left', wrapText: false },
+                border: { bottom: { style: 'thin', color: { rgb: 'd6e8d6' } }, right: { style: 'thin', color: { rgb: 'd6e8d6' } } },
             };
         }
     }
-
     return ws;
 }
 
@@ -167,15 +173,11 @@ function buildDetectionRows(detections) {
         const procTime = d.processing_time ? (d.processing_time / 1000).toFixed(2) : 'N/A';
         return [
             `DET-${String(i + 1).padStart(3, '0')}`,
-            format(dt, 'yyyy-MM-dd'),
-            format(dt, 'HH:mm:ss'),
+            format(dt, 'yyyy-MM-dd'), format(dt, 'HH:mm:ss'),
             ns(d.province), ns(d.municipality), ns(d.barangay),
             ns(d.farmName), ns(d.farmOwner),
             ns(d.latitude), ns(d.longitude),
-            severity,
-            d.total_detections || 0,
-            confidence, procTime,
-            ns(d.locationMethod)
+            severity, d.total_detections || 0, confidence, procTime, ns(d.locationMethod)
         ];
     });
 }
@@ -196,8 +198,7 @@ function buildAssessmentRows(assessments) {
         const dt = toDate(a.created_date) || new Date();
         return [
             `FZY-${String(i + 1).padStart(3, '0')}`,
-            format(dt, 'yyyy-MM-dd'),
-            format(dt, 'HH:mm:ss'),
+            format(dt, 'yyyy-MM-dd'), format(dt, 'HH:mm:ss'),
             ns(a.province), ns(a.municipality), ns(a.barangay),
             ns(a.latitude), ns(a.longitude),
             a.temperature_c, a.humidity_pct, a.wind_speed_kmh,
@@ -207,10 +208,156 @@ function buildAssessmentRows(assessments) {
             a.adjusted_risk_score?.toFixed(2), a.adjusted_risk_label,
             a.degree_of_infestation_pct?.toFixed(2),
             a.estimated_infected_trees, a.estimated_healthy_trees,
-            a.wind_direction_compass ? `${a.wind_direction_compass} (${a.wind_direction_deg}°)` : 'Not Specified',
+            a.wind_direction_compass ? `${a.wind_direction_compass} (${a.wind_direction_deg}°)` : 'N/A',
             ns(a.intervention_note)
         ];
     });
+}
+
+// ── PREVIEW TABLES ────────────────────────────────────────────────────────────
+
+function DetectionPreviewTable({ detections }) {
+    const preview = detections.slice(0, 10);
+    return (
+        <div className="preview-section">
+            <div className="preview-header">
+                <div className="preview-header-left">
+                    <div className="preview-header-icon" style={{ background: 'rgba(46,139,74,0.10)' }}>
+                        <Eye style={{ width: 16, height: 16, color: '#2e8b4a' }} />
+                    </div>
+                    <p className="preview-title">Image Detection — Data Preview</p>
+                    <span className="preview-count-pill green">{detections.length} records</span>
+                </div>
+                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: '#8aaa96', letterSpacing: '.06em' }}>
+                    {detections.length > 10 ? `Showing 10 of ${detections.length}` : `Showing all ${detections.length}`}
+                </span>
+            </div>
+            <div className="preview-table-wrap">
+                {preview.length === 0 ? (
+                    <div className="preview-empty">No detection records match your current filters.</div>
+                ) : (
+                    <table className="preview-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Province</th>
+                                <th>Municipality</th>
+                                <th>Barangay</th>
+                                <th>Farm Name</th>
+                                <th>Severity</th>
+                                <th>Insects</th>
+                                <th>Confidence</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {preview.map((d, i) => {
+                                const dt = toDate(d.created_date) || new Date();
+                                const sev = d.severity ? d.severity.charAt(0).toUpperCase() + d.severity.slice(1) : 'N/A';
+                                const sc = severityColor(d.severity);
+                                const conf = d.avg_confidence ? (d.avg_confidence * 100).toFixed(1) + '%' : 'N/A';
+                                return (
+                                    <tr key={d.id || i}>
+                                        <td className="mono" style={{ color: '#8aaa96' }}>DET-{String(i + 1).padStart(3, '0')}</td>
+                                        <td className="mono">{format(dt, 'yyyy-MM-dd')}</td>
+                                        <td className="mono">{format(dt, 'HH:mm:ss')}</td>
+                                        <td>{ns(d.province)}</td>
+                                        <td>{ns(d.municipality)}</td>
+                                        <td>{ns(d.barangay)}</td>
+                                        <td>{ns(d.farmName)}</td>
+                                        <td>
+                                            <span className="preview-badge" style={{ background: sc.bg, color: sc.color }}>{sev}</span>
+                                        </td>
+                                        <td className="mono">{d.total_detections || 0}</td>
+                                        <td className="mono">{conf}</td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                )}
+            </div>
+            {detections.length > 10 && (
+                <div className="preview-footer">
+                    + {detections.length - 10} more records — download Excel to view all
+                </div>
+            )}
+        </div>
+    );
+}
+
+function AssessmentPreviewTable({ assessments }) {
+    const preview = assessments.slice(0, 10);
+    return (
+        <div className="preview-section">
+            <div className="preview-header">
+                <div className="preview-header-left">
+                    <div className="preview-header-icon" style={{ background: 'rgba(59,130,246,0.10)' }}>
+                        <Eye style={{ width: 16, height: 16, color: '#3b82f6' }} />
+                    </div>
+                    <p className="preview-title">Fuzzy Logic Assessment — Data Preview</p>
+                    <span className="preview-count-pill blue">{assessments.length} records</span>
+                </div>
+                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: '#8aaa96', letterSpacing: '.06em' }}>
+                    {assessments.length > 10 ? `Showing 10 of ${assessments.length}` : `Showing all ${assessments.length}`}
+                </span>
+            </div>
+            <div className="preview-table-wrap">
+                {preview.length === 0 ? (
+                    <div className="preview-empty">No fuzzy logic assessments match your current filters.</div>
+                ) : (
+                    <table className="preview-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Province</th>
+                                <th>Municipality</th>
+                                <th>Barangay</th>
+                                <th>Temp (°C)</th>
+                                <th>Humidity (%)</th>
+                                <th>Risk Score</th>
+                                <th>Risk Level</th>
+                                <th>Infestation (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {preview.map((a, i) => {
+                                const dt = toDate(a.created_date) || new Date();
+                                const rc = riskColor(a.adjusted_risk_label);
+                                return (
+                                    <tr key={a.id || i}>
+                                        <td className="mono" style={{ color: '#8aaa96' }}>FZY-{String(i + 1).padStart(3, '0')}</td>
+                                        <td className="mono">{format(dt, 'yyyy-MM-dd')}</td>
+                                        <td className="mono">{format(dt, 'HH:mm:ss')}</td>
+                                        <td>{ns(a.province)}</td>
+                                        <td>{ns(a.municipality)}</td>
+                                        <td>{ns(a.barangay)}</td>
+                                        <td className="mono">{a.temperature_c ?? 'N/A'}</td>
+                                        <td className="mono">{a.humidity_pct ?? 'N/A'}</td>
+                                        <td className="mono">{a.adjusted_risk_score?.toFixed(2) ?? 'N/A'}</td>
+                                        <td>
+                                            <span className="preview-badge" style={{ background: rc.bg, color: rc.color }}>
+                                                {a.adjusted_risk_label || 'N/A'}
+                                            </span>
+                                        </td>
+                                        <td className="mono">{a.degree_of_infestation_pct?.toFixed(1) ?? 'N/A'}%</td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                )}
+            </div>
+            {assessments.length > 10 && (
+                <div className="preview-footer">
+                    + {assessments.length - 10} more records — download Excel to view all
+                </div>
+            )}
+        </div>
+    );
 }
 
 // ── COMPONENT ─────────────────────────────────────────────────────────────────
@@ -272,54 +419,23 @@ export default function DataExport() {
         return f;
     }, [allAssessments, dateFrom, dateTo, riskFilter, provinceFilter]);
 
-    // ── EXPORT HANDLERS ──
-
     const handleDetectionExcel = () => {
-        if (!filteredDetections.length) {
-            setExportMessage({ type: 'error', text: 'No image detections match current filters.' });
-            return;
-        }
-        downloadXLSX([{
-            name: 'Detections',
-            headers: DETECTION_HEADERS,
-            rows: buildDetectionRows(filteredDetections),
-            color: '2e8b4a',
-        }], `cocolisap-image-detections-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+        if (!filteredDetections.length) { setExportMessage({ type: 'error', text: 'No image detections match current filters.' }); return; }
+        downloadXLSX([{ name: 'Detections', headers: DETECTION_HEADERS, rows: buildDetectionRows(filteredDetections), color: '2e8b4a' }], `cocolisap-image-detections-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
         setExportMessage({ type: 'success', text: `Exported ${filteredDetections.length} image detections to Excel.` });
     };
 
     const handleFuzzyExcel = () => {
-        if (!filteredAssessments.length) {
-            setExportMessage({ type: 'error', text: 'No fuzzy logic assessments match current filters.' });
-            return;
-        }
-        downloadXLSX([{
-            name: 'Assessments',
-            headers: ASSESSMENT_HEADERS,
-            rows: buildAssessmentRows(filteredAssessments),
-            color: '3b82f6',
-        }], `cocolisap-fuzzy-assessments-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+        if (!filteredAssessments.length) { setExportMessage({ type: 'error', text: 'No fuzzy logic assessments match current filters.' }); return; }
+        downloadXLSX([{ name: 'Assessments', headers: ASSESSMENT_HEADERS, rows: buildAssessmentRows(filteredAssessments), color: '3b82f6' }], `cocolisap-fuzzy-assessments-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
         setExportMessage({ type: 'success', text: `Exported ${filteredAssessments.length} fuzzy assessments to Excel.` });
     };
 
     const handleCombinedExcel = () => {
-        if (!filteredDetections.length && !filteredAssessments.length) {
-            setExportMessage({ type: 'error', text: 'No data available for combined report.' });
-            return;
-        }
+        if (!filteredDetections.length && !filteredAssessments.length) { setExportMessage({ type: 'error', text: 'No data available for combined report.' }); return; }
         downloadXLSX([
-            {
-                name: 'Image Detections',
-                headers: DETECTION_HEADERS,
-                rows: buildDetectionRows(filteredDetections),
-                color: '2e8b4a',
-            },
-            {
-                name: 'Fuzzy Assessments',
-                headers: ASSESSMENT_HEADERS,
-                rows: buildAssessmentRows(filteredAssessments),
-                color: '3b82f6',
-            },
+            { name: 'Image Detections', headers: DETECTION_HEADERS, rows: buildDetectionRows(filteredDetections), color: '2e8b4a' },
+            { name: 'Fuzzy Assessments', headers: ASSESSMENT_HEADERS, rows: buildAssessmentRows(filteredAssessments), color: '3b82f6' },
         ], `cocolisap-combined-report-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
         setExportMessage({ type: 'success', text: `Combined report exported — ${filteredDetections.length} detections + ${filteredAssessments.length} assessments.` });
     };
@@ -340,9 +456,9 @@ export default function DataExport() {
                     <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
                         {[
                             { n:1, t:'Set filters', d:'Choose a date range, province, severity, or risk level to narrow down records.' },
-                            { n:2, t:'Check record counts', d:'The counters below show how many detections and assessments match your filters.' },
-                            { n:3, t:'Choose export type', d:'Image Detection for scan records, Fuzzy Logic for risk assessments, or Combined for both.' },
-                            { n:4, t:'Download', d:'All exports are formatted Excel files with colored headers, auto-sized columns, and alternating row colors.' },
+                            { n:2, t:'Preview the data', d:'Tables below show a live preview of matching records before you export.' },
+                            { n:3, t:'Choose export type', d:'Image Detection, Fuzzy Logic, or Combined — each downloads a formatted Excel file.' },
+                            { n:4, t:'Download', d:'Exports include colored headers, auto-sized columns, and alternating row colors.' },
                         ].map(s => (
                             <div key={s.n} style={{ display:'flex', alignItems:'flex-start', gap:10, flex:1, minWidth:180 }}>
                                 <div style={{ width:20, height:20, borderRadius:'50%', background:'#2e8b4a', color:'#fff', fontFamily:"'DM Mono',monospace", fontSize:10, fontWeight:600, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:2 }}>{s.n}</div>
@@ -392,11 +508,11 @@ export default function DataExport() {
                 <div className="export-count-row">
                     <div className="export-count-box">
                         <div className="export-count-label">Image Detections</div>
-                        <span className="export-count-text"><strong>{filteredDetections.length}</strong> record{filteredDetections.length !== 1 ? 's' : ''} matched</span>
+                        <span className="export-count-text"><strong>{isLoading ? '...' : filteredDetections.length}</strong> record{filteredDetections.length !== 1 ? 's' : ''} matched</span>
                     </div>
                     <div className="export-count-box">
                         <div className="export-count-label">Fuzzy Assessments</div>
-                        <span className="export-count-text"><strong>{filteredAssessments.length}</strong> record{filteredAssessments.length !== 1 ? 's' : ''} matched</span>
+                        <span className="export-count-text"><strong>{isLoading ? '...' : filteredAssessments.length}</strong> record{filteredAssessments.length !== 1 ? 's' : ''} matched</span>
                     </div>
                 </div>
 
@@ -409,12 +525,10 @@ export default function DataExport() {
 
                 {/* Export options */}
                 <div className="export-options-grid">
-
-                    {/* Image Detection */}
                     <div className="export-option-card green">
                         <div className="export-option-icon green"><FileSpreadsheet style={{ width: 22, height: 22, color: '#2e8b4a' }} /></div>
                         <h3 className="export-option-title">Image Detection</h3>
-                        <p className="export-option-sub">YOLOv26 · Instance Segmentation</p>
+                        <p className="export-option-sub">YOLOv8 · Instance Segmentation</p>
                         <p className="export-option-desc">Export all image scan records with location, severity, confidence scores, and insect counts. Green header, alternating rows.</p>
                         <div className="export-btn-row">
                             <button className="export-dl-btn green" onClick={handleDetectionExcel} disabled={!filteredDetections.length}>
@@ -422,8 +536,6 @@ export default function DataExport() {
                             </button>
                         </div>
                     </div>
-
-                    {/* Fuzzy Assessment */}
                     <div className="export-option-card blue">
                         <div className="export-option-icon blue"><FileSpreadsheet style={{ width: 22, height: 22, color: '#3b82f6' }} /></div>
                         <h3 className="export-option-title">Fuzzy Logic Assessment</h3>
@@ -435,8 +547,6 @@ export default function DataExport() {
                             </button>
                         </div>
                     </div>
-
-                    {/* Combined */}
                     <div className="export-option-card purple">
                         <div className="export-option-icon purple"><Layers style={{ width: 22, height: 22, color: '#8b5cf6' }} /></div>
                         <h3 className="export-option-title">Combined Report</h3>
@@ -448,8 +558,19 @@ export default function DataExport() {
                             </button>
                         </div>
                     </div>
-
                 </div>
+
+                {/* ── Preview Tables ── */}
+                {isLoading ? (
+                    <div style={{ textAlign:'center', padding:'40px', fontFamily:"'DM Mono',monospace", fontSize:12, color:'#8aaa96' }}>
+                        Loading records...
+                    </div>
+                ) : (
+                    <>
+                        <DetectionPreviewTable detections={filteredDetections} />
+                        <AssessmentPreviewTable assessments={filteredAssessments} />
+                    </>
+                )}
 
                 {/* Tips */}
                 <div className="export-tips">
