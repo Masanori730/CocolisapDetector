@@ -1,7 +1,7 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
-import { Map, TrendingUp, AlertTriangle, BarChart3, MapPin, ChevronDown, ChevronUp, Activity } from 'lucide-react';
+import { Map, TrendingUp, AlertTriangle, BarChart3, MapPin, Activity } from 'lucide-react';
 import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
@@ -9,7 +9,7 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-    ResponsiveContainer, PieChart, Pie, Cell, Legend
+    ResponsiveContainer, PieChart, Pie, Cell
 } from 'recharts';
 
 import MapSearch from '@/components/map/MapSearch';
@@ -160,8 +160,6 @@ const mapStyles = `
     }
     .chart-row { display:grid; grid-template-columns:1fr 340px; gap:20px; margin-bottom:20px; }
     @media(max-width:900px){ .chart-row { grid-template-columns:1fr; } }
-    .howto-toggle-btn { display:flex; align-items:center; gap:6px; background:none; border:none; cursor:pointer; font-family:'DM Mono',monospace; font-size:11px; color:#2e8b4a; padding:0; letter-spacing:.08em; }
-    .howto-toggle-btn:hover { color:#1a3326; }
     .trend-badge { display:inline-flex; align-items:center; gap:4px; border-radius:100px; padding:3px 10px; font-size:11px; font-family:'DM Mono',monospace; font-weight:600; }
     .trend-badge.up { background:rgba(220,38,38,0.08); color:#dc2626; border:1px solid rgba(220,38,38,0.2); }
     .trend-badge.down { background:rgba(46,139,74,0.08); color:#2e8b4a; border:1px solid rgba(46,139,74,0.2); }
@@ -171,40 +169,35 @@ const mapStyles = `
     @keyframes spin { to { transform: rotate(360deg); } }
     @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
     .fade-in { animation: fadeIn .35s ease both; }
-    .map-container-wrap { height:480px; position:relative; overflow:hidden; flex-shrink:0; }
-    .map-card-flex { display:flex; flex-direction:column; }
+    .map-container-wrap { height:480px; min-height:480px; position:relative; overflow:hidden; flex-shrink:0; }
+    .map-card-flex { display:flex; flex-direction:column; min-height:0; }
 `;
 
 function HowToUse() {
-    const [open, setOpen] = useState(true);
     const steps = [
-        { title: 'View the map', desc: 'Detections with GPS appear as colored pins — green (low), amber (moderate), red (severe).' },
-        { title: 'Filter results', desc: 'Narrow by severity, date range, or province using the filter dropdowns.' },
-        { title: 'Click a pin', desc: 'Select a marker to view detection details, insect count, farm info, and photo.' },
-        { title: 'Check the sidebar', desc: 'See top affected provinces and the 5 most recent detections at a glance.' },
+        { title: 'Total Detections', desc: 'Total number of cocolisap detections recorded across all farms.' },
+        { title: 'Severe Cases', desc: 'Detections with 10 or more insects — requires immediate action.' },
+        { title: 'Moderate Cases', desc: 'Detections with 5–9 insects — monitor closely.' },
+        { title: 'Low Cases', desc: 'Detections with 1–4 insects — low infestation level.' },
+        { title: 'Avg Insects / Farm', desc: 'Average insect count across all submitted detections.' },
     ];
     return (
         <div style={{ background:'#fff', border:'1px solid #d6e8d6', borderRadius:16, marginBottom:20, position:'relative', overflow:'hidden', boxShadow:'0 1px 6px rgba(0,0,0,0.05)' }}>
             <div style={{ position:'absolute', top:0, left:0, right:0, height:2, background:'linear-gradient(90deg,#2e8b4a,transparent)' }} />
-            <div
-                style={{ padding:'14px 22px', display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer' }}
-                onClick={() => setOpen(o => !o)}
-            >
-                <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, letterSpacing:'.14em', textTransform:'uppercase', color:'#8aaa96' }}>How to Use — Map Dashboard</span>
-                <button className="howto-toggle-btn">
-                    {open ? <><ChevronUp size={14}/> Hide</> : <><ChevronDown size={14}/> Show</>}
-                </button>
+            <div style={{ padding:'14px 22px' }}>
+                <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, letterSpacing:'.14em', textTransform:'uppercase', color:'#8aaa96' }}>Metric Guide</span>
             </div>
-            {open && (
-                <div style={{ padding:'0 22px 18px', display:'flex', gap:12, flexWrap:'wrap' }} className="fade-in">
-                    {steps.map((s, i) => (
-                        <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:10, flex:1, minWidth:180 }}>
-                            <div style={{ width:20, height:20, borderRadius:'50%', background:'#2e8b4a', color:'#fff', fontFamily:"'DM Mono',monospace", fontSize:10, fontWeight:600, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:2 }}>{i+1}</div>
-                            <div style={{ fontSize:12, color:'#5a8068', lineHeight:1.5 }}><strong style={{ color:'#1a3326', fontWeight:600, display:'block', marginBottom:2 }}>{s.title}</strong>{s.desc}</div>
+            <div style={{ padding:'0 22px 18px', display:'flex', gap:12, flexWrap:'wrap' }}>
+                {steps.map((s, i) => (
+                    <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:10, flex:1, minWidth:180 }}>
+                        <div style={{ width:20, height:20, borderRadius:'50%', background:'#2e8b4a', color:'#fff', fontFamily:"'DM Mono',monospace", fontSize:10, fontWeight:600, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:2 }}>{i+1}</div>
+                        <div style={{ fontSize:12, color:'#5a8068', lineHeight:1.5 }}>
+                            <strong style={{ color:'#1a3326', fontWeight:600, display:'block', marginBottom:2 }}>{s.title}</strong>
+                            {s.desc}
                         </div>
-                    ))}
-                </div>
-            )}
+                    </div>
+                ))}
+            </div>
         </div>
     );
 }
@@ -536,7 +529,7 @@ export default function MapDashboard() {
                 </div>
                 <div className="map-divider" />
 
-                {/* ── How To Use ── */}
+                {/* ── Metric Guide ── */}
                 <HowToUse />
 
                 {/* ── Metric Cards (5 cards) ── */}
@@ -639,14 +632,12 @@ export default function MapDashboard() {
                 {/* ── Map + Sidebar ── */}
                 <div className="map-main-grid">
 
-                    {/* FIX: map-card-flex keeps map card as column flex so detail panel sits flush below map */}
                     <div className="map-card map-card-flex">
                         <div className="map-card-header">
                             <span className="map-card-title"><MapPin style={{ width: 15, height: 15, color: '#2e8b4a' }} />Interactive Map View</span>
                             <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: '#8aaa96' }}>{detectionsWithGPS.length} locations</span>
                         </div>
 
-                        {/* FIX: flex-shrink:0 prevents map from collapsing and creating white space */}
                         <div className="map-container-wrap">
                             {detectionsWithGPS.length > 0 ? (
                                 <MapContainer center={mapCenter} zoom={6} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
@@ -693,7 +684,7 @@ export default function MapDashboard() {
                             )}
                         </div>
 
-                        {/* Desktop detail panel — outside MapContainer, no extra spacing */}
+                        {/* Desktop detail panel — only renders when a detection is selected */}
                         {selectedDetection && (
                             <div className="desktop-detail-panel">
                                 <DetectionDetailPanel detection={selectedDetection} onClose={() => setSelectedDetectionId(null)} />
@@ -701,13 +692,13 @@ export default function MapDashboard() {
                         )}
 
                         {/* Mobile detail panel */}
-                        <div className="mobile-detail-panel">
-                            {selectedDetection && (
+                        {selectedDetection && (
+                            <div className="mobile-detail-panel">
                                 <div style={{ padding: '0 16px 16px' }}>
                                     <MobileDetailCard detection={selectedDetection} onClose={() => setSelectedDetectionId(null)} />
                                 </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
 
                         <div className="map-legend">
                             {[{ color: '#e05555', label: 'Severe (10+)' }, { color: '#e8a440', label: 'Moderate (5–9)' }, { color: '#4caf72', label: 'Low (1–4)' }].map(l => (
