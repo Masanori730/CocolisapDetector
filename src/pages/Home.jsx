@@ -408,8 +408,8 @@ export default function Home() {
       </motion.div>
 
       <div className="landing-footer">
-        <span className="landing-footer-text">Cocolisap Expert System · Undergraduate Thesis</span>
-        <span className="landing-footer-text">YOLOv26 · Mamdani Fuzzy Inference · PCA Reference Data</span>
+        <span className="landing-footer-text">Cocolisap Scan · Undergraduate Thesis</span>
+        <span className="landing-footer-text">YOLOv26 · Mamdani Fuzzy Inference</span>
       </div>
     </div>
   );

@@ -454,6 +454,11 @@ export default function MapDashboard() {
                         </div>
                     </div>
                 </div>
+
+                {/* Footer */}
+                <div style={{ borderTop:'1px solid #d6e8d6', paddingTop:24, marginTop:40, fontSize:11, color:'#8aaa96', fontFamily:"'DM Mono',monospace", display:'flex', justifyContent:'space-between', flexWrap:'wrap', gap:8 }}>
+                    <span>CocolisapScan · Infestation Monitoring</span>
+                </div>
             </div>
         </div>
     );

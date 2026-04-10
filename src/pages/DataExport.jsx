@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
-import { Download, FileText, FileSpreadsheet, CheckCircle, Info, Layers } from 'lucide-react';
+import { Download, FileSpreadsheet, CheckCircle, Info, Layers } from 'lucide-react';
 import { format } from 'date-fns';
 
 const PHILIPPINE_PROVINCES = [
@@ -9,7 +9,6 @@ const PHILIPPINE_PROVINCES = [
 ];
 
 const ns = (v) => (v !== undefined && v !== null && v !== '') ? v : 'Not Specified';
-const pct = (n, total) => total > 0 ? ((n / total) * 100).toFixed(1) : '0.0';
 const avg = (arr, key) => arr.length > 0 ? (arr.reduce((s, d) => s + (d[key] || 0), 0) / arr.length) : 0;
 
 const toDate = (val) => {
@@ -70,8 +69,6 @@ const exportStyles = `
     .export-dl-btn:disabled { opacity:.4; cursor:not-allowed; transform:none !important; }
     .export-dl-btn.green { background:#2e8b4a; color:#fff; }
     .export-dl-btn.green:hover:not(:disabled) { background:#25763e; transform:translateY(-1px); box-shadow:0 6px 20px rgba(46,139,74,.25); }
-    .export-dl-btn.blue { background:#eff6ff; color:#3b82f6; border:1px solid rgba(59,130,246,.25); }
-    .export-dl-btn.blue:hover:not(:disabled) { background:#dbeafe; transform:translateY(-1px); }
     .export-dl-btn.purple { background:#f5f3ff; color:#8b5cf6; border:1px solid rgba(139,92,246,.25); }
     .export-dl-btn.purple:hover:not(:disabled) { background:#ede9fe; transform:translateY(-1px); }
     .export-tips { background:#eff8ff; border:1px solid #bfdbfe; border-radius:16px; padding:20px 24px; display:flex; gap:14px; margin-top:24px; }
@@ -82,25 +79,141 @@ const exportStyles = `
     .export-footer { border-top:1px solid #d6e8d6; padding-top:24px; margin-top:40px; font-size:11px; color:#8aaa96; font-family:'DM Mono',monospace; display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; }
 `;
 
-function downloadText(text, filename) {
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
-    a.download = filename;
-    a.click();
+// ── XLSX HELPERS ──────────────────────────────────────────────────────────────
+
+function buildStyledSheet(XLSX, headers, rows, headerColor = '2e8b4a') {
+    const aoa = [headers, ...rows];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+    // Column widths
+    ws['!cols'] = headers.map((h, i) => {
+        const maxLen = Math.max(
+            String(h).length,
+            ...rows.map(r => String(r[i] ?? '').length)
+        );
+        return { wch: Math.min(Math.max(maxLen + 4, 12), 40) };
+    });
+
+    // Freeze header row
+    ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+
+    const range = XLSX.utils.decode_range(ws['!ref']);
+
+    for (let R = range.s.r; R <= range.e.r; R++) {
+        for (let C = range.s.c; C <= range.e.c; C++) {
+            const cellAddr = XLSX.utils.encode_cell({ r: R, c: C });
+            if (!ws[cellAddr]) ws[cellAddr] = { v: '', t: 's' };
+
+            const isHeader = R === 0;
+            const isEvenRow = R % 2 === 0 && R !== 0;
+
+            ws[cellAddr].s = {
+                font: {
+                    name: 'Calibri',
+                    sz: isHeader ? 11 : 10,
+                    bold: isHeader,
+                    color: { rgb: isHeader ? 'FFFFFF' : '1a3326' },
+                },
+                fill: {
+                    patternType: 'solid',
+                    fgColor: {
+                        rgb: isHeader
+                            ? headerColor
+                            : isEvenRow
+                            ? 'f0f7f0'
+                            : 'FFFFFF',
+                    },
+                },
+                alignment: {
+                    vertical: 'center',
+                    horizontal: C === 0 ? 'center' : 'left',
+                    wrapText: false,
+                },
+                border: {
+                    bottom: { style: 'thin', color: { rgb: 'd6e8d6' } },
+                    right: { style: 'thin', color: { rgb: 'd6e8d6' } },
+                },
+            };
+        }
+    }
+
+    return ws;
 }
 
-function downloadXLSX(rows, filename) {
+function downloadXLSX(sheets, filename) {
     const XLSX = window.XLSX;
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    const colWidths = rows[0].map((h, i) => {
-        const maxLen = Math.max(String(h).length, ...rows.slice(1).map(r => String(r[i] ?? '').length));
-        return { wch: Math.min(Math.max(maxLen + 2, 10), 35) };
-    });
-    ws['!cols'] = colWidths;
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Data');
+    sheets.forEach(({ name, headers, rows, color }) => {
+        const ws = buildStyledSheet(XLSX, headers, rows, color || '2e8b4a');
+        XLSX.utils.book_append_sheet(wb, ws, name);
+    });
     XLSX.writeFile(wb, filename);
 }
+
+// ── ROW BUILDERS ─────────────────────────────────────────────────────────────
+
+const DETECTION_HEADERS = [
+    'Detection ID', 'Date', 'Time', 'Province', 'Municipality', 'Barangay',
+    'Farm Name', 'Farm Owner', 'Latitude', 'Longitude',
+    'Severity', 'Total Insects Detected', 'Avg Confidence (%)',
+    'Processing Time (s)', 'Location Method'
+];
+
+function buildDetectionRows(detections) {
+    return detections.map((d, i) => {
+        const dt = toDate(d.created_date) || new Date();
+        const severity = d.severity ? d.severity.charAt(0).toUpperCase() + d.severity.slice(1) : 'N/A';
+        const confidence = d.avg_confidence ? (d.avg_confidence * 100).toFixed(1) : 'N/A';
+        const procTime = d.processing_time ? (d.processing_time / 1000).toFixed(2) : 'N/A';
+        return [
+            `DET-${String(i + 1).padStart(3, '0')}`,
+            format(dt, 'yyyy-MM-dd'),
+            format(dt, 'HH:mm:ss'),
+            ns(d.province), ns(d.municipality), ns(d.barangay),
+            ns(d.farmName), ns(d.farmOwner),
+            ns(d.latitude), ns(d.longitude),
+            severity,
+            d.total_detections || 0,
+            confidence, procTime,
+            ns(d.locationMethod)
+        ];
+    });
+}
+
+const ASSESSMENT_HEADERS = [
+    'Assessment ID', 'Date', 'Time', 'Province', 'Municipality', 'Barangay',
+    'Latitude', 'Longitude',
+    'Temperature (°C)', 'Humidity (%)', 'Wind Speed (km/h)',
+    'Planting Density (trees/ha)', 'Total Trees', 'Days Without Intervention',
+    'Fuzzy Base Score', 'Fuzzy Base Label',
+    'Intervention Multiplier', 'Adjusted Risk Score', 'Adjusted Risk Label',
+    'Degree of Infestation (%)', 'Estimated Infected Trees', 'Estimated Healthy Trees',
+    'Wind Direction', 'Intervention Note'
+];
+
+function buildAssessmentRows(assessments) {
+    return assessments.map((a, i) => {
+        const dt = toDate(a.created_date) || new Date();
+        return [
+            `FZY-${String(i + 1).padStart(3, '0')}`,
+            format(dt, 'yyyy-MM-dd'),
+            format(dt, 'HH:mm:ss'),
+            ns(a.province), ns(a.municipality), ns(a.barangay),
+            ns(a.latitude), ns(a.longitude),
+            a.temperature_c, a.humidity_pct, a.wind_speed_kmh,
+            a.planting_density, a.total_trees, a.days_without_intervention,
+            a.fuzzy_base_score?.toFixed(2), a.fuzzy_base_label,
+            a.intervention_multiplier?.toFixed(4),
+            a.adjusted_risk_score?.toFixed(2), a.adjusted_risk_label,
+            a.degree_of_infestation_pct?.toFixed(2),
+            a.estimated_infected_trees, a.estimated_healthy_trees,
+            a.wind_direction_compass ? `${a.wind_direction_compass} (${a.wind_direction_deg}°)` : 'Not Specified',
+            ns(a.intervention_note)
+        ];
+    });
+}
+
+// ── COMPONENT ─────────────────────────────────────────────────────────────────
 
 export default function DataExport() {
     const [dateFrom, setDateFrom] = useState('');
@@ -159,105 +272,56 @@ export default function DataExport() {
         return f;
     }, [allAssessments, dateFrom, dateTo, riskFilter, provinceFilter]);
 
-    const handleDetectionCSV = () => {
-        if (!filteredDetections.length) { setExportMessage({ type: 'error', text: 'No image detections match current filters.' }); return; }
-        const headers = ['Detection ID', 'Date', 'Time', 'Province', 'Municipality', 'Barangay', 'Farm Name', 'Farm Owner', 'Latitude', 'Longitude', 'Severity', 'Total Insects Detected', 'Avg Confidence (%)', 'Processing Time (s)', 'Location Method'];
-        const rows = [headers, ...filteredDetections.map((d, i) => {
-            const dt = toDate(d.created_date) || new Date();
-            const severity = d.severity ? d.severity.charAt(0).toUpperCase() + d.severity.slice(1) : 'N/A';
-            const confidence = d.avg_confidence ? (d.avg_confidence * 100).toFixed(1) : 'N/A';
-            const procTime = d.processing_time ? (d.processing_time / 1000).toFixed(2) : 'N/A';
-            return [`DET-${String(i + 1).padStart(3, '0')}`, format(dt, 'yyyy-MM-dd'), format(dt, 'HH:mm:ss'), ns(d.province), ns(d.municipality), ns(d.barangay), ns(d.farmName), ns(d.farmOwner), ns(d.latitude), ns(d.longitude), severity, d.total_detections || 0, confidence, procTime, ns(d.locationMethod)];
-        })];
-        downloadXLSX(rows, `cocolisap-image-detections-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+    // ── EXPORT HANDLERS ──
+
+    const handleDetectionExcel = () => {
+        if (!filteredDetections.length) {
+            setExportMessage({ type: 'error', text: 'No image detections match current filters.' });
+            return;
+        }
+        downloadXLSX([{
+            name: 'Detections',
+            headers: DETECTION_HEADERS,
+            rows: buildDetectionRows(filteredDetections),
+            color: '2e8b4a',
+        }], `cocolisap-image-detections-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
         setExportMessage({ type: 'success', text: `Exported ${filteredDetections.length} image detections to Excel.` });
     };
 
-    const handleDetectionSummary = () => {
-        if (!filteredDetections.length) { setExportMessage({ type: 'error', text: 'No image detections match current filters.' }); return; }
-        const d = filteredDetections;
-        const total = d.length;
-        const severe = d.filter(x => x.severity === 'severe').length;
-        const moderate = d.filter(x => x.severity === 'moderate').length;
-        const low = d.filter(x => x.severity === 'low').length;
-        const avgInsects = avg(d, 'total_detections').toFixed(1);
-        const avgConf = (avg(d, 'avg_confidence') * 100).toFixed(1);
-        const avgProc = avg(d, 'processing_time').toFixed(0);
-        const pc = {};
-        d.forEach(x => { if (x.province) pc[x.province] = (pc[x.province] || 0) + 1; });
-        const topP = Object.entries(pc).sort((a, b) => b[1] - a[1]).slice(0, 3);
-        const dates = d.map(x => toDate(x.created_date)).filter(Boolean).sort((a, b) => a - b);
-        const earliest = dates.length ? format(dates[0], 'MMMM d, yyyy') : 'N/A';
-        const latest = dates.length ? format(dates[dates.length - 1], 'MMMM d, yyyy') : 'N/A';
-        const dayCounts = {};
-        d.forEach(x => { const dt = toDate(x.created_date); if (dt) { const day = format(dt, 'yyyy-MM-dd'); dayCounts[day] = (dayCounts[day] || 0) + 1; } });
-        const mostActiveDay = Object.entries(dayCounts).sort((a, b) => b[1] - a[1])[0];
-        const rec = severe / total > 0.5 ? 'URGENT — majority of scans show severe infestation. Immediate field intervention required.' : moderate / total > 0.5 ? 'MODERATE RISK — schedule scouting within 1-2 weeks.' : 'LOW RISK — continue regular monitoring schedule.';
-        const SEP = `================================================`;
-        const SEC = `------------------------------------------------`;
-        const txt = [SEP, `  COCOLISAP IMAGE DETECTION REPORT`, `  Powered by YOLOv26 Instance Segmentation`, `  Generated: ${format(new Date(), 'MMMM d, yyyy h:mm a')}`, `  CocolisapScan Detection System v5.0`, SEP, ``, SEC, `DETECTION STATISTICS`, SEC, `Total Scans Performed       : ${total}`, `Severe Infestations (>=10)  : ${severe} (${pct(severe, total)}%)`, `Moderate Infestations (5-9) : ${moderate} (${pct(moderate, total)}%)`, `Low Infestations (<5)       : ${low} (${pct(low, total)}%)`, `Average Insects per Scan    : ${avgInsects}`, `Average Confidence Score    : ${avgConf}%`, `Average Processing Time     : ${(avgProc / 1000).toFixed(2)}s`, ``, SEC, `TOP AFFECTED PROVINCES`, SEC, ...(topP.length ? topP.map(([p, c], i) => `${i + 1}. ${p} - ${c} detections (${pct(c, total)}%)`) : ['No province data available.']), ``, SEC, `DATE RANGE ANALYSIS`, SEC, `Earliest Detection          : ${earliest}`, `Latest Detection            : ${latest}`, `Most Active Day             : ${mostActiveDay ? format(new Date(mostActiveDay[0]), 'MMMM d, yyyy') + ` (${mostActiveDay[1]} scans)` : 'N/A'}`, ``, SEC, `FIELD RECOMMENDATIONS`, SEC, rec, ``, SEP, `  CocolisapScan | Undergraduate Thesis Project`, `  YOLOv26 mAP: 90.0% | Dataset: 8,658 images`, SEP].join('\n');
-        downloadText(txt, `cocolisap-image-detection-summary-${format(new Date(), 'yyyy-MM-dd')}.txt`);
-        setExportMessage({ type: 'success', text: 'Image detection summary report generated.' });
+    const handleFuzzyExcel = () => {
+        if (!filteredAssessments.length) {
+            setExportMessage({ type: 'error', text: 'No fuzzy logic assessments match current filters.' });
+            return;
+        }
+        downloadXLSX([{
+            name: 'Assessments',
+            headers: ASSESSMENT_HEADERS,
+            rows: buildAssessmentRows(filteredAssessments),
+            color: '3b82f6',
+        }], `cocolisap-fuzzy-assessments-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+        setExportMessage({ type: 'success', text: `Exported ${filteredAssessments.length} fuzzy assessments to Excel.` });
     };
 
-    const handleFuzzyCSV = () => {
-        if (!filteredAssessments.length) { setExportMessage({ type: 'error', text: 'No fuzzy logic assessments match current filters.' }); return; }
-        const headers = ['Assessment ID', 'Date', 'Time', 'Province', 'Municipality', 'Barangay', 'Latitude', 'Longitude', 'Temperature (°C)', 'Humidity (%)', 'Wind Speed (km/h)', 'Planting Density (trees/ha)', 'Total Trees', 'Days Without Intervention', 'Fuzzy Base Score', 'Fuzzy Base Label', 'Intervention Multiplier', 'Adjusted Risk Score', 'Adjusted Risk Label', 'Degree of Infestation (%)', 'Estimated Infected Trees', 'Estimated Healthy Trees', 'Wind Direction', 'Intervention Note'];
-        const rows = [headers, ...filteredAssessments.map((a, i) => {
-            const dt = toDate(a.created_date) || new Date();
-            return [`FZY-${String(i + 1).padStart(3, '0')}`, format(dt, 'yyyy-MM-dd'), format(dt, 'HH:mm:ss'), ns(a.province), ns(a.municipality), ns(a.barangay), ns(a.latitude), ns(a.longitude), a.temperature_c, a.humidity_pct, a.wind_speed_kmh, a.planting_density, a.total_trees, a.days_without_intervention, a.fuzzy_base_score?.toFixed(2), a.fuzzy_base_label, a.intervention_multiplier?.toFixed(4), a.adjusted_risk_score?.toFixed(2), a.adjusted_risk_label, a.degree_of_infestation_pct?.toFixed(2), a.estimated_infected_trees, a.estimated_healthy_trees, a.wind_direction_compass ? `${a.wind_direction_compass} (${a.wind_direction_deg}°)` : 'Not Specified', ns(a.intervention_note)];
-        })];
-        downloadXLSX(rows, `cocolisap-fuzzy-assessments-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
-        setExportMessage({ type: 'success', text: `Exported ${filteredAssessments.length} fuzzy logic assessments to Excel.` });
-    };
-
-    const handleFuzzySummary = () => {
-        if (!filteredAssessments.length) { setExportMessage({ type: 'error', text: 'No fuzzy logic assessments match current filters.' }); return; }
-        const a = filteredAssessments;
-        const total = a.length;
-        const high = a.filter(x => x.adjusted_risk_label === 'HIGH').length;
-        const moderate = a.filter(x => x.adjusted_risk_label === 'MODERATE').length;
-        const low = a.filter(x => x.adjusted_risk_label === 'LOW').length;
-        const totalTrees = a.reduce((s, x) => s + (x.total_trees || 0), 0);
-        const totalInfected = a.reduce((s, x) => s + (x.estimated_infected_trees || 0), 0);
-        const totalHealthy = a.reduce((s, x) => s + (x.estimated_healthy_trees || 0), 0);
-        const pc = {};
-        a.filter(x => x.adjusted_risk_label === 'HIGH').forEach(x => { if (x.province) pc[x.province] = (pc[x.province] || 0) + 1; });
-        const topP = Object.entries(pc).sort((b1, b2) => b2[1] - b1[1]).slice(0, 3);
-        const rec = high / total > 0.5 ? 'CRITICAL — majority of assessments indicate HIGH risk. Coordinate immediate farm-wide response with LGU.' : moderate / total > 0.5 ? 'ELEVATED RISK — schedule PCA field inspection within 2-4 weeks.' : 'MANAGEABLE — continue quarterly monitoring of coconut farms.';
-        const SEP = `================================================`;
-        const SEC = `------------------------------------------------`;
-        const txt = [SEP, `  COCOLISAP FUZZY LOGIC ASSESSMENT REPORT`, `  Powered by Mamdani 81-Rule Inference`, `  Generated: ${format(new Date(), 'MMMM d, yyyy h:mm a')}`, `  CocolisapScan Expert System v5.0`, SEP, ``, SEC, `FUZZY LOGIC ASSESSMENT SUMMARY`, SEC, `Total Assessments Performed  : ${total}`, `HIGH Risk Assessments        : ${high} (${pct(high, total)}%)`, `MODERATE Risk Assessments    : ${moderate} (${pct(moderate, total)}%)`, `LOW Risk Assessments         : ${low} (${pct(low, total)}%)`, `Average Fuzzy Base Score     : ${avg(a, 'fuzzy_base_score').toFixed(2)}%`, `Average Adjusted Risk Score  : ${avg(a, 'adjusted_risk_score').toFixed(2)}%`, `Average Infestation Degree   : ${avg(a, 'degree_of_infestation_pct').toFixed(2)}%`, ``, SEC, `FARM IMPACT ANALYSIS`, SEC, `Total Trees Assessed         : ${totalTrees.toLocaleString()}`, `Estimated Infected Trees     : ${totalInfected.toLocaleString()} (${pct(totalInfected, totalTrees)}%)`, `Estimated Healthy Trees      : ${totalHealthy.toLocaleString()} (${pct(totalHealthy, totalTrees)}%)`, ``, SEC, `AVERAGE ENVIRONMENTAL CONDITIONS`, SEC, `Average Temperature          : ${avg(a, 'temperature_c').toFixed(1)}°C`, `Average Humidity             : ${avg(a, 'humidity_pct').toFixed(1)}%`, `Average Wind Speed           : ${avg(a, 'wind_speed_kmh').toFixed(1)} km/h`, `Average Planting Density     : ${avg(a, 'planting_density').toFixed(1)} trees/ha`, ``, SEC, `TOP HIGH-RISK PROVINCES`, SEC, ...(topP.length ? topP.map(([p, c], i) => `${i + 1}. ${p} - ${c} HIGH risk assessments`) : ['No high-risk province data available.']), ``, SEC, `PCA INTERVENTION RECOMMENDATIONS`, SEC, rec, ``, SEP, `  CocolisapScan | Undergraduate Thesis Project`, `  Mamdani Fuzzy Inference System | Rules: 81 | Variables: 4 inputs, 1 output`, SEP].join('\n');
-        downloadText(txt, `cocolisap-fuzzy-assessment-summary-${format(new Date(), 'yyyy-MM-dd')}.txt`);
-        setExportMessage({ type: 'success', text: 'Fuzzy logic assessment summary generated.' });
-    };
-
-    const handleCombinedSummary = () => {
-        if (!filteredDetections.length && !filteredAssessments.length) { setExportMessage({ type: 'error', text: 'No data available for combined report.' }); return; }
-        const d = filteredDetections, a = filteredAssessments;
-        const dTotal = d.length, aTotal = a.length;
-        const severe = d.filter(x => x.severity === 'severe').length;
-        const moderate = d.filter(x => x.severity === 'moderate').length;
-        const low = d.filter(x => x.severity === 'low').length;
-        const high = a.filter(x => x.adjusted_risk_label === 'HIGH').length;
-        const aModerate = a.filter(x => x.adjusted_risk_label === 'MODERATE').length;
-        const aLow = a.filter(x => x.adjusted_risk_label === 'LOW').length;
-        const totalInfected = a.reduce((s, x) => s + (x.estimated_infected_trees || 0), 0);
-        const totalHealthy = a.reduce((s, x) => s + (x.estimated_healthy_trees || 0), 0);
-        const provData = {};
-        d.forEach(x => { if (x.province) { provData[x.province] = provData[x.province] || { det: 0, high: 0 }; provData[x.province].det++; } });
-        a.filter(x => x.adjusted_risk_label === 'HIGH').forEach(x => { if (x.province) { provData[x.province] = provData[x.province] || { det: 0, high: 0 }; provData[x.province].high++; } });
-        const topP = Object.entries(provData).sort((x, y) => (y[1].det + y[1].high) - (x[1].det + x[1].high)).slice(0, 3);
-        const combinedRec = [];
-        if (dTotal > 0 && severe / dTotal > 0.5) combinedRec.push('URGENT — majority of image scans show severe infestation. Immediate visual field inspection required.');
-        if (aTotal > 0 && high / aTotal > 0.5) combinedRec.push('CRITICAL — fuzzy logic assessments indicate HIGH risk dominance. Coordinate rapid LGU response.');
-        if (!combinedRec.length && dTotal > 0 && moderate / dTotal > 0.5) combinedRec.push('MODERATE RISK — schedule combined scouting and farm assessment within 1-2 weeks.');
-        if (!combinedRec.length) combinedRec.push('MANAGEABLE — continue regular monitoring. Maintain quarterly inspections and early detection protocols.');
-        const SEP = `================================================`;
-        const SEC = `------------------------------------------------`;
-        const txt = [SEP, `  COCOLISAP INTEGRATED MONITORING REPORT`, `  YOLOv26 Detection + Mamdani Fuzzy Inference`, `  Generated: ${format(new Date(), 'MMMM d, yyyy h:mm a')}`, `  CocolisapScan Integrated Monitoring System v5.0`, SEP, ``, SEC, `IMAGE DETECTION SUMMARY`, SEC, `Total Scans              : ${dTotal}`, `Severe Infestations      : ${severe} (${pct(severe, dTotal)}%)`, `Moderate Infestations    : ${moderate} (${pct(moderate, dTotal)}%)`, `Low Infestations         : ${low} (${pct(low, dTotal)}%)`, `Avg Insects per Scan     : ${dTotal > 0 ? avg(d, 'total_detections').toFixed(1) : 'N/A'}`, `Avg Confidence Score     : ${dTotal > 0 ? (avg(d, 'avg_confidence') * 100).toFixed(1) + '%' : 'N/A'}`, ``, SEC, `FUZZY LOGIC ASSESSMENT SUMMARY`, SEC, `Total Assessments        : ${aTotal}`, `HIGH Risk                : ${high} (${pct(high, aTotal)}%)`, `MODERATE Risk            : ${aModerate} (${pct(aModerate, aTotal)}%)`, `LOW Risk                 : ${aLow} (${pct(aLow, aTotal)}%)`, `Avg Fuzzy Score          : ${aTotal > 0 ? avg(a, 'fuzzy_base_score').toFixed(2) + '%' : 'N/A'}`, `Est. Total Infected Trees: ${totalInfected.toLocaleString()}`, `Est. Total Healthy Trees : ${totalHealthy.toLocaleString()}`, ``, SEC, `TOP AFFECTED PROVINCES`, SEC, ...(topP.length ? topP.map(([p, v], i) => `${i + 1}. ${p} - ${v.det} detections, ${v.high} HIGH risk`) : ['No province data available.']), ``, SEC, `ENVIRONMENTAL CONDITIONS`, SEC, `Avg Temperature          : ${aTotal > 0 ? avg(a, 'temperature_c').toFixed(1) + '°C' : 'N/A'}`, `Avg Humidity             : ${aTotal > 0 ? avg(a, 'humidity_pct').toFixed(1) + '%' : 'N/A'}`, `Avg Wind Speed           : ${aTotal > 0 ? avg(a, 'wind_speed_kmh').toFixed(1) + ' km/h' : 'N/A'}`, `Avg Planting Density     : ${aTotal > 0 ? avg(a, 'planting_density').toFixed(1) + ' trees/ha' : 'N/A'}`, ``, SEC, `INTEGRATED RECOMMENDATIONS`, SEC, ...combinedRec, ``, SEP, `  CocolisapScan | Undergraduate Thesis Project`, `  YOLOv26 mAP: 90.0% | Fuzzy Rules: 81`, SEP].join('\n');
-        downloadText(txt, `cocolisap-integrated-report-${format(new Date(), 'yyyy-MM-dd')}.txt`);
-        setExportMessage({ type: 'success', text: 'Integrated monitoring report generated.' });
+    const handleCombinedExcel = () => {
+        if (!filteredDetections.length && !filteredAssessments.length) {
+            setExportMessage({ type: 'error', text: 'No data available for combined report.' });
+            return;
+        }
+        downloadXLSX([
+            {
+                name: 'Image Detections',
+                headers: DETECTION_HEADERS,
+                rows: buildDetectionRows(filteredDetections),
+                color: '2e8b4a',
+            },
+            {
+                name: 'Fuzzy Assessments',
+                headers: ASSESSMENT_HEADERS,
+                rows: buildAssessmentRows(filteredAssessments),
+                color: '3b82f6',
+            },
+        ], `cocolisap-combined-report-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+        setExportMessage({ type: 'success', text: `Combined report exported — ${filteredDetections.length} detections + ${filteredAssessments.length} assessments.` });
     };
 
     return (
@@ -269,25 +333,26 @@ export default function DataExport() {
                 <p className="export-sub">Download detection records and fuzzy logic assessments for reporting and analysis</p>
                 <div className="export-divider" />
 
-                {/* ── HOW TO USE ── */}
+                {/* How to Use */}
                 <div style={{ background:'#fff', border:'1px solid rgba(46,139,74,0.18)', borderRadius:16, padding:'18px 22px', marginBottom:24, position:'relative', overflow:'hidden', boxShadow:'0 1px 6px rgba(0,0,0,0.05)' }}>
-                  <div style={{ position:'absolute', top:0, left:0, right:0, height:2, background:'linear-gradient(90deg,#2e8b4a,transparent)' }} />
-                  <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, letterSpacing:'.14em', textTransform:'uppercase', color:'#8aaa96', marginBottom:12, display:'block' }}>How to Use — Data Export</span>
-                  <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
-                    {[
-                      { n:1, t:'Set filters', d:'Choose a date range, province, severity, or risk level to narrow down records.' },
-                      { n:2, t:'Check record counts', d:'The counters below show how many detections and assessments match your filters.' },
-                      { n:3, t:'Choose export type', d:'Image Detection for scan records, Fuzzy Logic for risk assessments, or Combined for both.' },
-                      { n:4, t:'Download', d:'Excel files open in spreadsheet apps. Summary TXT files are formatted for reports and documentation.' },
-                    ].map(s => (
-                      <div key={s.n} style={{ display:'flex', alignItems:'flex-start', gap:10, flex:1, minWidth:180 }}>
-                        <div style={{ width:20, height:20, borderRadius:'50%', background:'#2e8b4a', color:'#fff', fontFamily:"'DM Mono',monospace", fontSize:10, fontWeight:600, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:2 }}>{s.n}</div>
-                        <div style={{ fontSize:12, color:'#5a8068', lineHeight:1.5 }}><strong style={{ color:'#1a3326', fontWeight:600, display:'block', marginBottom:2 }}>{s.t}</strong>{s.d}</div>
-                      </div>
-                    ))}
-                  </div>
+                    <div style={{ position:'absolute', top:0, left:0, right:0, height:2, background:'linear-gradient(90deg,#2e8b4a,transparent)' }} />
+                    <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, letterSpacing:'.14em', textTransform:'uppercase', color:'#8aaa96', marginBottom:12, display:'block' }}>How to Use — Data Export</span>
+                    <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
+                        {[
+                            { n:1, t:'Set filters', d:'Choose a date range, province, severity, or risk level to narrow down records.' },
+                            { n:2, t:'Check record counts', d:'The counters below show how many detections and assessments match your filters.' },
+                            { n:3, t:'Choose export type', d:'Image Detection for scan records, Fuzzy Logic for risk assessments, or Combined for both.' },
+                            { n:4, t:'Download', d:'All exports are formatted Excel files with colored headers, auto-sized columns, and alternating row colors.' },
+                        ].map(s => (
+                            <div key={s.n} style={{ display:'flex', alignItems:'flex-start', gap:10, flex:1, minWidth:180 }}>
+                                <div style={{ width:20, height:20, borderRadius:'50%', background:'#2e8b4a', color:'#fff', fontFamily:"'DM Mono',monospace", fontSize:10, fontWeight:600, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:2 }}>{s.n}</div>
+                                <div style={{ fontSize:12, color:'#5a8068', lineHeight:1.5 }}><strong style={{ color:'#1a3326', fontWeight:600, display:'block', marginBottom:2 }}>{s.t}</strong>{s.d}</div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
 
+                {/* Filters */}
                 <div className="export-card">
                     <span className="export-sec-label">Filter Criteria — applied to all exports</span>
                     <div className="export-grid2">
@@ -323,6 +388,7 @@ export default function DataExport() {
                     </div>
                 </div>
 
+                {/* Record counts */}
                 <div className="export-count-row">
                     <div className="export-count-box">
                         <div className="export-count-label">Image Detections</div>
@@ -341,57 +407,67 @@ export default function DataExport() {
                     </div>
                 )}
 
+                {/* Export options */}
                 <div className="export-options-grid">
+
+                    {/* Image Detection */}
                     <div className="export-option-card green">
                         <div className="export-option-icon green"><FileSpreadsheet style={{ width: 22, height: 22, color: '#2e8b4a' }} /></div>
                         <h3 className="export-option-title">Image Detection</h3>
                         <p className="export-option-sub">YOLOv26 · Instance Segmentation</p>
-                        <p className="export-option-desc">Export all image scan records with location, severity, confidence scores, and optional photo URLs.</p>
+                        <p className="export-option-desc">Export all image scan records with location, severity, confidence scores, and insect counts. Green header, alternating rows.</p>
                         <div className="export-btn-row">
-                            <button className="export-dl-btn green" onClick={handleDetectionCSV} disabled={!filteredDetections.length}><FileSpreadsheet style={{ width: 15, height: 15 }} />Download Excel</button>
-                            <button className="export-dl-btn blue" onClick={handleDetectionSummary} disabled={!filteredDetections.length}><FileText style={{ width: 15, height: 15 }} />Download Summary TXT</button>
+                            <button className="export-dl-btn green" onClick={handleDetectionExcel} disabled={!filteredDetections.length}>
+                                <FileSpreadsheet style={{ width: 15, height: 15 }} />Download Excel
+                            </button>
                         </div>
                     </div>
 
+                    {/* Fuzzy Assessment */}
                     <div className="export-option-card blue">
                         <div className="export-option-icon blue"><FileSpreadsheet style={{ width: 22, height: 22, color: '#3b82f6' }} /></div>
                         <h3 className="export-option-title">Fuzzy Logic Assessment</h3>
                         <p className="export-option-sub">Mamdani · 81-Rule Inference</p>
-                        <p className="export-option-desc">Export fuzzy logic risk assessments with environmental parameters, farm impact, and PCA intervention notes.</p>
+                        <p className="export-option-desc">Export fuzzy logic risk assessments with environmental parameters, farm impact, and PCA intervention notes. Blue header.</p>
                         <div className="export-btn-row">
-                            <button className="export-dl-btn green" onClick={handleFuzzyCSV} disabled={!filteredAssessments.length}><FileSpreadsheet style={{ width: 15, height: 15 }} />Download Excel</button>
-                            <button className="export-dl-btn blue" onClick={handleFuzzySummary} disabled={!filteredAssessments.length}><FileText style={{ width: 15, height: 15 }} />Download Summary TXT</button>
+                            <button className="export-dl-btn green" onClick={handleFuzzyExcel} disabled={!filteredAssessments.length}>
+                                <FileSpreadsheet style={{ width: 15, height: 15 }} />Download Excel
+                            </button>
                         </div>
                     </div>
 
+                    {/* Combined */}
                     <div className="export-option-card purple">
                         <div className="export-option-icon purple"><Layers style={{ width: 22, height: 22, color: '#8b5cf6' }} /></div>
-                        <h3 className="export-option-title">Combined Summary</h3>
+                        <h3 className="export-option-title">Combined Report</h3>
                         <p className="export-option-sub">Integrated · Detection + Fuzzy</p>
-                        <p className="export-option-desc">Generate a unified monitoring report combining image detection and fuzzy logic data with integrated recommendations.</p>
+                        <p className="export-option-desc">Single Excel file with two sheets — Sheet 1: Image Detections, Sheet 2: Fuzzy Assessments. Ready for PCA submission.</p>
                         <div className="export-btn-row">
-                            <button className="export-dl-btn purple" onClick={handleCombinedSummary} disabled={!filteredDetections.length && !filteredAssessments.length}><FileText style={{ width: 15, height: 15 }} />Download Combined Report</button>
+                            <button className="export-dl-btn purple" onClick={handleCombinedExcel} disabled={!filteredDetections.length && !filteredAssessments.length}>
+                                <FileSpreadsheet style={{ width: 15, height: 15 }} />Download Combined Excel
+                            </button>
                         </div>
                     </div>
+
                 </div>
 
+                {/* Tips */}
                 <div className="export-tips">
                     <div className="export-tips-icon"><Info style={{ width: 18, height: 18, color: '#3b82f6' }} /></div>
                     <div>
-                        <p className="export-tips-title">Usage Tips</p>
+                        <p className="export-tips-title">Excel Format Notes</p>
                         <ul className="export-tips-list">
-                            <li>· Excel exports open directly in Excel or Google Sheets with proper column widths</li>
-                            <li>· Summary TXT reports are formatted for government documentation and briefings</li>
-                            <li>· The Combined Report merges both datasets for a full integrated overview</li>
+                            <li>· All exports use colored headers — green for detections, blue for assessments</li>
+                            <li>· Alternating row colors and auto-sized columns for easy reading</li>
+                            <li>· Header row is frozen — stays visible when scrolling down</li>
+                            <li>· Combined report contains two sheets in one file for PCA submission</li>
                             <li>· Use date and province filters to generate targeted regional reports</li>
-                            <li>· Fuzzy Logic assessments are saved automatically after each analysis</li>
                         </ul>
                     </div>
                 </div>
 
                 <div className="export-footer">
-                    <span>Cocolisap Detection System · Data Export Module</span>
-                    <span>Built for coconut pest management research</span>
+                    <span>CocolisapScan · Data Export</span>
                 </div>
             </div>
         </div>
