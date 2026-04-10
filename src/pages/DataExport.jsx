@@ -216,8 +216,57 @@ function buildAssessmentRows(assessments) {
 
 // ── PREVIEW TABLES ────────────────────────────────────────────────────────────
 
+const PAGE_SIZE = 10;
+
+function Pagination({ page, totalPages, onPage }) {
+    if (totalPages <= 1) return null;
+    const pages = [];
+    const delta = 2;
+    const left = Math.max(1, page - delta);
+    const right = Math.min(totalPages, page + delta);
+    if (left > 1) { pages.push(1); if (left > 2) pages.push('...'); }
+    for (let i = left; i <= right; i++) pages.push(i);
+    if (right < totalPages) { if (right < totalPages - 1) pages.push('...'); pages.push(totalPages); }
+
+    return (
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 24px', borderTop:'1px solid #e8f0e8', background:'#f8fbf8', flexWrap:'wrap', gap:8 }}>
+            <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:'#8aaa96', letterSpacing:'.06em' }}>
+                Page {page} of {totalPages}
+            </span>
+            <div style={{ display:'flex', gap:4, alignItems:'center' }}>
+                <button
+                    onClick={() => onPage(page - 1)} disabled={page === 1}
+                    style={{ padding:'5px 12px', borderRadius:8, border:'1px solid #d6e8d6', background: page === 1 ? '#f0f6f0' : '#fff', color: page === 1 ? '#b0c8b8' : '#2e8b4a', fontFamily:"'DM Mono',monospace", fontSize:11, cursor: page === 1 ? 'not-allowed' : 'pointer', fontWeight:600, transition:'all .15s' }}>
+                    ← Prev
+                </button>
+                {pages.map((p, i) =>
+                    p === '...'
+                        ? <span key={`ellipsis-${i}`} style={{ padding:'0 4px', fontFamily:"'DM Mono',monospace", fontSize:11, color:'#8aaa96' }}>…</span>
+                        : <button key={p} onClick={() => onPage(p)}
+                            style={{ width:30, height:30, borderRadius:8, border:'1px solid', borderColor: p === page ? '#2e8b4a' : '#d6e8d6', background: p === page ? '#2e8b4a' : '#fff', color: p === page ? '#fff' : '#2e8b4a', fontFamily:"'DM Mono',monospace", fontSize:11, cursor:'pointer', fontWeight: p === page ? 700 : 400, transition:'all .15s' }}>
+                            {p}
+                          </button>
+                )}
+                <button
+                    onClick={() => onPage(page + 1)} disabled={page === totalPages}
+                    style={{ padding:'5px 12px', borderRadius:8, border:'1px solid #d6e8d6', background: page === totalPages ? '#f0f6f0' : '#fff', color: page === totalPages ? '#b0c8b8' : '#2e8b4a', fontFamily:"'DM Mono',monospace", fontSize:11, cursor: page === totalPages ? 'not-allowed' : 'pointer', fontWeight:600, transition:'all .15s' }}>
+                    Next →
+                </button>
+            </div>
+        </div>
+    );
+}
+
 function DetectionPreviewTable({ detections }) {
-    const preview = detections.slice(0, 10);
+    const [page, setPage] = useState(1);
+    const totalPages = Math.max(1, Math.ceil(detections.length / PAGE_SIZE));
+    const safePage = Math.min(page, totalPages);
+    const preview = detections.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+    const globalOffset = (safePage - 1) * PAGE_SIZE;
+
+    // Reset to page 1 when detections change (filter applied)
+    useEffect(() => { setPage(1); }, [detections.length]);
+
     return (
         <div className="preview-section">
             <div className="preview-header">
@@ -229,7 +278,7 @@ function DetectionPreviewTable({ detections }) {
                     <span className="preview-count-pill green">{detections.length} records</span>
                 </div>
                 <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: '#8aaa96', letterSpacing: '.06em' }}>
-                    {detections.length > 10 ? `Showing 10 of ${detections.length}` : `Showing all ${detections.length}`}
+                    {detections.length === 0 ? '0 records' : `Showing ${globalOffset + 1}–${Math.min(globalOffset + PAGE_SIZE, detections.length)} of ${detections.length}`}
                 </span>
             </div>
             <div className="preview-table-wrap">
@@ -257,18 +306,17 @@ function DetectionPreviewTable({ detections }) {
                                 const sev = d.severity ? d.severity.charAt(0).toUpperCase() + d.severity.slice(1) : 'N/A';
                                 const sc = severityColor(d.severity);
                                 const conf = d.avg_confidence ? (d.avg_confidence * 100).toFixed(1) + '%' : 'N/A';
+                                const rowNum = globalOffset + i + 1;
                                 return (
                                     <tr key={d.id || i}>
-                                        <td className="mono" style={{ color: '#8aaa96' }}>DET-{String(i + 1).padStart(3, '0')}</td>
+                                        <td className="mono" style={{ color: '#8aaa96' }}>DET-{String(rowNum).padStart(3, '0')}</td>
                                         <td className="mono">{format(dt, 'yyyy-MM-dd')}</td>
                                         <td className="mono">{format(dt, 'HH:mm:ss')}</td>
                                         <td>{ns(d.province)}</td>
                                         <td>{ns(d.municipality)}</td>
                                         <td>{ns(d.barangay)}</td>
                                         <td>{ns(d.farmName)}</td>
-                                        <td>
-                                            <span className="preview-badge" style={{ background: sc.bg, color: sc.color }}>{sev}</span>
-                                        </td>
+                                        <td><span className="preview-badge" style={{ background: sc.bg, color: sc.color }}>{sev}</span></td>
                                         <td className="mono">{d.total_detections || 0}</td>
                                         <td className="mono">{conf}</td>
                                     </tr>
@@ -278,17 +326,20 @@ function DetectionPreviewTable({ detections }) {
                     </table>
                 )}
             </div>
-            {detections.length > 10 && (
-                <div className="preview-footer">
-                    + {detections.length - 10} more records — download Excel to view all
-                </div>
-            )}
+            <Pagination page={safePage} totalPages={totalPages} onPage={setPage} />
         </div>
     );
 }
 
 function AssessmentPreviewTable({ assessments }) {
-    const preview = assessments.slice(0, 10);
+    const [page, setPage] = useState(1);
+    const totalPages = Math.max(1, Math.ceil(assessments.length / PAGE_SIZE));
+    const safePage = Math.min(page, totalPages);
+    const preview = assessments.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+    const globalOffset = (safePage - 1) * PAGE_SIZE;
+
+    useEffect(() => { setPage(1); }, [assessments.length]);
+
     return (
         <div className="preview-section">
             <div className="preview-header">
@@ -300,7 +351,7 @@ function AssessmentPreviewTable({ assessments }) {
                     <span className="preview-count-pill blue">{assessments.length} records</span>
                 </div>
                 <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: '#8aaa96', letterSpacing: '.06em' }}>
-                    {assessments.length > 10 ? `Showing 10 of ${assessments.length}` : `Showing all ${assessments.length}`}
+                    {assessments.length === 0 ? '0 records' : `Showing ${globalOffset + 1}–${Math.min(globalOffset + PAGE_SIZE, assessments.length)} of ${assessments.length}`}
                 </span>
             </div>
             <div className="preview-table-wrap">
@@ -327,9 +378,10 @@ function AssessmentPreviewTable({ assessments }) {
                             {preview.map((a, i) => {
                                 const dt = toDate(a.created_date) || new Date();
                                 const rc = riskColor(a.adjusted_risk_label);
+                                const rowNum = globalOffset + i + 1;
                                 return (
                                     <tr key={a.id || i}>
-                                        <td className="mono" style={{ color: '#8aaa96' }}>FZY-{String(i + 1).padStart(3, '0')}</td>
+                                        <td className="mono" style={{ color: '#8aaa96' }}>FZY-{String(rowNum).padStart(3, '0')}</td>
                                         <td className="mono">{format(dt, 'yyyy-MM-dd')}</td>
                                         <td className="mono">{format(dt, 'HH:mm:ss')}</td>
                                         <td>{ns(a.province)}</td>
@@ -338,11 +390,7 @@ function AssessmentPreviewTable({ assessments }) {
                                         <td className="mono">{a.temperature_c ?? 'N/A'}</td>
                                         <td className="mono">{a.humidity_pct ?? 'N/A'}</td>
                                         <td className="mono">{a.adjusted_risk_score?.toFixed(2) ?? 'N/A'}</td>
-                                        <td>
-                                            <span className="preview-badge" style={{ background: rc.bg, color: rc.color }}>
-                                                {a.adjusted_risk_label || 'N/A'}
-                                            </span>
-                                        </td>
+                                        <td><span className="preview-badge" style={{ background: rc.bg, color: rc.color }}>{a.adjusted_risk_label || 'N/A'}</span></td>
                                         <td className="mono">{a.degree_of_infestation_pct?.toFixed(1) ?? 'N/A'}%</td>
                                     </tr>
                                 );
@@ -351,11 +399,7 @@ function AssessmentPreviewTable({ assessments }) {
                     </table>
                 )}
             </div>
-            {assessments.length > 10 && (
-                <div className="preview-footer">
-                    + {assessments.length - 10} more records — download Excel to view all
-                </div>
-            )}
+            <Pagination page={safePage} totalPages={totalPages} onPage={setPage} />
         </div>
     );
 }
@@ -523,6 +567,18 @@ export default function DataExport() {
                     </div>
                 )}
 
+                {/* ── Preview Tables ── */}
+                {isLoading ? (
+                    <div style={{ textAlign:'center', padding:'40px', fontFamily:"'DM Mono',monospace", fontSize:12, color:'#8aaa96' }}>
+                        Loading records...
+                    </div>
+                ) : (
+                    <>
+                        <DetectionPreviewTable detections={filteredDetections} />
+                        <AssessmentPreviewTable assessments={filteredAssessments} />
+                    </>
+                )}
+
                 {/* Export options */}
                 <div className="export-options-grid">
                     <div className="export-option-card green">
@@ -559,18 +615,6 @@ export default function DataExport() {
                         </div>
                     </div>
                 </div>
-
-                {/* ── Preview Tables ── */}
-                {isLoading ? (
-                    <div style={{ textAlign:'center', padding:'40px', fontFamily:"'DM Mono',monospace", fontSize:12, color:'#8aaa96' }}>
-                        Loading records...
-                    </div>
-                ) : (
-                    <>
-                        <DetectionPreviewTable detections={filteredDetections} />
-                        <AssessmentPreviewTable assessments={filteredAssessments} />
-                    </>
-                )}
 
                 {/* Tips */}
                 <div className="export-tips">
