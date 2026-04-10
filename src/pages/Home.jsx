@@ -76,12 +76,13 @@ const homeStyles = `
     .lm-metric-sub { font-size:11px; color:#a8c4b0; margin-top:4px; font-family:'DM Mono',monospace; }
     .lm-charts-row { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
     @media(max-width:800px){ .lm-charts-row { grid-template-columns:1fr; } }
-    .lm-chart-card { background:#fff; border:1px solid #d6e8d6; border-radius:18px; padding:24px; box-shadow:0 1px 6px rgba(0,0,0,0.05); }
+    /* FIX: padding-bottom increased so legend has breathing room */
+    .lm-chart-card { background:#fff; border:1px solid #d6e8d6; border-radius:18px; padding:24px 24px 32px; box-shadow:0 1px 6px rgba(0,0,0,0.05); }
     .lm-chart-title { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:#8aaa96; margin-bottom:4px; }
     .lm-chart-subtitle { font-size:13px; color:#5a8068; margin-bottom:20px; }
 
-    /* Training Chart */
-    .lm-training-chart { width:100%; height:200px; position:relative; }
+    /* Training Chart — FIX: height:auto so container never clips the legend */
+    .lm-training-chart { width:100%; height:auto; position:relative; }
     .lm-chart-svg { width:100%; height:100%; }
     .lm-chart-legend { display:flex; gap:16px; margin-top:8px; padding:6px 4px 2px; }
     .lm-legend-item { display:flex; align-items:center; gap:6px; font-family:'DM Mono',monospace; font-size:10px; color:#8aaa96; }
@@ -307,7 +308,6 @@ export default function Home() {
       <motion.div className="landing-section" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.5 }}>
         <p className="landing-section-label">Model Performance</p>
         <h2 className="landing-section-title">YOLOv26 <em>Detection</em> Metrics</h2>
-        {/* FIX 3: removed em dashes, replaced with colon and comma */}
         <p className="landing-section-sub">Trained on 8,658 annotated images of <em>Aspidiotus rigidus</em> across 85 epochs: 7,569 train · 730 validation · 362 test, using instance segmentation.</p>
 
         {/* Metric Cards */}
@@ -407,7 +407,6 @@ export default function Home() {
         </div>
       </motion.div>
 
-      {/* FIX 1: Shortened footer text */}
       <div className="landing-footer">
         <span className="landing-footer-text">Cocolisap Expert System · Undergraduate Thesis</span>
         <span className="landing-footer-text">YOLOv26 · Mamdani Fuzzy Inference · PCA Reference Data</span>
