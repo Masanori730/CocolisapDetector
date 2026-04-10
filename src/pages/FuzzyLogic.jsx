@@ -1024,8 +1024,7 @@ export default function FuzzyLogic() {
         )}
 
         <footer className="fl-footer">
-          <span>Cocolisap Fuzzy Logic Expert System · 81-Rule Mamdani Inference</span>
-          <span>Aspidiotus rigidus · Philippine Coconut Authority Reference Data</span>
+          <span>CocolisapScan · 81-Rule Mamdani Inference</span>
         </footer>
       </div>
     </div>
