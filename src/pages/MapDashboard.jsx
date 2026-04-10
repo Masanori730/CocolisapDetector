@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { db } from '../firebase';
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { Map, TrendingUp, AlertTriangle, BarChart3, MapPin, Activity } from 'lucide-react';
@@ -171,32 +171,85 @@ const mapStyles = `
     .fade-in { animation: fadeIn .35s ease both; }
     .map-container-wrap { height:480px; min-height:480px; position:relative; overflow:hidden; flex-shrink:0; }
     .map-card-flex { display:flex; flex-direction:column; min-height:0; }
+
+    /* ── How To Use ── */
+    .how-to-wrap { background:#fff; border:1px solid #d6e8d6; border-radius:16px; margin-bottom:24px; position:relative; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,0.05); }
+    .how-to-wrap::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,#2e8b4a,transparent); }
+    .how-to-header { padding:18px 24px 0; display:flex; align-items:center; gap:10px; }
+    .how-to-badge { display:inline-flex; align-items:center; gap:6px; background:rgba(46,139,74,0.10); border:1px solid rgba(46,139,74,0.25); border-radius:100px; padding:3px 10px; font-family:'DM Mono',monospace; font-size:10px; letter-spacing:.12em; color:#2e8b4a; text-transform:uppercase; }
+    .how-to-title { font-family:'DM Serif Display',serif; font-size:17px; font-weight:400; color:#1a3326; margin:6px 24px 0; }
+    .how-to-subtitle { font-family:'DM Mono',monospace; font-size:11px; color:#8aaa96; margin:4px 24px 20px; }
+    .how-to-steps { display:grid; grid-template-columns:repeat(5,1fr); gap:0; border-top:1px solid #eaf2ea; }
+    @media(max-width:900px){ .how-to-steps { grid-template-columns:repeat(3,1fr); } }
+    @media(max-width:560px){ .how-to-steps { grid-template-columns:1fr 1fr; } }
+    .how-to-step { padding:20px; position:relative; border-right:1px solid #eaf2ea; }
+    .how-to-step:last-child { border-right:none; }
+    .how-to-step-num { width:28px; height:28px; border-radius:50%; background:linear-gradient(135deg,#2e8b4a,#4caf72); color:#fff; font-family:'DM Mono',monospace; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; margin-bottom:12px; flex-shrink:0; box-shadow:0 2px 8px rgba(46,139,74,0.30); }
+    .how-to-step-title { font-size:13px; font-weight:600; color:#1a3326; margin-bottom:6px; line-height:1.3; }
+    .how-to-step-desc { font-size:11.5px; color:#5a8068; line-height:1.6; font-family:'Outfit',sans-serif; }
+    .how-to-step-connector { position:absolute; top:34px; right:-1px; width:1px; height:0; }
+    .how-to-tip { margin:0 24px 20px; background:rgba(46,139,74,0.04); border:1px solid rgba(46,139,74,0.15); border-radius:10px; padding:10px 14px; display:flex; align-items:flex-start; gap:8px; }
+    .how-to-tip-icon { font-size:14px; flex-shrink:0; margin-top:1px; }
+    .how-to-tip-text { font-size:12px; color:#5a8068; font-family:'DM Mono',monospace; line-height:1.6; }
+    .how-to-tip-text strong { color:#2e8b4a; }
 `;
 
+// ── Step-by-step How To Use ──────────────────────────────────────────────────
 function HowToUse() {
     const steps = [
-        { title: 'Total Detections', desc: 'Total number of cocolisap detections recorded across all farms.' },
-        { title: 'Severe Cases', desc: 'Detections with 10 or more insects — requires immediate action.' },
-        { title: 'Moderate Cases', desc: 'Detections with 5–9 insects — monitor closely.' },
-        { title: 'Low Cases', desc: 'Detections with 1–4 insects — low infestation level.' },
-        { title: 'Avg Insects / Farm', desc: 'Average insect count across all submitted detections.' },
+        {
+            num: 1,
+            title: 'Check the Metric Cards',
+            desc: 'Review the 5 summary cards at the top — Total Detections, Severe, Moderate, Low cases, and the average insect count per farm.',
+        },
+        {
+            num: 2,
+            title: 'Apply Filters',
+            desc: 'Use the Filters panel to narrow results by Severity Level, Date Range, or Province. You can also set a Custom Date Range.',
+        },
+        {
+            num: 3,
+            title: 'Explore the Map',
+            desc: 'Colored dots show detection locations. Red = Severe, Orange = Moderate, Green = Low. Click any dot to view full details.',
+        },
+        {
+            num: 4,
+            title: 'Analyze the Charts',
+            desc: 'The Detection Trend line chart shows monthly counts over 6 months. The Severity Breakdown donut shows the proportion of each level.',
+        },
+        {
+            num: 5,
+            title: 'Review Affected Areas',
+            desc: 'Check Top Affected Provinces and Recent Detections in the sidebar to identify which areas need priority attention.',
+        },
     ];
+
     return (
-        <div style={{ background:'#fff', border:'1px solid #d6e8d6', borderRadius:16, marginBottom:20, position:'relative', overflow:'hidden', boxShadow:'0 1px 6px rgba(0,0,0,0.05)' }}>
-            <div style={{ position:'absolute', top:0, left:0, right:0, height:2, background:'linear-gradient(90deg,#2e8b4a,transparent)' }} />
-            <div style={{ padding:'14px 22px' }}>
-                <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, letterSpacing:'.14em', textTransform:'uppercase', color:'#8aaa96' }}>Metric Guide</span>
+        <div className="how-to-wrap">
+            <div className="how-to-header">
+                <span className="how-to-badge">
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.5" stroke="#2e8b4a"/><path d="M5 4.5v3M5 3h.01" stroke="#2e8b4a" strokeWidth="1.2" strokeLinecap="round"/></svg>
+                    How to Use
+                </span>
             </div>
-            <div style={{ padding:'0 22px 18px', display:'flex', gap:12, flexWrap:'wrap' }}>
-                {steps.map((s, i) => (
-                    <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:10, flex:1, minWidth:180 }}>
-                        <div style={{ width:20, height:20, borderRadius:'50%', background:'#2e8b4a', color:'#fff', fontFamily:"'DM Mono',monospace", fontSize:10, fontWeight:600, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:2 }}>{i+1}</div>
-                        <div style={{ fontSize:12, color:'#5a8068', lineHeight:1.5 }}>
-                            <strong style={{ color:'#1a3326', fontWeight:600, display:'block', marginBottom:2 }}>{s.title}</strong>
-                            {s.desc}
-                        </div>
+            <div className="how-to-title">Getting Started with the Detection Dashboard</div>
+            <div className="how-to-subtitle">Follow these steps to navigate and interpret the monitoring data.</div>
+
+            <div className="how-to-steps">
+                {steps.map((step, i) => (
+                    <div key={step.num} className="how-to-step">
+                        <div className="how-to-step-num">{step.num}</div>
+                        <div className="how-to-step-title">{step.title}</div>
+                        <div className="how-to-step-desc">{step.desc}</div>
                     </div>
                 ))}
+            </div>
+
+            <div className="how-to-tip">
+                <span className="how-to-tip-icon">💡</span>
+                <span className="how-to-tip-text">
+                    <strong>Pro tip:</strong> Click any marker on the map or any row in Recent Detections to open the full detection detail panel — including the captured image, farm info, insect count, and exact GPS coordinates.
+                </span>
             </div>
         </div>
     );
@@ -529,7 +582,7 @@ export default function MapDashboard() {
                 </div>
                 <div className="map-divider" />
 
-                {/* ── Metric Guide ── */}
+                {/* ── How To Use (Step-by-step) ── */}
                 <HowToUse />
 
                 {/* ── Metric Cards (5 cards) ── */}
@@ -684,7 +737,7 @@ export default function MapDashboard() {
                             )}
                         </div>
 
-                        {/* Desktop detail panel — only renders when a detection is selected */}
+                        {/* Desktop detail panel */}
                         {selectedDetection && (
                             <div className="desktop-detail-panel">
                                 <DetectionDetailPanel detection={selectedDetection} onClose={() => setSelectedDetectionId(null)} />
