@@ -37,7 +37,6 @@ const PHILIPPINE_PROVINCES = [
     "Abra","Agusan del Norte","Agusan del Sur","Aklan","Albay","Antique","Apayao","Aurora","Basilan","Bataan","Batanes","Batangas","Benguet","Biliran","Bohol","Bukidnon","Bulacan","Cagayan","Camarines Norte","Camarines Sur","Camiguin","Capiz","Catanduanes","Cavite","Cebu","Cotabato","Davao de Oro","Davao del Norte","Davao del Sur","Davao Occidental","Davao Oriental","Dinagat Islands","Eastern Samar","Guimaras","Ifugao","Ilocos Norte","Ilocos Sur","Iloilo","Isabela","Kalinga","La Union","Laguna","Lanao del Norte","Lanao del Sur","Leyte","Maguindanao","Marinduque","Masbate","Metro Manila","Misamis Occidental","Misamis Oriental","Mountain Province","Negros Occidental","Negros Oriental","Northern Samar","Nueva Ecija","Nueva Vizcaya","Occidental Mindoro","Oriental Mindoro","Palawan","Pampanga","Pangasinan","Quezon","Quirino","Rizal","Romblon","Samar","Sarangani","Siquijor","Sorsogon","South Cotabato","Southern Leyte","Sultan Kudarat","Sulu","Surigao del Norte","Surigao del Sur","Tarlac","Tawi-Tawi","Zambales","Zamboanga del Norte","Zamboanga del Sur","Zamboanga Sibugay"
 ];
 
-// ─── Custom Tooltip for Line Chart ───────────────────────────────────────────
 const TrendTooltip = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null;
     return (
@@ -54,7 +53,6 @@ const TrendTooltip = ({ active, payload, label }) => {
     );
 };
 
-// ─── Custom Tooltip for Donut ────────────────────────────────────────────────
 const DonutTooltip = ({ active, payload }) => {
     if (!active || !payload?.length) return null;
     return (
@@ -71,7 +69,6 @@ const DonutTooltip = ({ active, payload }) => {
     );
 };
 
-// ─── Donut Center Label ───────────────────────────────────────────────────────
 const DonutCenterLabel = ({ viewBox, total }) => {
     const { cx, cy } = viewBox;
     return (
@@ -91,8 +88,9 @@ const mapStyles = `
     .map-h1 em { font-style:italic; color:#2e8b4a; }
     .map-sub { font-size:13px; color:#5a8068; font-family:'DM Mono',monospace; }
     .map-divider { height:1px; background:linear-gradient(90deg,rgba(46,139,74,0.25),transparent 80%); margin:20px 0 28px; }
-    .map-stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px; }
-    @media(max-width:700px){ .map-stat-grid{grid-template-columns:1fr 1fr;} }
+    .map-stat-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:16px; margin-bottom:24px; }
+    @media(max-width:1000px){ .map-stat-grid{grid-template-columns:repeat(3,1fr);} }
+    @media(max-width:600px){ .map-stat-grid{grid-template-columns:1fr 1fr;} }
     .map-stat { background:#ffffff; border:1px solid #d6e8d6; border-radius:16px; padding:20px; position:relative; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,0.05); transition: transform .15s, box-shadow .15s; }
     .map-stat:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.09); }
     .map-stat::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
@@ -100,14 +98,16 @@ const mapStyles = `
     .map-stat.red::before { background:linear-gradient(90deg,#dc2626,transparent); }
     .map-stat.amber::before { background:linear-gradient(90deg,#d97706,transparent); }
     .map-stat.green::before { background:linear-gradient(90deg,#2e8b4a,transparent); }
+    .map-stat.lime::before { background:linear-gradient(90deg,#4caf72,transparent); }
     .map-stat-icon { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; margin-bottom:12px; }
     .map-stat-icon.blue { background:rgba(59,130,246,0.10); }
     .map-stat-icon.red { background:rgba(220,38,38,0.10); }
     .map-stat-icon.amber { background:rgba(217,119,6,0.10); }
     .map-stat-icon.green { background:rgba(46,139,74,0.10); }
+    .map-stat-icon.lime { background:rgba(76,175,114,0.10); }
     .map-stat-label { font-family:'DM Mono',monospace; font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:#8aaa96; margin-bottom:6px; }
     .map-stat-value { font-family:'DM Serif Display',serif; font-size:32px; font-weight:400; line-height:1; }
-    .map-stat-value.blue { color:#3b82f6; } .map-stat-value.red { color:#dc2626; } .map-stat-value.amber { color:#d97706; } .map-stat-value.green { color:#2e8b4a; }
+    .map-stat-value.blue { color:#3b82f6; } .map-stat-value.red { color:#dc2626; } .map-stat-value.amber { color:#d97706; } .map-stat-value.green { color:#2e8b4a; } .map-stat-value.lime { color:#4caf72; }
     .map-stat-sub { font-size:11px; color:#8aaa96; font-family:'DM Mono',monospace; margin-top:4px; }
     .map-card { background:#ffffff; border:1px solid #d6e8d6; border-radius:16px; overflow:hidden; position:relative; box-shadow:0 1px 6px rgba(0,0,0,0.05); }
     .map-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,#2e8b4a,transparent); z-index:1; }
@@ -124,7 +124,7 @@ const mapStyles = `
     .map-main-grid { display:grid; grid-template-columns:1fr 320px; gap:20px; }
     @media(max-width:1000px){ .map-main-grid{grid-template-columns:1fr;} }
     .map-side-grid { display:flex; flex-direction:column; gap:20px; }
-    .map-legend { padding:16px 20px; border-top:1px solid #eaf2ea; background:#f8fbf8; display:flex; gap:20px; flex-wrap:wrap; }
+    .map-legend { padding:16px 20px; border-top:1px solid #eaf2ea; background:#f8fbf8; display:flex; gap:20px; flex-wrap:wrap; flex-shrink:0; }
     .map-legend-item { display:flex; align-items:center; gap:8px; font-size:12px; color:#5a8068; font-family:'DM Mono',monospace; }
     .map-legend-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
     .map-province-item { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid #eaf2ea; }
@@ -171,10 +171,10 @@ const mapStyles = `
     @keyframes spin { to { transform: rotate(360deg); } }
     @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
     .fade-in { animation: fadeIn .35s ease both; }
-    .map-container-wrap { height:480px; position:relative; overflow:hidden; }
+    .map-container-wrap { height:480px; position:relative; overflow:hidden; flex-shrink:0; }
+    .map-card-flex { display:flex; flex-direction:column; }
 `;
 
-// ─── How To Use (collapsible) ─────────────────────────────────────────────────
 function HowToUse() {
     const [open, setOpen] = useState(true);
     const steps = [
@@ -209,7 +209,6 @@ function HowToUse() {
     );
 }
 
-// ─── Detection Trend Chart ────────────────────────────────────────────────────
 function DetectionTrendChart({ detections }) {
     const trendData = useMemo(() => {
         const months = Array.from({ length: 6 }, (_, i) => {
@@ -277,23 +276,16 @@ function DetectionTrendChart({ detections }) {
     );
 }
 
-// ─── Severity Donut Chart ────────────────────────────────────────────────────
 function SeverityDonutChart({ stats }) {
     const total = stats.total;
 
-    // FIX: Always show all 3 severity levels, even if count is 0
-    // Only filter out if ALL are zero (empty state)
     const allData = useMemo(() => [
         { name: 'Severe',   value: stats.severe,   color: '#dc2626', pct: total > 0 ? Math.round((stats.severe   / total) * 100) : 0 },
         { name: 'Moderate', value: stats.moderate, color: '#d97706', pct: total > 0 ? Math.round((stats.moderate / total) * 100) : 0 },
         { name: 'Low',      value: stats.low,      color: '#4caf72', pct: total > 0 ? Math.round((stats.low      / total) * 100) : 0 },
     ], [stats, total]);
 
-    // For the donut chart: only include slices that have data (recharts can't render 0-value slices well)
-    // But always show all 3 in the legend below
     const chartData = useMemo(() => allData.filter(d => d.value > 0), [allData]);
-
-    // If no data at all, show empty state with a placeholder ring
     const hasData = total > 0;
 
     if (!hasData) return (
@@ -334,7 +326,6 @@ function SeverityDonutChart({ stats }) {
                     </PieChart>
                 </ResponsiveContainer>
 
-                {/* FIX: Legend always shows all 3 levels regardless of count */}
                 <div style={{ display:'flex', flexDirection:'column', gap:8, marginTop:4 }}>
                     {allData.map(d => (
                         <div key={d.name} style={{ display:'flex', alignItems:'center', gap:8 }}>
@@ -356,7 +347,6 @@ function SeverityDonutChart({ stats }) {
     );
 }
 
-// ─── Mobile Detail Card ───────────────────────────────────────────────────────
 function MobileDetailCard({ detection, onClose }) {
     if (!detection) return null;
     const severityColors = {
@@ -415,7 +405,6 @@ function MobileDetailCard({ detection, onClose }) {
     );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
 export default function MapDashboard() {
     const [allDetections, setAllDetections] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -550,7 +539,7 @@ export default function MapDashboard() {
                 {/* ── How To Use ── */}
                 <HowToUse />
 
-                {/* ── Metric Cards ── */}
+                {/* ── Metric Cards (5 cards) ── */}
                 <div className="map-stat-grid">
                     {[
                         {
@@ -567,6 +556,11 @@ export default function MapDashboard() {
                             label: 'Moderate Cases', value: stats.moderate, color: 'amber',
                             sub: stats.total > 0 ? `${Math.round((stats.moderate / stats.total) * 100)}% of total` : '—',
                             icon: <TrendingUp style={{ width: 18, height: 18, color: '#d97706' }} />
+                        },
+                        {
+                            label: 'Low Cases', value: stats.low, color: 'lime',
+                            sub: stats.total > 0 ? `${Math.round((stats.low / stats.total) * 100)}% of total` : '—',
+                            icon: <Activity style={{ width: 18, height: 18, color: '#4caf72' }} />
                         },
                         {
                             label: 'Avg Insects / Farm', value: stats.avgInsects, color: 'green',
@@ -644,13 +638,15 @@ export default function MapDashboard() {
 
                 {/* ── Map + Sidebar ── */}
                 <div className="map-main-grid">
-                    <div className="map-card">
+
+                    {/* FIX: map-card-flex keeps map card as column flex so detail panel sits flush below map */}
+                    <div className="map-card map-card-flex">
                         <div className="map-card-header">
                             <span className="map-card-title"><MapPin style={{ width: 15, height: 15, color: '#2e8b4a' }} />Interactive Map View</span>
                             <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: '#8aaa96' }}>{detectionsWithGPS.length} locations</span>
                         </div>
 
-                        {/* FIX: wrap map in fixed-height div with overflow:hidden to kill white space */}
+                        {/* FIX: flex-shrink:0 prevents map from collapsing and creating white space */}
                         <div className="map-container-wrap">
                             {detectionsWithGPS.length > 0 ? (
                                 <MapContainer center={mapCenter} zoom={6} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
@@ -697,7 +693,7 @@ export default function MapDashboard() {
                             )}
                         </div>
 
-                        {/* Desktop detail panel — now OUTSIDE MapContainer, below the map */}
+                        {/* Desktop detail panel — outside MapContainer, no extra spacing */}
                         {selectedDetection && (
                             <div className="desktop-detail-panel">
                                 <DetectionDetailPanel detection={selectedDetection} onClose={() => setSelectedDetectionId(null)} />
