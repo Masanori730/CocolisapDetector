@@ -6,7 +6,7 @@ import { ScanSearch, Map, FlaskConical, Download, ArrowRight, ShieldAlert, Wind,
 const homeStyles = `
     @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap');
     .landing-root { background: #f4f7f4; min-height: 100vh; color: #1a3326; font-family: 'Outfit', sans-serif; overflow-x: hidden; }
-    .landing-root::before { content:''; position:fixed; inset:0; pointer-events:none; z-index:0; background: radial-gradient(ellipse 80% 60% at 20% 10%, rgba(46,139,74,0.07) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 80% 80%, rgba(46,139,74,0.05) 0%, transparent 55%); }
+    .landing-root::before { content:''; position:fixed; inset:0; pointer-events:none; z-index:0; background: radial-gradient(ellipse 90% 70% at 15% 8%, rgba(46,139,74,0.10) 0%, transparent 55%), radial-gradient(ellipse 70% 60% at 85% 75%, rgba(46,139,74,0.08) 0%, transparent 55%), radial-gradient(ellipse 50% 40% at 55% 50%, rgba(46,139,74,0.04) 0%, transparent 60%); }
     .landing-hero { position:relative; z-index:1; max-width:900px; margin:0 auto; padding:80px 24px 64px; text-align:center; }
     .landing-badge { display:inline-flex; align-items:center; gap:8px; background:rgba(46,139,74,0.10); border:1px solid rgba(46,139,74,0.28); border-radius:100px; padding:6px 16px; font-family:'DM Mono',monospace; font-size:11px; letter-spacing:.1em; color:#2e8b4a; text-transform:uppercase; margin-bottom:24px; }
     .landing-badge-dot { width:7px; height:7px; border-radius:50%; background:#2e8b4a; box-shadow:0 0 8px rgba(46,139,74,0.6); animation:l-pulse 2s ease-in-out infinite; flex-shrink:0; }
