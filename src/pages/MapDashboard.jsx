@@ -1,12 +1,16 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { db } from '../firebase';
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
-import { Map, TrendingUp, AlertTriangle, BarChart3, MapPin } from 'lucide-react';
-import { format } from 'date-fns';
+import { Map, TrendingUp, AlertTriangle, BarChart3, MapPin, ChevronDown, ChevronUp, Activity } from 'lucide-react';
+import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import {
+    LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+    ResponsiveContainer, PieChart, Pie, Cell, Legend
+} from 'recharts';
 
 import MapSearch from '@/components/map/MapSearch';
 import DetectionDetailPanel from '@/components/map/DetectionDetailPanel';
@@ -33,6 +37,51 @@ const PHILIPPINE_PROVINCES = [
     "Abra","Agusan del Norte","Agusan del Sur","Aklan","Albay","Antique","Apayao","Aurora","Basilan","Bataan","Batanes","Batangas","Benguet","Biliran","Bohol","Bukidnon","Bulacan","Cagayan","Camarines Norte","Camarines Sur","Camiguin","Capiz","Catanduanes","Cavite","Cebu","Cotabato","Davao de Oro","Davao del Norte","Davao del Sur","Davao Occidental","Davao Oriental","Dinagat Islands","Eastern Samar","Guimaras","Ifugao","Ilocos Norte","Ilocos Sur","Iloilo","Isabela","Kalinga","La Union","Laguna","Lanao del Norte","Lanao del Sur","Leyte","Maguindanao","Marinduque","Masbate","Metro Manila","Misamis Occidental","Misamis Oriental","Mountain Province","Negros Occidental","Negros Oriental","Northern Samar","Nueva Ecija","Nueva Vizcaya","Occidental Mindoro","Oriental Mindoro","Palawan","Pampanga","Pangasinan","Quezon","Quirino","Rizal","Romblon","Samar","Sarangani","Siquijor","Sorsogon","South Cotabato","Southern Leyte","Sultan Kudarat","Sulu","Surigao del Norte","Surigao del Sur","Tarlac","Tawi-Tawi","Zambales","Zamboanga del Norte","Zamboanga del Sur","Zamboanga Sibugay"
 ];
 
+// ─── Custom Tooltip for Line Chart ───────────────────────────────────────────
+const TrendTooltip = ({ active, payload, label }) => {
+    if (!active || !payload?.length) return null;
+    return (
+        <div style={{
+            background: '#fff', border: '1px solid #d6e8d6', borderRadius: 10,
+            padding: '10px 14px', boxShadow: '0 4px 16px rgba(0,0,0,0.10)',
+            fontFamily: "'Outfit',sans-serif"
+        }}>
+            <p style={{ margin: '0 0 4px', fontSize: 11, fontFamily: "'DM Mono',monospace", color: '#8aaa96', textTransform: 'uppercase', letterSpacing: '.1em' }}>{label}</p>
+            <p style={{ margin: 0, fontSize: 18, fontFamily: "'DM Serif Display',serif", color: '#2e8b4a' }}>
+                {payload[0].value} <span style={{ fontSize: 12, color: '#8aaa96', fontFamily: "'DM Mono',monospace" }}>detections</span>
+            </p>
+        </div>
+    );
+};
+
+// ─── Custom Tooltip for Donut ────────────────────────────────────────────────
+const DonutTooltip = ({ active, payload }) => {
+    if (!active || !payload?.length) return null;
+    return (
+        <div style={{
+            background: '#fff', border: '1px solid #d6e8d6', borderRadius: 10,
+            padding: '10px 14px', boxShadow: '0 4px 16px rgba(0,0,0,0.10)',
+            fontFamily: "'Outfit',sans-serif"
+        }}>
+            <p style={{ margin: '0 0 2px', fontSize: 12, fontWeight: 600, color: '#1a3326', textTransform: 'capitalize' }}>{payload[0].name}</p>
+            <p style={{ margin: 0, fontSize: 16, fontFamily: "'DM Serif Display',serif", color: payload[0].payload.color }}>
+                {payload[0].value} <span style={{ fontSize: 11, color: '#8aaa96', fontFamily: "'DM Mono',monospace" }}>cases ({payload[0].payload.pct}%)</span>
+            </p>
+        </div>
+    );
+};
+
+// ─── Donut Center Label ───────────────────────────────────────────────────────
+const DonutCenterLabel = ({ viewBox, total }) => {
+    const { cx, cy } = viewBox;
+    return (
+        <g>
+            <text x={cx} y={cy - 8} textAnchor="middle" fill="#1a3326" style={{ fontFamily: "'DM Serif Display',serif", fontSize: 28, fontWeight: 400 }}>{total}</text>
+            <text x={cx} y={cy + 12} textAnchor="middle" fill="#8aaa96" style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase' }}>TOTAL</text>
+        </g>
+    );
+};
+
 const mapStyles = `
     .map-root { background:#f4f7f4; min-height:100vh; color:#1a3326; font-family:'Outfit',sans-serif; }
     .map-root::before { content:''; position:fixed; inset:0; pointer-events:none; z-index:0; background: radial-gradient(ellipse 80% 60% at 15% 10%,rgba(46,139,74,0.04) 0%,transparent 60%); }
@@ -44,7 +93,8 @@ const mapStyles = `
     .map-divider { height:1px; background:linear-gradient(90deg,rgba(46,139,74,0.25),transparent 80%); margin:20px 0 28px; }
     .map-stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px; }
     @media(max-width:700px){ .map-stat-grid{grid-template-columns:1fr 1fr;} }
-    .map-stat { background:#ffffff; border:1px solid #d6e8d6; border-radius:16px; padding:20px; position:relative; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,0.05); }
+    .map-stat { background:#ffffff; border:1px solid #d6e8d6; border-radius:16px; padding:20px; position:relative; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,0.05); transition: transform .15s, box-shadow .15s; }
+    .map-stat:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.09); }
     .map-stat::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
     .map-stat.blue::before { background:linear-gradient(90deg,#3b82f6,transparent); }
     .map-stat.red::before { background:linear-gradient(90deg,#dc2626,transparent); }
@@ -58,6 +108,7 @@ const mapStyles = `
     .map-stat-label { font-family:'DM Mono',monospace; font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:#8aaa96; margin-bottom:6px; }
     .map-stat-value { font-family:'DM Serif Display',serif; font-size:32px; font-weight:400; line-height:1; }
     .map-stat-value.blue { color:#3b82f6; } .map-stat-value.red { color:#dc2626; } .map-stat-value.amber { color:#d97706; } .map-stat-value.green { color:#2e8b4a; }
+    .map-stat-sub { font-size:11px; color:#8aaa96; font-family:'DM Mono',monospace; margin-top:4px; }
     .map-card { background:#ffffff; border:1px solid #d6e8d6; border-radius:16px; overflow:hidden; position:relative; box-shadow:0 1px 6px rgba(0,0,0,0.05); }
     .map-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,#2e8b4a,transparent); z-index:1; }
     .map-card-header { padding:18px 22px; border-bottom:1px solid #eaf2ea; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
@@ -76,13 +127,15 @@ const mapStyles = `
     .map-legend { padding:16px 20px; border-top:1px solid #eaf2ea; background:#f8fbf8; display:flex; gap:20px; flex-wrap:wrap; }
     .map-legend-item { display:flex; align-items:center; gap:8px; font-size:12px; color:#5a8068; font-family:'DM Mono',monospace; }
     .map-legend-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
-    .map-province-item { display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid #eaf2ea; }
+    .map-province-item { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid #eaf2ea; }
     .map-province-item:last-child { border:0; }
     .map-province-rank { width:24px; height:24px; border-radius:8px; background:rgba(46,139,74,0.10); color:#2e8b4a; font-size:11px; font-weight:700; font-family:'DM Mono',monospace; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-    .map-province-name { font-size:13px; color:#1a3326; margin-left:10px; flex:1; }
+    .map-province-name { font-size:13px; color:#1a3326; margin-left:10px; flex:1; font-weight:500; }
+    .map-province-bar-wrap { flex:1; margin: 0 10px; height:5px; background:#eaf2ea; border-radius:99px; overflow:hidden; }
+    .map-province-bar { height:100%; border-radius:99px; background:linear-gradient(90deg,#2e8b4a,#4caf72); transition:width .6s ease; }
     .map-province-count { font-family:'DM Mono',monospace; font-size:12px; background:rgba(46,139,74,0.08); border:1px solid rgba(46,139,74,0.20); border-radius:6px; padding:2px 8px; color:#2e8b4a; }
-    .map-recent-item { padding-bottom:12px; border-bottom:1px solid #eaf2ea; margin-bottom:12px; cursor:pointer; border-radius:8px; padding:8px; margin:-8px; transition:background .15s; }
-    .map-recent-item:last-child { border:0; margin-bottom:-8px; }
+    .map-recent-item { padding:10px 8px; border-bottom:1px solid #eaf2ea; cursor:pointer; border-radius:8px; transition:background .15s; }
+    .map-recent-item:last-child { border:0; }
     .map-recent-item:hover { background:rgba(46,139,74,0.05); }
     .map-severity-pill { display:inline-flex; align-items:center; gap:5px; border-radius:100px; padding:3px 10px; font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; }
     .map-severity-pill::before { content:''; width:5px; height:5px; border-radius:50%; flex-shrink:0; }
@@ -105,9 +158,24 @@ const mapStyles = `
         .desktop-detail-panel { display:none !important; }
         .mobile-detail-panel { display:block; margin-top:16px; }
     }
+    .chart-row { display:grid; grid-template-columns:1fr 340px; gap:20px; margin-bottom:20px; }
+    @media(max-width:900px){ .chart-row { grid-template-columns:1fr; } }
+    .howto-toggle-btn { display:flex; align-items:center; gap:6px; background:none; border:none; cursor:pointer; font-family:'DM Mono',monospace; font-size:11px; color:#2e8b4a; padding:0; letter-spacing:.08em; }
+    .howto-toggle-btn:hover { color:#1a3326; }
+    .trend-badge { display:inline-flex; align-items:center; gap:4px; border-radius:100px; padding:3px 10px; font-size:11px; font-family:'DM Mono',monospace; font-weight:600; }
+    .trend-badge.up { background:rgba(220,38,38,0.08); color:#dc2626; border:1px solid rgba(220,38,38,0.2); }
+    .trend-badge.down { background:rgba(46,139,74,0.08); color:#2e8b4a; border:1px solid rgba(46,139,74,0.2); }
+    .trend-badge.flat { background:rgba(100,100,100,0.08); color:#666; border:1px solid rgba(100,100,100,0.2); }
+    .view-all-btn { display:block; width:100%; text-align:center; padding:10px; font-size:12px; font-family:'DM Mono',monospace; color:#2e8b4a; background:rgba(46,139,74,0.05); border:1px solid rgba(46,139,74,0.15); border-radius:10px; cursor:pointer; margin-top:12px; transition:background .15s; letter-spacing:.06em; }
+    .view-all-btn:hover { background:rgba(46,139,74,0.10); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+    .fade-in { animation: fadeIn .35s ease both; }
 `;
 
+// ─── How To Use (collapsible) ─────────────────────────────────────────────────
 function HowToUse() {
+    const [open, setOpen] = useState(true);
     const steps = [
         { title: 'View the map', desc: 'Detections with GPS appear as colored pins — green (low), amber (moderate), red (severe).' },
         { title: 'Filter results', desc: 'Narrow by severity, date range, or province using the filter dropdowns.' },
@@ -115,21 +183,167 @@ function HowToUse() {
         { title: 'Check the sidebar', desc: 'See top affected provinces and the 5 most recent detections at a glance.' },
     ];
     return (
-        <div style={{ background:'#fff', border:'1px solid #d6e8d6', borderRadius:16, padding:'18px 22px', marginBottom:20, position:'relative', overflow:'hidden', boxShadow:'0 1px 6px rgba(0,0,0,0.05)' }}>
+        <div style={{ background:'#fff', border:'1px solid #d6e8d6', borderRadius:16, marginBottom:20, position:'relative', overflow:'hidden', boxShadow:'0 1px 6px rgba(0,0,0,0.05)' }}>
             <div style={{ position:'absolute', top:0, left:0, right:0, height:2, background:'linear-gradient(90deg,#2e8b4a,transparent)' }} />
-            <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, letterSpacing:'.14em', textTransform:'uppercase', color:'#8aaa96', marginBottom:12, display:'block' }}>How to Use — Map Dashboard</span>
-            <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
-                {steps.map((s, i) => (
-                    <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:10, flex:1, minWidth:180 }}>
-                        <div style={{ width:20, height:20, borderRadius:'50%', background:'#2e8b4a', color:'#fff', fontFamily:"'DM Mono',monospace", fontSize:10, fontWeight:600, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:2 }}>{i+1}</div>
-                        <div style={{ fontSize:12, color:'#5a8068', lineHeight:1.5 }}><strong style={{ color:'#1a3326', fontWeight:600, display:'block', marginBottom:2 }}>{s.title}</strong>{s.desc}</div>
-                    </div>
-                ))}
+            <div
+                style={{ padding:'14px 22px', display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer' }}
+                onClick={() => setOpen(o => !o)}
+            >
+                <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, letterSpacing:'.14em', textTransform:'uppercase', color:'#8aaa96' }}>How to Use — Map Dashboard</span>
+                <button className="howto-toggle-btn">
+                    {open ? <><ChevronUp size={14}/> Hide</> : <><ChevronDown size={14}/> Show</>}
+                </button>
+            </div>
+            {open && (
+                <div style={{ padding:'0 22px 18px', display:'flex', gap:12, flexWrap:'wrap' }} className="fade-in">
+                    {steps.map((s, i) => (
+                        <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:10, flex:1, minWidth:180 }}>
+                            <div style={{ width:20, height:20, borderRadius:'50%', background:'#2e8b4a', color:'#fff', fontFamily:"'DM Mono',monospace", fontSize:10, fontWeight:600, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:2 }}>{i+1}</div>
+                            <div style={{ fontSize:12, color:'#5a8068', lineHeight:1.5 }}><strong style={{ color:'#1a3326', fontWeight:600, display:'block', marginBottom:2 }}>{s.title}</strong>{s.desc}</div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ─── Detection Trend Chart ────────────────────────────────────────────────────
+function DetectionTrendChart({ detections }) {
+    const trendData = useMemo(() => {
+        const months = Array.from({ length: 6 }, (_, i) => {
+            const d = subMonths(new Date(), 5 - i);
+            return {
+                label: format(d, 'MMM yyyy'),
+                short: format(d, 'MMM'),
+                start: startOfMonth(d),
+                end: endOfMonth(d),
+                count: 0,
+            };
+        });
+        detections.forEach(d => {
+            if (!d.created_date) return;
+            const dt = new Date(d.created_date);
+            months.forEach(m => {
+                if (isWithinInterval(dt, { start: m.start, end: m.end })) m.count++;
+            });
+        });
+        return months.map(m => ({ name: m.short, full: m.label, count: m.count }));
+    }, [detections]);
+
+    const lastTwo = trendData.slice(-2);
+    const prev = lastTwo[0]?.count || 0;
+    const curr = lastTwo[1]?.count || 0;
+    const diff = curr - prev;
+    const pct = prev > 0 ? Math.round((diff / prev) * 100) : curr > 0 ? 100 : 0;
+    const trendDir = diff > 0 ? 'up' : diff < 0 ? 'down' : 'flat';
+    const trendLabel = trendDir === 'up' ? `▲ +${pct}% this month` : trendDir === 'down' ? `▼ ${pct}% this month` : '→ No change';
+
+    return (
+        <div className="map-card">
+            <div className="map-card-header">
+                <span className="map-card-title">
+                    <Activity style={{ width:15, height:15, color:'#2e8b4a' }} />
+                    Detection Trend
+                </span>
+                <span className={`trend-badge ${trendDir}`}>{trendLabel}</span>
+            </div>
+            <div style={{ padding:'20px 20px 12px' }}>
+                <p style={{ margin:'0 0 16px', fontSize:12, color:'#8aaa96', fontFamily:"'DM Mono',monospace" }}>
+                    Monthly cocolisap detection count — last 6 months
+                </p>
+                <ResponsiveContainer width="100%" height={200}>
+                    <LineChart data={trendData} margin={{ top:4, right:8, left:-20, bottom:0 }}>
+                        <defs>
+                            <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#2e8b4a" stopOpacity={0.15}/>
+                                <stop offset="100%" stopColor="#2e8b4a" stopOpacity={0}/>
+                            </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#eaf2ea" vertical={false} />
+                        <XAxis dataKey="name" tick={{ fontFamily:"'DM Mono',monospace", fontSize:11, fill:'#8aaa96' }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fontFamily:"'DM Mono',monospace", fontSize:11, fill:'#8aaa96' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                        <Tooltip content={<TrendTooltip />} />
+                        <Line
+                            type="monotone" dataKey="count" stroke="#2e8b4a" strokeWidth={2.5}
+                            dot={{ fill:'#2e8b4a', r:4, strokeWidth:2, stroke:'#fff' }}
+                            activeDot={{ r:6, fill:'#2e8b4a', stroke:'#fff', strokeWidth:2 }}
+                        />
+                    </LineChart>
+                </ResponsiveContainer>
             </div>
         </div>
     );
 }
 
+// ─── Severity Donut Chart ────────────────────────────────────────────────────
+function SeverityDonutChart({ stats }) {
+    const total = stats.total;
+    const data = useMemo(() => {
+        if (total === 0) return [];
+        return [
+            { name: 'Severe', value: stats.severe, color: '#dc2626', pct: total > 0 ? Math.round((stats.severe / total) * 100) : 0 },
+            { name: 'Moderate', value: stats.moderate, color: '#d97706', pct: total > 0 ? Math.round((stats.moderate / total) * 100) : 0 },
+            { name: 'Low', value: stats.low, color: '#4caf72', pct: total > 0 ? Math.round((stats.low / total) * 100) : 0 },
+        ].filter(d => d.value > 0);
+    }, [stats]);
+
+    if (total === 0) return (
+        <div className="map-card">
+            <div className="map-card-header">
+                <span className="map-card-title"><BarChart3 style={{ width:15, height:15, color:'#2e8b4a' }} />Severity Breakdown</span>
+            </div>
+            <div className="map-empty-state" style={{ padding:'40px 24px' }}>
+                <p style={{ fontSize:13, color:'#8aaa96' }}>No data available</p>
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="map-card">
+            <div className="map-card-header">
+                <span className="map-card-title">
+                    <BarChart3 style={{ width:15, height:15, color:'#2e8b4a' }} />
+                    Severity Breakdown
+                </span>
+            </div>
+            <div style={{ padding:'16px 20px 20px' }}>
+                <p style={{ margin:'0 0 12px', fontSize:12, color:'#8aaa96', fontFamily:"'DM Mono',monospace" }}>
+                    Distribution of infestation severity levels
+                </p>
+                <ResponsiveContainer width="100%" height={200}>
+                    <PieChart>
+                        <Pie
+                            data={data} cx="50%" cy="50%" innerRadius={60} outerRadius={85}
+                            paddingAngle={3} dataKey="value" strokeWidth={0}
+                        >
+                            {data.map((entry, index) => (
+                                <Cell key={index} fill={entry.color} />
+                            ))}
+                            <DonutCenterLabel total={total} />
+                        </Pie>
+                        <Tooltip content={<DonutTooltip />} />
+                    </PieChart>
+                </ResponsiveContainer>
+                {/* Legend */}
+                <div style={{ display:'flex', flexDirection:'column', gap:8, marginTop:4 }}>
+                    {data.map(d => (
+                        <div key={d.name} style={{ display:'flex', alignItems:'center', gap:8 }}>
+                            <div style={{ width:10, height:10, borderRadius:'50%', background:d.color, flexShrink:0 }} />
+                            <span style={{ fontSize:12, color:'#1a3326', fontWeight:500, flex:1, textTransform:'capitalize' }}>{d.name}</span>
+                            <div style={{ flex:2, height:5, background:'#eaf2ea', borderRadius:99, overflow:'hidden' }}>
+                                <div style={{ width:`${d.pct}%`, height:'100%', background:d.color, borderRadius:99, transition:'width .6s ease' }} />
+                            </div>
+                            <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#8aaa96', minWidth:36, textAlign:'right' }}>{d.pct}%</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ─── Mobile Detail Card ───────────────────────────────────────────────────────
 function MobileDetailCard({ detection, onClose }) {
     if (!detection) return null;
     const severityColors = {
@@ -138,7 +352,6 @@ function MobileDetailCard({ detection, onClose }) {
         low: { color: '#2e8b4a', bg: 'rgba(46,139,74,0.08)', border: 'rgba(46,139,74,0.25)' },
     };
     const cfg = severityColors[detection.severity] || severityColors.low;
-
     const Row = ({ label, value }) => {
         if (!value) return null;
         return (
@@ -148,7 +361,6 @@ function MobileDetailCard({ detection, onClose }) {
             </div>
         );
     };
-
     return (
         <div style={{ background: '#fff', border: '1px solid #d6e8d6', borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.08)', fontFamily: "'Outfit',sans-serif" }}>
             <div style={{ padding: '14px 16px', borderBottom: '1px solid #eaf2ea', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#f8fbf8' }}>
@@ -190,6 +402,7 @@ function MobileDetailCard({ detection, onClose }) {
     );
 }
 
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function MapDashboard() {
     const [allDetections, setAllDetections] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -199,6 +412,7 @@ export default function MapDashboard() {
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');
     const [selectedDetectionId, setSelectedDetectionId] = useState(null);
+    const [showAllProvinces, setShowAllProvinces] = useState(false);
 
     useEffect(() => {
         const fetchDetections = async () => {
@@ -245,16 +459,30 @@ export default function MapDashboard() {
         const moderate = filteredDetections.filter(d => d.severity === 'moderate').length;
         const low = filteredDetections.filter(d => d.severity === 'low').length;
         const avgInsects = total > 0 ? (filteredDetections.reduce((s, d) => s + (d.total_detections || 0), 0) / total).toFixed(1) : 0;
-        return { total, severe, moderate, low, avgInsects };
+        // This month vs last month
+        const now = new Date();
+        const thisMonth = filteredDetections.filter(d => {
+            if (!d.created_date) return false;
+            const dt = new Date(d.created_date);
+            return dt.getMonth() === now.getMonth() && dt.getFullYear() === now.getFullYear();
+        }).length;
+        return { total, severe, moderate, low, avgInsects, thisMonth };
     }, [filteredDetections]);
 
-    const topProvinces = useMemo(() => {
+    const allTopProvinces = useMemo(() => {
         const pc = {};
         filteredDetections.forEach(d => { if (d.province) pc[d.province] = (pc[d.province] || 0) + 1; });
-        return Object.entries(pc).sort((a, b) => b[1] - a[1]).slice(0, 5);
+        return Object.entries(pc).sort((a, b) => b[1] - a[1]);
     }, [filteredDetections]);
 
-    const recentDetections = useMemo(() => filteredDetections.slice(0, 5), [filteredDetections]);
+    const topProvinces = useMemo(() =>
+        showAllProvinces ? allTopProvinces : allTopProvinces.slice(0, 5),
+        [allTopProvinces, showAllProvinces]
+    );
+
+    const maxProvinceCount = allTopProvinces[0]?.[1] || 1;
+
+    const recentDetections = useMemo(() => filteredDetections.slice(0, 6), [filteredDetections]);
     const detectionsWithGPS = useMemo(() => filteredDetections.filter(d => d.latitude && d.longitude), [filteredDetections]);
     const mapCenter = useMemo(() => {
         if (!detectionsWithGPS.length) return [12.8797, 121.7740];
@@ -266,9 +494,25 @@ export default function MapDashboard() {
 
     const selectedDetection = useMemo(() => allDetections.find(d => d.id === selectedDetectionId), [allDetections, selectedDetectionId]);
 
+    // ── Helper: location string ──────────────────────────────────────────────
+    const getLocation = (d) => {
+        const parts = [d.barangay, d.municipality, d.province].filter(Boolean);
+        return parts.length > 0 ? parts.join(', ') : 'Unknown Location';
+    };
+
+    // ── Helper: time ago ─────────────────────────────────────────────────────
+    const timeAgo = (dateStr) => {
+        if (!dateStr) return '—';
+        const diff = Math.floor((new Date() - new Date(dateStr)) / 60000);
+        if (diff < 60) return `${diff}m ago`;
+        if (diff < 1440) return `${Math.floor(diff / 60)}h ago`;
+        return format(new Date(dateStr), 'MMM d');
+    };
+
     if (isLoading) return (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: 12 }}>
             <div style={{ width: 32, height: 32, border: '3px solid #d6e8d6', borderTopColor: '#2e8b4a', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, color: '#8aaa96' }}>Loading detections…</span>
             <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
     );
@@ -277,6 +521,8 @@ export default function MapDashboard() {
         <div className="map-root">
             <style>{mapStyles}</style>
             <div className="map-page">
+
+                {/* ── Header ── */}
                 <div style={{ marginBottom: 28 }}>
                     <div className="map-header-badge">Monitoring System</div>
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
@@ -284,33 +530,68 @@ export default function MapDashboard() {
                             <h1 className="map-h1">Detection <em>Map</em> Dashboard</h1>
                             <p className="map-sub">Cocolisap infestation monitoring across Philippine coconut farms</p>
                         </div>
+                        <div style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#8aaa96', background:'#fff', border:'1px solid #d6e8d6', borderRadius:10, padding:'8px 14px', lineHeight:1.6 }}>
+                            <div>Last updated</div>
+                            <div style={{ color:'#1a3326', fontWeight:600 }}>{format(new Date(), 'MMM d, yyyy · h:mm a')}</div>
+                        </div>
                     </div>
                 </div>
                 <div className="map-divider" />
 
-                {/* How to Use */}
+                {/* ── How To Use ── */}
                 <HowToUse />
 
-                {/* Stats */}
+                {/* ── Metric Cards ── */}
                 <div className="map-stat-grid">
                     {[
-                        { label: 'Total Detections', value: stats.total, color: 'blue', icon: <BarChart3 style={{ width: 18, height: 18, color: '#3b82f6' }} /> },
-                        { label: 'Severe Cases', value: stats.severe, color: 'red', icon: <AlertTriangle style={{ width: 18, height: 18, color: '#dc2626' }} /> },
-                        { label: 'Moderate Cases', value: stats.moderate, color: 'amber', icon: <TrendingUp style={{ width: 18, height: 18, color: '#d97706' }} /> },
-                        { label: 'Avg Insects', value: stats.avgInsects, color: 'green', icon: <BarChart3 style={{ width: 18, height: 18, color: '#2e8b4a' }} /> },
+                        {
+                            label: 'Total Detections', value: stats.total, color: 'blue',
+                            sub: `${stats.thisMonth} this month`,
+                            icon: <BarChart3 style={{ width: 18, height: 18, color: '#3b82f6' }} />
+                        },
+                        {
+                            label: 'Severe Cases', value: stats.severe, color: 'red',
+                            sub: stats.total > 0 ? `${Math.round((stats.severe / stats.total) * 100)}% of total` : '—',
+                            icon: <AlertTriangle style={{ width: 18, height: 18, color: '#dc2626' }} />
+                        },
+                        {
+                            label: 'Moderate Cases', value: stats.moderate, color: 'amber',
+                            sub: stats.total > 0 ? `${Math.round((stats.moderate / stats.total) * 100)}% of total` : '—',
+                            icon: <TrendingUp style={{ width: 18, height: 18, color: '#d97706' }} />
+                        },
+                        {
+                            label: 'Avg Insects / Farm', value: stats.avgInsects, color: 'green',
+                            sub: `across ${stats.total} submission${stats.total !== 1 ? 's' : ''}`,
+                            icon: <BarChart3 style={{ width: 18, height: 18, color: '#2e8b4a' }} />
+                        },
                     ].map(s => (
                         <div key={s.label} className={`map-stat ${s.color}`}>
                             <div className={`map-stat-icon ${s.color}`}>{s.icon}</div>
                             <div className="map-stat-label">{s.label}</div>
                             <div className={`map-stat-value ${s.color}`}>{s.value}</div>
+                            <div className="map-stat-sub">{s.sub}</div>
                         </div>
                     ))}
                 </div>
 
-                {/* Filters */}
+                {/* ── Charts Row ── */}
+                <div className="chart-row">
+                    <DetectionTrendChart detections={filteredDetections} />
+                    <SeverityDonutChart stats={stats} />
+                </div>
+
+                {/* ── Filters ── */}
                 <div className="map-card" style={{ marginBottom: 20 }}>
                     <div className="map-card-header">
                         <span className="map-card-title">Filters</span>
+                        {(severityFilter !== 'all' || dateFilter !== 'all' || provinceFilter !== 'all') && (
+                            <button
+                                onClick={() => { setSeverityFilter('all'); setDateFilter('all'); setProvinceFilter('all'); setCustomStartDate(''); setCustomEndDate(''); }}
+                                style={{ fontSize:11, fontFamily:"'DM Mono',monospace", color:'#dc2626', background:'rgba(220,38,38,0.06)', border:'1px solid rgba(220,38,38,0.2)', borderRadius:8, padding:'4px 10px', cursor:'pointer' }}
+                            >
+                                ✕ Clear filters
+                            </button>
+                        )}
                     </div>
                     <div className="map-card-body">
                         <div className="map-filters-grid">
@@ -352,7 +633,7 @@ export default function MapDashboard() {
                     </div>
                 </div>
 
-                {/* Map + Side */}
+                {/* ── Map + Sidebar ── */}
                 <div className="map-main-grid">
                     <div className="map-card">
                         <div className="map-card-header">
@@ -376,10 +657,13 @@ export default function MapDashboard() {
                                                 eventHandlers={{ click: () => setSelectedDetectionId(d.id) }}
                                             >
                                                 <Popup>
-                                                    <div style={{ padding: '6px 2px', minWidth: 160, fontFamily: "'Outfit',sans-serif" }}>
+                                                    <div style={{ padding: '6px 2px', minWidth: 180, fontFamily: "'Outfit',sans-serif" }}>
                                                         <span className={`map-severity-pill ${d.severity}`}>{d.severity?.toUpperCase()}</span>
-                                                        {d.province && <p style={{ fontWeight: 600, color: '#1a3326', margin: '8px 0 4px', fontSize: 13 }}>{d.province}</p>}
-                                                        <p style={{ fontSize: 13, color: '#1a3326', margin: 0 }}><strong style={{ color: '#2e8b4a' }}>{d.total_detections}</strong> insects</p>
+                                                        <p style={{ fontWeight: 600, color: '#1a3326', margin: '8px 0 2px', fontSize: 13 }}>
+                                                            {[d.barangay, d.municipality].filter(Boolean).join(', ') || d.province || 'Unknown'}
+                                                        </p>
+                                                        {d.province && <p style={{ fontSize: 12, color: '#8aaa96', margin: '0 0 4px', fontFamily: "'DM Mono',monospace" }}>{d.province}</p>}
+                                                        <p style={{ fontSize: 13, color: '#1a3326', margin: 0 }}><strong style={{ color: '#2e8b4a' }}>{d.total_detections}</strong> insects detected</p>
                                                         <button
                                                             onClick={() => setSelectedDetectionId(d.id)}
                                                             style={{ marginTop: 8, fontSize: 11, color: '#2e8b4a', background: 'rgba(46,139,74,0.08)', border: '1px solid rgba(46,139,74,0.25)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontFamily: "'Outfit',sans-serif" }}
@@ -420,44 +704,82 @@ export default function MapDashboard() {
                         </div>
                     </div>
 
+                    {/* ── Sidebar ── */}
                     <div className="map-side-grid">
+
+                        {/* Top Provinces */}
                         <div className="map-card">
-                            <div className="map-card-header"><span className="map-card-title">Top Affected Provinces</span></div>
+                            <div className="map-card-header">
+                                <span className="map-card-title">Top Affected Provinces</span>
+                                <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#8aaa96' }}>{allTopProvinces.length} province{allTopProvinces.length !== 1 ? 's' : ''}</span>
+                            </div>
                             <div className="map-card-body">
-                                {topProvinces.length > 0 ? topProvinces.map(([province, count], idx) => (
-                                    <div key={province} className="map-province-item">
-                                        <div style={{ display: 'flex', alignItems: 'center' }}>
-                                            <div className="map-province-rank">{idx + 1}</div>
-                                            <span className="map-province-name">{province}</span>
-                                        </div>
-                                        <span className="map-province-count">{count}</span>
-                                    </div>
-                                )) : <p style={{ fontSize: 13, color: '#8aaa96', textAlign: 'center', padding: '16px 0', fontFamily: "'DM Mono',monospace" }}>No province data available</p>}
+                                {topProvinces.length > 0 ? (
+                                    <>
+                                        {topProvinces.map(([province, count], idx) => (
+                                            <div key={province} className="map-province-item">
+                                                <div className="map-province-rank">{idx + 1}</div>
+                                                <span className="map-province-name">{province}</span>
+                                                <div className="map-province-bar-wrap">
+                                                    <div className="map-province-bar" style={{ width: `${Math.round((count / maxProvinceCount) * 100)}%` }} />
+                                                </div>
+                                                <span className="map-province-count">{count}</span>
+                                            </div>
+                                        ))}
+                                        {allTopProvinces.length > 5 && (
+                                            <button className="view-all-btn" onClick={() => setShowAllProvinces(v => !v)}>
+                                                {showAllProvinces ? '↑ Show less' : `↓ View all ${allTopProvinces.length} provinces`}
+                                            </button>
+                                        )}
+                                    </>
+                                ) : (
+                                    <p style={{ fontSize: 13, color: '#8aaa96', textAlign: 'center', padding: '16px 0', fontFamily: "'DM Mono',monospace" }}>No province data available</p>
+                                )}
                             </div>
                         </div>
+
+                        {/* Recent Detections */}
                         <div className="map-card">
-                            <div className="map-card-header"><span className="map-card-title">Recent Detections</span></div>
+                            <div className="map-card-header">
+                                <span className="map-card-title">Recent Detections</span>
+                                <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#8aaa96' }}>latest {recentDetections.length}</span>
+                            </div>
                             <div className="map-card-body">
                                 {recentDetections.length > 0 ? recentDetections.map(d => (
                                     <div key={d.id} className="map-recent-item" onClick={() => setSelectedDetectionId(d.id)}>
                                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                                             <span className={`map-severity-pill ${d.severity}`}>{d.severity}</span>
-                                            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: '#8aaa96' }}>
-                                                {d.created_date ? format(new Date(d.created_date), 'MMM d') : '—'}
-                                            </span>
+                                            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: '#8aaa96' }}>{timeAgo(d.created_date)}</span>
                                         </div>
-                                        <p style={{ fontSize: 13, color: '#1a3326', margin: 0 }}>{d.province || 'Unknown'} · {d.total_detections} insects</p>
-                                        {d.farmName && <p style={{ fontSize: 11, color: '#8aaa96', margin: '2px 0 0', fontFamily: "'DM Mono',monospace" }}>{d.farmName}</p>}
+                                        {/* Full location: barangay + municipality + province */}
+                                        <p style={{ fontSize: 13, color: '#1a3326', margin: '0 0 2px', fontWeight: 500 }}>
+                                            {getLocation(d)}
+                                        </p>
+                                        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                                            <span style={{ fontSize: 11, color: '#8aaa96', fontFamily: "'DM Mono',monospace" }}>
+                                                {d.total_detections ?? 0} insects
+                                            </span>
+                                            {d.farmName && (
+                                                <>
+                                                    <span style={{ fontSize:11, color:'#d6e8d6' }}>·</span>
+                                                    <span style={{ fontSize: 11, color: '#8aaa96', fontFamily: "'DM Mono',monospace" }}>{d.farmName}</span>
+                                                </>
+                                            )}
+                                        </div>
                                     </div>
-                                )) : <p style={{ fontSize: 13, color: '#8aaa96', textAlign: 'center', padding: '16px 0', fontFamily: "'DM Mono',monospace" }}>No recent detections</p>}
+                                )) : (
+                                    <p style={{ fontSize: 13, color: '#8aaa96', textAlign: 'center', padding: '16px 0', fontFamily: "'DM Mono',monospace" }}>No recent detections</p>
+                                )}
                             </div>
                         </div>
+
                     </div>
                 </div>
 
-                {/* Footer */}
+                {/* ── Footer ── */}
                 <div style={{ borderTop:'1px solid #d6e8d6', paddingTop:24, marginTop:40, fontSize:11, color:'#8aaa96', fontFamily:"'DM Mono',monospace", display:'flex', justifyContent:'space-between', flexWrap:'wrap', gap:8 }}>
                     <span>CocolisapScan · Infestation Monitoring</span>
+                    <span>{filteredDetections.length} record{filteredDetections.length !== 1 ? 's' : ''} loaded</span>
                 </div>
             </div>
         </div>

@@ -419,8 +419,7 @@ export default function Home() {
                         </motion.div>
 
                         <div className="home-footer">
-                            <span>Cocolisap Detection System · YOLOv26 + Roboflow Dataset</span>
-                            <span>Built for coconut pest management research</span>
+                            <span>CocolisapScan · YOLOv26 Instance Segmentation</span>
                         </div>
                     </motion.div>
 
