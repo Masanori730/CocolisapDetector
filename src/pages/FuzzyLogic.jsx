@@ -30,8 +30,9 @@ const fuzzyStyles = `
   .fl-root::before {
     content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
     background:
-      radial-gradient(ellipse 80% 60% at 15% 10%,rgba(46,139,74,0.05) 0%,transparent 60%),
-      radial-gradient(ellipse 50% 40% at 85% 80%,rgba(46,139,74,0.03) 0%,transparent 55%);
+      radial-gradient(ellipse 75% 60% at 20% 90%, rgba(46,139,74,0.09) 0%, transparent 55%),
+      radial-gradient(ellipse 70% 55% at 90% 18%, rgba(46,139,74,0.08) 0%, transparent 55%),
+      radial-gradient(ellipse 50% 45% at 60% 58%, rgba(46,139,74,0.04) 0%, transparent 60%);
   }
   .fl-page {position:relative;z-index:1;max-width:860px;margin:0 auto;padding:0 24px 80px;}
   .fl-header {padding:56px 0 40px;display:flex;flex-direction:column;gap:10px;}
@@ -57,7 +58,6 @@ const fuzzyStyles = `
   .fl-h1 em {font-style:italic;color:var(--green);}
   .fl-subtitle {font-size:14px;color:var(--text-muted);line-height:1.6;max-width:540px;}
   .fl-divider {height:1px;background:linear-gradient(90deg,var(--border2),transparent 80%);margin:8px 0 32px;}
-  /* FIX 4: added position:relative and z-index:2 so toggle is always above decorative elements */
   .fl-mode-toggle {
     display:flex;background:var(--bg2);border:1px solid var(--border);
     border-radius:var(--r);padding:4px;width:fit-content;margin-bottom:24px;
@@ -679,17 +679,6 @@ export default function FuzzyLogic() {
     <div className="fl-root">
       <style>{fuzzyStyles}</style>
 
-      {/* Decorative leaf */}
-      <svg style={{ position: 'fixed', right: '-40px', top: '50%', transform: 'translateY(-50%)', width: '220px', opacity: '.04', pointerEvents: 'none', zIndex: 0 }}
-        viewBox="0 0 200 400" fill="none">
-        <path d="M100 380 C100 380 10 280 10 180 C10 80 55 20 100 20 C145 20 190 80 190 180 C190 280 100 380 100 380Z" fill="#2e8b4a" />
-        <line x1="100" y1="380" x2="100" y2="20" stroke="#2e8b4a" strokeWidth="3" />
-        <line x1="100" y1="150" x2="50" y2="100" stroke="#2e8b4a" strokeWidth="1.5" />
-        <line x1="100" y1="200" x2="150" y2="150" stroke="#2e8b4a" strokeWidth="1.5" />
-        <line x1="100" y1="250" x2="55" y2="210" stroke="#2e8b4a" strokeWidth="1.5" />
-        <line x1="100" y1="300" x2="145" y2="260" stroke="#2e8b4a" strokeWidth="1.5" />
-      </svg>
-
       <div className="fl-page">
         <header className="fl-header">
           <span className="fl-badge">
@@ -704,8 +693,7 @@ export default function FuzzyLogic() {
         </header>
         <div className="fl-divider" />
 
-        {/* ── HOW TO USE ── */}
-        {/* FIX 4: added position relative + z-index so it stays above decorative overlay */}
+        {/* HOW TO USE */}
         <div style={{ background:'#fff', border:'1px solid rgba(46,139,74,0.18)', borderRadius:16, padding:'18px 22px', marginBottom:24, position:'relative', zIndex:2, overflow:'hidden', boxShadow:'0 1px 6px rgba(0,0,0,0.05)' }}>
           <div style={{ position:'absolute', top:0, left:0, right:0, height:2, background:'linear-gradient(90deg,#2e8b4a,transparent)' }} />
           <span style={{ fontFamily:"var(--mono)", fontSize:10, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--text-dim)', marginBottom:12, display:'block' }}>How to Use — Fuzzy Logic Analyzer</span>
@@ -724,7 +712,7 @@ export default function FuzzyLogic() {
           </div>
         </div>
 
-        {/* Mode toggle — FIX 4: z-index:2 applied via CSS */}
+        {/* Mode toggle */}
         <div className="fl-mode-toggle">
           <button className={`fl-mode-btn${mode === 'manual' ? ' active' : ''}`} onClick={() => switchMode('manual')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -745,12 +733,11 @@ export default function FuzzyLogic() {
         <form onSubmit={handleSubmit}>
           <div className="fl-form-card">
 
-            {/* ── SMART MODE ── */}
+            {/* SMART MODE */}
             {mode === 'smart' && (
               <div>
                 <span className="fl-sec-label">Farm Location — Philippine Address</span>
                 <div className="fl-grid2">
-
                   <div className="fl-ig">
                     <label className="fl-label">Region</label>
                     <div className="fl-select-wrap">
@@ -793,7 +780,6 @@ export default function FuzzyLogic() {
                       </select>
                     </div>
                   </div>
-
                 </div>
 
                 <div style={{ marginTop: '20px', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
@@ -844,7 +830,7 @@ export default function FuzzyLogic() {
               </div>
             )}
 
-            {/* ── MANUAL MODE ── */}
+            {/* MANUAL MODE */}
             {mode === 'manual' && (
               <div>
                 <span className="fl-sec-label">Environmental Parameters</span>
@@ -886,7 +872,7 @@ export default function FuzzyLogic() {
           </div>
         </form>
 
-        {/* ── RESULTS ── */}
+        {/* RESULTS */}
         {pred && (
           <div className="fl-results" ref={resultsRef}>
             <div className={`fl-score-card ${baseLc}`}>
