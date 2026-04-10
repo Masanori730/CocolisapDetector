@@ -171,6 +171,7 @@ const mapStyles = `
     @keyframes spin { to { transform: rotate(360deg); } }
     @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
     .fade-in { animation: fadeIn .35s ease both; }
+    .map-container-wrap { height:480px; position:relative; overflow:hidden; }
 `;
 
 // ─── How To Use (collapsible) ─────────────────────────────────────────────────
@@ -279,16 +280,23 @@ function DetectionTrendChart({ detections }) {
 // ─── Severity Donut Chart ────────────────────────────────────────────────────
 function SeverityDonutChart({ stats }) {
     const total = stats.total;
-    const data = useMemo(() => {
-        if (total === 0) return [];
-        return [
-            { name: 'Severe', value: stats.severe, color: '#dc2626', pct: total > 0 ? Math.round((stats.severe / total) * 100) : 0 },
-            { name: 'Moderate', value: stats.moderate, color: '#d97706', pct: total > 0 ? Math.round((stats.moderate / total) * 100) : 0 },
-            { name: 'Low', value: stats.low, color: '#4caf72', pct: total > 0 ? Math.round((stats.low / total) * 100) : 0 },
-        ].filter(d => d.value > 0);
-    }, [stats]);
 
-    if (total === 0) return (
+    // FIX: Always show all 3 severity levels, even if count is 0
+    // Only filter out if ALL are zero (empty state)
+    const allData = useMemo(() => [
+        { name: 'Severe',   value: stats.severe,   color: '#dc2626', pct: total > 0 ? Math.round((stats.severe   / total) * 100) : 0 },
+        { name: 'Moderate', value: stats.moderate, color: '#d97706', pct: total > 0 ? Math.round((stats.moderate / total) * 100) : 0 },
+        { name: 'Low',      value: stats.low,      color: '#4caf72', pct: total > 0 ? Math.round((stats.low      / total) * 100) : 0 },
+    ], [stats, total]);
+
+    // For the donut chart: only include slices that have data (recharts can't render 0-value slices well)
+    // But always show all 3 in the legend below
+    const chartData = useMemo(() => allData.filter(d => d.value > 0), [allData]);
+
+    // If no data at all, show empty state with a placeholder ring
+    const hasData = total > 0;
+
+    if (!hasData) return (
         <div className="map-card">
             <div className="map-card-header">
                 <span className="map-card-title"><BarChart3 style={{ width:15, height:15, color:'#2e8b4a' }} />Severity Breakdown</span>
@@ -314,10 +322,10 @@ function SeverityDonutChart({ stats }) {
                 <ResponsiveContainer width="100%" height={200}>
                     <PieChart>
                         <Pie
-                            data={data} cx="50%" cy="50%" innerRadius={60} outerRadius={85}
+                            data={chartData} cx="50%" cy="50%" innerRadius={60} outerRadius={85}
                             paddingAngle={3} dataKey="value" strokeWidth={0}
                         >
-                            {data.map((entry, index) => (
+                            {chartData.map((entry, index) => (
                                 <Cell key={index} fill={entry.color} />
                             ))}
                             <DonutCenterLabel total={total} />
@@ -325,16 +333,21 @@ function SeverityDonutChart({ stats }) {
                         <Tooltip content={<DonutTooltip />} />
                     </PieChart>
                 </ResponsiveContainer>
-                {/* Legend */}
+
+                {/* FIX: Legend always shows all 3 levels regardless of count */}
                 <div style={{ display:'flex', flexDirection:'column', gap:8, marginTop:4 }}>
-                    {data.map(d => (
+                    {allData.map(d => (
                         <div key={d.name} style={{ display:'flex', alignItems:'center', gap:8 }}>
-                            <div style={{ width:10, height:10, borderRadius:'50%', background:d.color, flexShrink:0 }} />
-                            <span style={{ fontSize:12, color:'#1a3326', fontWeight:500, flex:1, textTransform:'capitalize' }}>{d.name}</span>
+                            <div style={{ width:10, height:10, borderRadius:'50%', background:d.color, flexShrink:0, opacity: d.value === 0 ? 0.35 : 1 }} />
+                            <span style={{ fontSize:12, color: d.value === 0 ? '#aaa' : '#1a3326', fontWeight:500, flex:1, textTransform:'capitalize' }}>
+                                {d.name}
+                            </span>
                             <div style={{ flex:2, height:5, background:'#eaf2ea', borderRadius:99, overflow:'hidden' }}>
-                                <div style={{ width:`${d.pct}%`, height:'100%', background:d.color, borderRadius:99, transition:'width .6s ease' }} />
+                                <div style={{ width:`${d.pct}%`, height:'100%', background:d.color, borderRadius:99, transition:'width .6s ease', opacity: d.value === 0 ? 0.35 : 1 }} />
                             </div>
-                            <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#8aaa96', minWidth:36, textAlign:'right' }}>{d.pct}%</span>
+                            <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color: d.value === 0 ? '#aaa' : '#8aaa96', minWidth:52, textAlign:'right' }}>
+                                {d.value} ({d.pct}%)
+                            </span>
                         </div>
                     ))}
                 </div>
@@ -459,7 +472,6 @@ export default function MapDashboard() {
         const moderate = filteredDetections.filter(d => d.severity === 'moderate').length;
         const low = filteredDetections.filter(d => d.severity === 'low').length;
         const avgInsects = total > 0 ? (filteredDetections.reduce((s, d) => s + (d.total_detections || 0), 0) / total).toFixed(1) : 0;
-        // This month vs last month
         const now = new Date();
         const thisMonth = filteredDetections.filter(d => {
             if (!d.created_date) return false;
@@ -481,7 +493,6 @@ export default function MapDashboard() {
     );
 
     const maxProvinceCount = allTopProvinces[0]?.[1] || 1;
-
     const recentDetections = useMemo(() => filteredDetections.slice(0, 6), [filteredDetections]);
     const detectionsWithGPS = useMemo(() => filteredDetections.filter(d => d.latitude && d.longitude), [filteredDetections]);
     const mapCenter = useMemo(() => {
@@ -494,13 +505,11 @@ export default function MapDashboard() {
 
     const selectedDetection = useMemo(() => allDetections.find(d => d.id === selectedDetectionId), [allDetections, selectedDetectionId]);
 
-    // ── Helper: location string ──────────────────────────────────────────────
     const getLocation = (d) => {
         const parts = [d.barangay, d.municipality, d.province].filter(Boolean);
         return parts.length > 0 ? parts.join(', ') : 'Unknown Location';
     };
 
-    // ── Helper: time ago ─────────────────────────────────────────────────────
     const timeAgo = (dateStr) => {
         if (!dateStr) return '—';
         const diff = Math.floor((new Date() - new Date(dateStr)) / 60000);
@@ -640,7 +649,9 @@ export default function MapDashboard() {
                             <span className="map-card-title"><MapPin style={{ width: 15, height: 15, color: '#2e8b4a' }} />Interactive Map View</span>
                             <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: '#8aaa96' }}>{detectionsWithGPS.length} locations</span>
                         </div>
-                        <div style={{ height: 480, position: 'relative' }}>
+
+                        {/* FIX: wrap map in fixed-height div with overflow:hidden to kill white space */}
+                        <div className="map-container-wrap">
                             {detectionsWithGPS.length > 0 ? (
                                 <MapContainer center={mapCenter} zoom={6} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
                                     <TileLayer
@@ -676,11 +687,6 @@ export default function MapDashboard() {
                                         ))}
                                     </MarkerClusterGroup>
                                     <MapSearch detections={detectionsWithGPS} onSelect={d => setSelectedDetectionId(d.id)} selectedId={selectedDetectionId} />
-                                    {selectedDetection && (
-                                        <div className="desktop-detail-panel">
-                                            <DetectionDetailPanel detection={selectedDetection} onClose={() => setSelectedDetectionId(null)} />
-                                        </div>
-                                    )}
                                 </MapContainer>
                             ) : (
                                 <div className="map-empty-state">
@@ -690,6 +696,15 @@ export default function MapDashboard() {
                                 </div>
                             )}
                         </div>
+
+                        {/* Desktop detail panel — now OUTSIDE MapContainer, below the map */}
+                        {selectedDetection && (
+                            <div className="desktop-detail-panel">
+                                <DetectionDetailPanel detection={selectedDetection} onClose={() => setSelectedDetectionId(null)} />
+                            </div>
+                        )}
+
+                        {/* Mobile detail panel */}
                         <div className="mobile-detail-panel">
                             {selectedDetection && (
                                 <div style={{ padding: '0 16px 16px' }}>
@@ -697,6 +712,7 @@ export default function MapDashboard() {
                                 </div>
                             )}
                         </div>
+
                         <div className="map-legend">
                             {[{ color: '#e05555', label: 'Severe (10+)' }, { color: '#e8a440', label: 'Moderate (5–9)' }, { color: '#4caf72', label: 'Low (1–4)' }].map(l => (
                                 <div key={l.label} className="map-legend-item"><div className="map-legend-dot" style={{ background: l.color, boxShadow: `0 0 6px ${l.color}88` }} />{l.label}</div>
@@ -751,7 +767,6 @@ export default function MapDashboard() {
                                             <span className={`map-severity-pill ${d.severity}`}>{d.severity}</span>
                                             <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: '#8aaa96' }}>{timeAgo(d.created_date)}</span>
                                         </div>
-                                        {/* Full location: barangay + municipality + province */}
                                         <p style={{ fontSize: 13, color: '#1a3326', margin: '0 0 2px', fontWeight: 500 }}>
                                             {getLocation(d)}
                                         </p>
