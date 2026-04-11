@@ -36,6 +36,49 @@ const riskColor = (r) => {
     return { bg: '#f1f5f9', color: '#64748b' };
 };
 
+// ── SORT HOOK ─────────────────────────────────────────────────────────────────
+function useSortableData(items, defaultKey = null, defaultDir = 'asc') {
+    const [sortKey, setSortKey] = useState(defaultKey);
+    const [sortDir, setSortDir] = useState(defaultDir);
+
+    const sorted = useMemo(() => {
+        if (!sortKey) return items;
+        return [...items].sort((a, b) => {
+            let aVal = a[sortKey];
+            let bVal = b[sortKey];
+
+            // Handle Firestore timestamps
+            if (sortKey === 'created_date') {
+                aVal = toDate(aVal)?.getTime() ?? 0;
+                bVal = toDate(bVal)?.getTime() ?? 0;
+            }
+
+            // Numeric
+            if (typeof aVal === 'number' && typeof bVal === 'number') {
+                return sortDir === 'asc' ? aVal - bVal : bVal - aVal;
+            }
+
+            // String
+            const aStr = String(aVal ?? '').toLowerCase();
+            const bStr = String(bVal ?? '').toLowerCase();
+            if (aStr < bStr) return sortDir === 'asc' ? -1 : 1;
+            if (aStr > bStr) return sortDir === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }, [items, sortKey, sortDir]);
+
+    const requestSort = (key) => {
+        if (sortKey === key) {
+            setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortKey(key);
+            setSortDir('asc');
+        }
+    };
+
+    return { sorted, sortKey, sortDir, requestSort };
+}
+
 const exportStyles = `
     @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap');
     .export-root { background:#f4f7f4; min-height:100vh; color:#1a3326; font-family:'Outfit',sans-serif; }
@@ -108,6 +151,15 @@ const exportStyles = `
     .preview-table { width:100%; border-collapse:collapse; font-size:13px; }
     .preview-table thead tr { background:#f8fbf8; }
     .preview-table thead th { padding:12px 16px; text-align:left; font-family:'DM Mono',monospace; font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:#8aaa96; font-weight:500; border-bottom:1px solid #e8f0e8; white-space:nowrap; }
+    .preview-table thead th.sortable { cursor:pointer; user-select:none; transition:color .15s, background .15s; }
+    .preview-table thead th.sortable:hover { color:#2e8b4a; background:rgba(46,139,74,0.04); }
+    .preview-table thead th.sortable.active { color:#2e8b4a; }
+    .preview-table thead th.sortable.active-blue { color:#3b82f6; }
+    .preview-table thead th.sortable:hover.blue-table { color:#3b82f6; background:rgba(59,130,246,0.04); }
+    .sort-arrow { display:inline-block; margin-left:4px; font-size:9px; opacity:0.4; transition:opacity .15s; }
+    .preview-table thead th.sortable:hover .sort-arrow { opacity:0.7; }
+    .preview-table thead th.sortable.active .sort-arrow,
+    .preview-table thead th.sortable.active-blue .sort-arrow { opacity:1; }
     .preview-table tbody tr { border-bottom:1px solid #f0f6f0; transition:background .15s; }
     .preview-table tbody tr:last-child { border-bottom:none; }
     .preview-table tbody tr:hover { background:#f8fbf8; }
@@ -116,6 +168,9 @@ const exportStyles = `
     .preview-badge { display:inline-flex; align-items:center; padding:3px 10px; border-radius:100px; font-size:11px; font-weight:600; font-family:'DM Mono',monospace; }
     .preview-empty { padding:40px; text-align:center; color:#8aaa96; font-family:'DM Mono',monospace; font-size:12px; }
     .preview-footer { padding:12px 24px; border-top:1px solid #e8f0e8; background:#f8fbf8; font-family:'DM Mono',monospace; font-size:10px; color:#8aaa96; letter-spacing:.06em; }
+
+    /* Sort hint */
+    .sort-hint { font-family:'DM Mono',monospace; font-size:10px; color:#8aaa96; letter-spacing:.06em; display:flex; align-items:center; gap:4px; }
 
     /* Go to page input */
     .goto-page-wrap { display:flex; align-items:center; gap:6px; font-family:'DM Mono',monospace; font-size:11px; color:#8aaa96; }
@@ -259,6 +314,21 @@ function buildAssessmentRows(assessments) {
 
 const PAGE_SIZE = 10;
 
+// ── SORTABLE TH ───────────────────────────────────────────────────────────────
+function SortTh({ label, sortKey, currentKey, currentDir, onSort, accentClass = 'active' }) {
+    const isActive = currentKey === sortKey;
+    const arrow = isActive ? (currentDir === 'asc' ? '▲' : '▼') : '▲';
+    return (
+        <th
+            className={`sortable${isActive ? ` ${accentClass}` : ''}`}
+            onClick={() => onSort(sortKey)}
+            title={`Sort by ${label}`}
+        >
+            {label}<span className="sort-arrow">{arrow}</span>
+        </th>
+    );
+}
+
 // ── PAGINATION with Go To Page ────────────────────────────────────────────────
 function Pagination({ page, totalPages, onPage, accentColor = '#2e8b4a' }) {
     const [gotoValue, setGotoValue] = useState('');
@@ -285,12 +355,9 @@ function Pagination({ page, totalPages, onPage, accentColor = '#2e8b4a' }) {
 
     return (
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 24px', borderTop:'1px solid #e8f0e8', background:'#f8fbf8', flexWrap:'wrap', gap:10 }}>
-            {/* Left: page info */}
             <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:'#8aaa96', letterSpacing:'.06em' }}>
                 Page {page} of {totalPages}
             </span>
-
-            {/* Center: prev / page buttons / next */}
             <div style={{ display:'flex', gap:4, alignItems:'center' }}>
                 <button onClick={() => onPage(page - 1)} disabled={page === 1}
                     style={{ ...btnBase, background: page === 1 ? '#f0f6f0' : '#fff', color: page === 1 ? '#b0c8b8' : accentColor, cursor: page === 1 ? 'not-allowed' : 'pointer' }}>
@@ -309,8 +376,6 @@ function Pagination({ page, totalPages, onPage, accentColor = '#2e8b4a' }) {
                     Next →
                 </button>
             </div>
-
-            {/* Right: Go to page */}
             <div className="goto-page-wrap">
                 <span>Go to</span>
                 <input
@@ -331,12 +396,16 @@ function Pagination({ page, totalPages, onPage, accentColor = '#2e8b4a' }) {
 
 function DetectionPreviewTable({ detections }) {
     const [page, setPage] = useState(1);
-    const totalPages = Math.max(1, Math.ceil(detections.length / PAGE_SIZE));
+    const { sorted, sortKey, sortDir, requestSort } = useSortableData(detections, 'created_date', 'desc');
+
+    const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
     const safePage = Math.min(page, totalPages);
-    const preview = detections.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+    const preview = sorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
     const globalOffset = (safePage - 1) * PAGE_SIZE;
 
     useEffect(() => { setPage(1); }, [detections.length]);
+
+    const thProps = (key) => ({ sortKey: key, currentKey: sortKey, currentDir: sortDir, onSort: (k) => { requestSort(k); setPage(1); }, accentClass: 'active' });
 
     return (
         <div className="preview-section">
@@ -348,11 +417,14 @@ function DetectionPreviewTable({ detections }) {
                     <p className="preview-title">Image Detection — Data Preview</p>
                     <span className="preview-count-pill green">{detections.length} records</span>
                 </div>
-                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: '#8aaa96', letterSpacing: '.06em' }}>
-                    {detections.length === 0
-                        ? '0 records'
-                        : `Showing ${globalOffset + 1}–${Math.min(globalOffset + PAGE_SIZE, detections.length)} of ${detections.length}`}
-                </span>
+                <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+                    <span className="sort-hint">↕ Click column to sort</span>
+                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: '#8aaa96', letterSpacing: '.06em' }}>
+                        {sorted.length === 0
+                            ? '0 records'
+                            : `Showing ${globalOffset + 1}–${Math.min(globalOffset + PAGE_SIZE, sorted.length)} of ${sorted.length}`}
+                    </span>
+                </div>
             </div>
             <div className="preview-table-wrap">
                 {preview.length === 0 ? (
@@ -361,9 +433,16 @@ function DetectionPreviewTable({ detections }) {
                     <table className="preview-table">
                         <thead>
                             <tr>
-                                <th>#</th><th>Date</th><th>Time</th><th>Province</th>
-                                <th>Municipality</th><th>Barangay</th><th>Farm Name</th>
-                                <th>Severity</th><th>Insects</th><th>Confidence</th>
+                                <th>#</th>
+                                <SortTh label="Date" {...thProps('created_date')} />
+                                <th>Time</th>
+                                <SortTh label="Province" {...thProps('province')} />
+                                <SortTh label="Municipality" {...thProps('municipality')} />
+                                <th>Barangay</th>
+                                <SortTh label="Farm Name" {...thProps('farmName')} />
+                                <SortTh label="Severity" {...thProps('severity')} />
+                                <SortTh label="Insects" {...thProps('total_detections')} />
+                                <SortTh label="Confidence" {...thProps('avg_confidence')} />
                             </tr>
                         </thead>
                         <tbody>
@@ -399,12 +478,16 @@ function DetectionPreviewTable({ detections }) {
 
 function AssessmentPreviewTable({ assessments }) {
     const [page, setPage] = useState(1);
-    const totalPages = Math.max(1, Math.ceil(assessments.length / PAGE_SIZE));
+    const { sorted, sortKey, sortDir, requestSort } = useSortableData(assessments, 'created_date', 'desc');
+
+    const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
     const safePage = Math.min(page, totalPages);
-    const preview = assessments.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+    const preview = sorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
     const globalOffset = (safePage - 1) * PAGE_SIZE;
 
     useEffect(() => { setPage(1); }, [assessments.length]);
+
+    const thProps = (key) => ({ sortKey: key, currentKey: sortKey, currentDir: sortDir, onSort: (k) => { requestSort(k); setPage(1); }, accentClass: 'active-blue' });
 
     return (
         <div className="preview-section">
@@ -416,11 +499,14 @@ function AssessmentPreviewTable({ assessments }) {
                     <p className="preview-title">Fuzzy Logic Assessment — Data Preview</p>
                     <span className="preview-count-pill blue">{assessments.length} records</span>
                 </div>
-                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: '#8aaa96', letterSpacing: '.06em' }}>
-                    {assessments.length === 0
-                        ? '0 records'
-                        : `Showing ${globalOffset + 1}–${Math.min(globalOffset + PAGE_SIZE, assessments.length)} of ${assessments.length}`}
-                </span>
+                <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+                    <span className="sort-hint">↕ Click column to sort</span>
+                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: '#8aaa96', letterSpacing: '.06em' }}>
+                        {sorted.length === 0
+                            ? '0 records'
+                            : `Showing ${globalOffset + 1}–${Math.min(globalOffset + PAGE_SIZE, sorted.length)} of ${sorted.length}`}
+                    </span>
+                </div>
             </div>
             <div className="preview-table-wrap">
                 {preview.length === 0 ? (
@@ -429,10 +515,17 @@ function AssessmentPreviewTable({ assessments }) {
                     <table className="preview-table">
                         <thead>
                             <tr>
-                                <th>#</th><th>Date</th><th>Time</th><th>Province</th>
-                                <th>Municipality</th><th>Barangay</th>
-                                <th>Temp (°C)</th><th>Humidity (%)</th>
-                                <th>Risk Score</th><th>Risk Level</th><th>Infestation (%)</th>
+                                <th>#</th>
+                                <SortTh label="Date" {...thProps('created_date')} />
+                                <th>Time</th>
+                                <SortTh label="Province" {...thProps('province')} />
+                                <SortTh label="Municipality" {...thProps('municipality')} />
+                                <th>Barangay</th>
+                                <SortTh label="Temp (°C)" {...thProps('temperature_c')} />
+                                <SortTh label="Humidity (%)" {...thProps('humidity_pct')} />
+                                <SortTh label="Risk Score" {...thProps('adjusted_risk_score')} />
+                                <SortTh label="Risk Level" {...thProps('adjusted_risk_label')} />
+                                <SortTh label="Infestation (%)" {...thProps('degree_of_infestation_pct')} />
                             </tr>
                         </thead>
                         <tbody>
