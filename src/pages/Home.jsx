@@ -80,7 +80,7 @@ const features = [
   {
     color: 'green',
     icon: <ScanSearch style={{ width: 22, height: 22, color: '#2e8b4a' }} />,
-    title: 'AI Image Detection',
+    title: 'Image Detection',
     desc: 'Upload a photo of a coconut leaf to detect cocolisap insects. The system counts the insects and tells you if the infestation is low, moderate, or severe.',
     link: '/ImageDetection',
     linkLabel: 'Start Detection',
