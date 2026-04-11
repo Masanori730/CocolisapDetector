@@ -335,7 +335,7 @@ const fuzzyStyles = `
     border-radius:50%;animation:fl-spin .7s linear infinite;flex-shrink:0;
   }
 
-  /* ── How To Use — matches MapDashboard style ── */
+  /* How To Use */
   .fl-htu-wrap { background:#fff; border:1px solid rgba(46,139,74,0.18); border-radius:16px; margin-bottom:24px; position:relative; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,0.05); }
   .fl-htu-wrap::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,#2e8b4a,transparent); }
   .fl-htu-header { padding:18px 24px 0; display:flex; align-items:center; gap:10px; }
@@ -390,6 +390,7 @@ function useCountUp(target, duration = 900) {
   return val;
 }
 
+// ✅ FIXED: SliderInput now clamps values to min/max on both change and blur
 function SliderInput({ label, unit, hint, min, max, step, value, onChange, error }) {
   return (
     <div className="fl-ig">
@@ -399,10 +400,24 @@ function SliderInput({ label, unit, hint, min, max, step, value, onChange, error
           value={value} onChange={e => onChange(parseFloat(e.target.value))} />
         <span className="fl-sval">{value}</span>
       </div>
-      <input type="number" className={`fl-input${error ? ' error' : ''}`}
-        min={min} max={max} step={step} value={value}
-        onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v)) onChange(v); }}
-        placeholder={`e.g. ${value}`} />
+      <input
+        type="number"
+        className={`fl-input${error ? ' error' : ''}`}
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={e => {
+          const v = parseFloat(e.target.value);
+          if (!isNaN(v)) onChange(Math.min(max, Math.max(min, v)));
+        }}
+        onBlur={e => {
+          const v = parseFloat(e.target.value);
+          if (isNaN(v) || v < min) onChange(min);
+          else if (v > max) onChange(max);
+        }}
+        placeholder={`e.g. ${value}`}
+      />
       {hint && <span className="fl-hint">{hint}</span>}
       {error && <span className="fl-ferr">{error}</span>}
     </div>
@@ -792,7 +807,7 @@ export default function FuzzyLogic() {
             {/* SMART MODE */}
             {mode === 'smart' && (
               <div>
-                <span className="fl-sec-label">Farm Location — Philippine Address</span>
+                <span className="fl-sec-label">Farm Location - Philippine Address</span>
                 <div className="fl-grid2">
                   <div className="fl-ig">
                     <label className="fl-label">Region</label>
@@ -864,7 +879,7 @@ export default function FuzzyLogic() {
                 <div className="fl-card-sep" />
                 <span className="fl-sec-label">Additional Farm Parameters</span>
                 <div className="fl-grid2">
-                  <SliderInput label="Planting Density" unit="1–200 /ha" hint="Observed range: 100–130 trees/ha"
+                  <SliderInput label="Planting Density" unit="1-200 /ha" hint="Observed range: 100-130 trees/ha"
                     min={1} max={200} step={1} value={sDens} onChange={setSDens} error={errs.sDens || errs.sDensCross} />
                   <div className="fl-ig">
                     <label className="fl-label">Total Coconut Trees <span className="fl-unit">≥ 1</span></label>
@@ -891,13 +906,13 @@ export default function FuzzyLogic() {
               <div>
                 <span className="fl-sec-label">Environmental Parameters</span>
                 <div className="fl-grid2">
-                  <SliderInput label="Temperature" unit="1–45 °C" hint="Observed range: 20–35 °C"
+                  <SliderInput label="Temperature" unit="1-45 °C" hint="Observed range: 20-35 °C"
                     min={1} max={45} step={0.5} value={temp} onChange={setTemp} error={errs.temp} />
-                  <SliderInput label="Relative Humidity" unit="0–100 %" hint="Observed range: 65–74 %"
+                  <SliderInput label="Relative Humidity" unit="0-100 %" hint="Observed range: 65-74 %"
                     min={0} max={100} step={1} value={hum} onChange={setHum} error={errs.hum} />
-                  <SliderInput label="Wind Speed" unit="1–85 km/h" hint="Observed range: 11–24 km/h"
+                  <SliderInput label="Wind Speed" unit="1-85 km/h" hint="Observed range: 11-24 km/h"
                     min={1} max={85} step={1} value={wind} onChange={setWind} error={errs.wind} />
-                  <SliderInput label="Planting Density" unit="1–200 /ha" hint="Observed range: 100–130 trees/ha"
+                  <SliderInput label="Planting Density" unit="1-200 /ha" hint="Observed range: 100-130 trees/ha"
                     min={1} max={200} step={1} value={dens} onChange={setDens} error={errs.dens || errs.densCross} />
                   <div className="fl-ig full">
                     <label className="fl-label">Total Coconut Trees in Farm <span className="fl-unit">≥ 1</span></label>
