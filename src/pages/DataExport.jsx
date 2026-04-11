@@ -10,19 +10,11 @@ const PHILIPPINE_PROVINCES = [
 
 const ns = (v) => (v !== undefined && v !== null && v !== '') ? v : 'N/A';
 
-// ── FIX 1: toDate now correctly handles ISO strings saved by both pages ──
 const toDate = (val) => {
     if (!val) return null;
-    // Firestore Timestamp object
     if (typeof val.toDate === 'function') return val.toDate();
-    // Firestore Timestamp plain object { seconds, nanoseconds }
     if (val.seconds !== undefined) return new Date(val.seconds * 1000);
-    // ISO string (what your pages save: new Date().toISOString())
-    if (typeof val === 'string') {
-        const d = new Date(val);
-        return isNaN(d.getTime()) ? null : d;
-    }
-    // Fallback
+    if (typeof val === 'string') { const d = new Date(val); return isNaN(d.getTime()) ? null : d; }
     const d = new Date(val);
     return isNaN(d.getTime()) ? null : d;
 };
@@ -125,6 +117,13 @@ const exportStyles = `
     .preview-empty { padding:40px; text-align:center; color:#8aaa96; font-family:'DM Mono',monospace; font-size:12px; }
     .preview-footer { padding:12px 24px; border-top:1px solid #e8f0e8; background:#f8fbf8; font-family:'DM Mono',monospace; font-size:10px; color:#8aaa96; letter-spacing:.06em; }
 
+    /* Go to page input */
+    .goto-page-wrap { display:flex; align-items:center; gap:6px; font-family:'DM Mono',monospace; font-size:11px; color:#8aaa96; }
+    .goto-page-input { width:48px; padding:4px 8px; border:1px solid #c8dfc8; border-radius:8px; background:#fff; color:#1a3326; font-family:'DM Mono',monospace; font-size:11px; text-align:center; outline:none; transition:border-color .2s; }
+    .goto-page-input:focus { border-color:#2e8b4a; box-shadow:0 0 0 2px rgba(46,139,74,0.08); }
+    .goto-page-btn { padding:4px 10px; border-radius:8px; border:1px solid #c8dfc8; background:#fff; color:#2e8b4a; font-family:'DM Mono',monospace; font-size:11px; cursor:pointer; font-weight:600; transition:background .15s,border-color .15s; }
+    .goto-page-btn:hover { background:rgba(46,139,74,0.07); border-color:#2e8b4a; }
+
     /* How To Use */
     .exp-htu-wrap { background:#fff; border:1px solid #d6e8d6; border-radius:16px; margin-bottom:24px; position:relative; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,0.05); }
     .exp-htu-wrap::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,#2e8b4a,transparent); }
@@ -152,10 +151,8 @@ const exportStyles = `
     @keyframes xlsx-spin { to { transform:rotate(360deg); } }
 `;
 
-// ── FIX 2: Load XLSX from CDN dynamically instead of relying on window.XLSX ──
 function useXLSX() {
     const [xlsxReady, setXlsxReady] = useState(!!window.XLSX);
-
     useEffect(() => {
         if (window.XLSX) { setXlsxReady(true); return; }
         const script = document.createElement('script');
@@ -164,11 +161,8 @@ function useXLSX() {
         script.onerror = () => console.error('Failed to load XLSX library');
         document.head.appendChild(script);
     }, []);
-
     return xlsxReady;
 }
-
-// ── XLSX HELPERS ──────────────────────────────────────────────────────────────
 
 function buildStyledSheet(XLSX, headers, rows, headerColor = '2e8b4a') {
     const aoa = [headers, ...rows];
@@ -206,8 +200,6 @@ function downloadXLSX(sheets, filename) {
     });
     XLSX.writeFile(wb, filename);
 }
-
-// ── ROW BUILDERS ─────────────────────────────────────────────────────────────
 
 const DETECTION_HEADERS = [
     'Detection ID', 'Date', 'Time', 'Province', 'Municipality', 'Barangay',
@@ -265,12 +257,14 @@ function buildAssessmentRows(assessments) {
     });
 }
 
-// ── PREVIEW TABLES ────────────────────────────────────────────────────────────
-
 const PAGE_SIZE = 10;
 
-function Pagination({ page, totalPages, onPage }) {
+// ── PAGINATION with Go To Page ────────────────────────────────────────────────
+function Pagination({ page, totalPages, onPage, accentColor = '#2e8b4a' }) {
+    const [gotoValue, setGotoValue] = useState('');
+
     if (totalPages <= 1) return null;
+
     const pages = [];
     const delta = 2;
     const left = Math.max(1, page - delta);
@@ -279,28 +273,57 @@ function Pagination({ page, totalPages, onPage }) {
     for (let i = left; i <= right; i++) pages.push(i);
     if (right < totalPages) { if (right < totalPages - 1) pages.push('...'); pages.push(totalPages); }
 
+    const handleGoto = () => {
+        const p = parseInt(gotoValue, 10);
+        if (!isNaN(p) && p >= 1 && p <= totalPages) {
+            onPage(p);
+            setGotoValue('');
+        }
+    };
+
+    const btnBase = { padding:'5px 12px', borderRadius:8, border:'1px solid #d6e8d6', fontFamily:"'DM Mono',monospace", fontSize:11, cursor:'pointer', fontWeight:600 };
+
     return (
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 24px', borderTop:'1px solid #e8f0e8', background:'#f8fbf8', flexWrap:'wrap', gap:8 }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 24px', borderTop:'1px solid #e8f0e8', background:'#f8fbf8', flexWrap:'wrap', gap:10 }}>
+            {/* Left: page info */}
             <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:'#8aaa96', letterSpacing:'.06em' }}>
                 Page {page} of {totalPages}
             </span>
+
+            {/* Center: prev / page buttons / next */}
             <div style={{ display:'flex', gap:4, alignItems:'center' }}>
                 <button onClick={() => onPage(page - 1)} disabled={page === 1}
-                    style={{ padding:'5px 12px', borderRadius:8, border:'1px solid #d6e8d6', background: page === 1 ? '#f0f6f0' : '#fff', color: page === 1 ? '#b0c8b8' : '#2e8b4a', fontFamily:"'DM Mono',monospace", fontSize:11, cursor: page === 1 ? 'not-allowed' : 'pointer', fontWeight:600 }}>
+                    style={{ ...btnBase, background: page === 1 ? '#f0f6f0' : '#fff', color: page === 1 ? '#b0c8b8' : accentColor, cursor: page === 1 ? 'not-allowed' : 'pointer' }}>
                     ← Prev
                 </button>
                 {pages.map((p, i) =>
                     p === '...'
-                        ? <span key={`ellipsis-${i}`} style={{ padding:'0 4px', fontFamily:"'DM Mono',monospace", fontSize:11, color:'#8aaa96' }}>…</span>
+                        ? <span key={`e${i}`} style={{ padding:'0 4px', fontFamily:"'DM Mono',monospace", fontSize:11, color:'#8aaa96' }}>…</span>
                         : <button key={p} onClick={() => onPage(p)}
-                            style={{ width:30, height:30, borderRadius:8, border:'1px solid', borderColor: p === page ? '#2e8b4a' : '#d6e8d6', background: p === page ? '#2e8b4a' : '#fff', color: p === page ? '#fff' : '#2e8b4a', fontFamily:"'DM Mono',monospace", fontSize:11, cursor:'pointer', fontWeight: p === page ? 700 : 400 }}>
+                            style={{ width:30, height:30, borderRadius:8, border:'1px solid', borderColor: p === page ? accentColor : '#d6e8d6', background: p === page ? accentColor : '#fff', color: p === page ? '#fff' : accentColor, fontFamily:"'DM Mono',monospace", fontSize:11, cursor:'pointer', fontWeight: p === page ? 700 : 400 }}>
                             {p}
                           </button>
                 )}
                 <button onClick={() => onPage(page + 1)} disabled={page === totalPages}
-                    style={{ padding:'5px 12px', borderRadius:8, border:'1px solid #d6e8d6', background: page === totalPages ? '#f0f6f0' : '#fff', color: page === totalPages ? '#b0c8b8' : '#2e8b4a', fontFamily:"'DM Mono',monospace", fontSize:11, cursor: page === totalPages ? 'not-allowed' : 'pointer', fontWeight:600 }}>
+                    style={{ ...btnBase, background: page === totalPages ? '#f0f6f0' : '#fff', color: page === totalPages ? '#b0c8b8' : accentColor, cursor: page === totalPages ? 'not-allowed' : 'pointer' }}>
                     Next →
                 </button>
+            </div>
+
+            {/* Right: Go to page */}
+            <div className="goto-page-wrap">
+                <span>Go to</span>
+                <input
+                    className="goto-page-input"
+                    type="number"
+                    min={1}
+                    max={totalPages}
+                    value={gotoValue}
+                    onChange={e => setGotoValue(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleGoto()}
+                    placeholder="—"
+                />
+                <button className="goto-page-btn" onClick={handleGoto}>Go</button>
             </div>
         </div>
     );
@@ -369,7 +392,7 @@ function DetectionPreviewTable({ detections }) {
                     </table>
                 )}
             </div>
-            <Pagination page={safePage} totalPages={totalPages} onPage={setPage} />
+            <Pagination page={safePage} totalPages={totalPages} onPage={setPage} accentColor="#2e8b4a" />
         </div>
     );
 }
@@ -437,12 +460,10 @@ function AssessmentPreviewTable({ assessments }) {
                     </table>
                 )}
             </div>
-            <Pagination page={safePage} totalPages={totalPages} onPage={setPage} />
+            <Pagination page={safePage} totalPages={totalPages} onPage={setPage} accentColor="#3b82f6" />
         </div>
     );
 }
-
-// ── HOW TO USE ────────────────────────────────────────────────────────────────
 
 function HowToUse() {
     const steps = [
@@ -480,10 +501,8 @@ function HowToUse() {
     );
 }
 
-// ── COMPONENT ─────────────────────────────────────────────────────────────────
-
 export default function DataExport() {
-    const xlsxReady = useXLSX(); // ← FIX 2: load XLSX from CDN
+    const xlsxReady = useXLSX();
 
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
@@ -495,8 +514,6 @@ export default function DataExport() {
     const [allAssessments, setAllAssessments] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    // ── FIX 3: real-time listener would be ideal but getDocs is fine;
-    //    key fix is we now correctly parse ISO string dates in toDate()
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -515,18 +532,10 @@ export default function DataExport() {
         fetchData();
     }, []);
 
-    // ── FIX 1: date filter now works because toDate() handles ISO strings ──
     const applyDateFilter = (items) => {
         let f = items;
-        if (dateFrom) {
-            const from = new Date(dateFrom);
-            f = f.filter(d => { const dt = toDate(d.created_date); return dt && dt >= from; });
-        }
-        if (dateTo) {
-            const end = new Date(dateTo);
-            end.setHours(23, 59, 59, 999);
-            f = f.filter(d => { const dt = toDate(d.created_date); return dt && dt <= end; });
-        }
+        if (dateFrom) { const from = new Date(dateFrom); f = f.filter(d => { const dt = toDate(d.created_date); return dt && dt >= from; }); }
+        if (dateTo) { const end = new Date(dateTo); end.setHours(23,59,59,999); f = f.filter(d => { const dt = toDate(d.created_date); return dt && dt <= end; }); }
         return f;
     };
 
@@ -540,7 +549,6 @@ export default function DataExport() {
     const filteredAssessments = useMemo(() => {
         let f = applyDateFilter(allAssessments);
         if (riskFilter !== 'all') f = f.filter(a => a.adjusted_risk_label === riskFilter);
-        // ── FIX 4: fuzzy manual mode has no province — filter skips if null ──
         if (provinceFilter !== 'all') f = f.filter(a => a.province && a.province.toLowerCase().includes(provinceFilter.toLowerCase()));
         return f;
     }, [allAssessments, dateFrom, dateTo, riskFilter, provinceFilter]);
@@ -619,15 +627,11 @@ export default function DataExport() {
                 <div className="export-count-row">
                     <div className="export-count-box">
                         <div className="export-count-label">Image Detections</div>
-                        <span className="export-count-text">
-                            <strong>{isLoading ? '...' : filteredDetections.length}</strong> record{filteredDetections.length !== 1 ? 's' : ''} matched
-                        </span>
+                        <span className="export-count-text"><strong>{isLoading ? '...' : filteredDetections.length}</strong> record{filteredDetections.length !== 1 ? 's' : ''} matched</span>
                     </div>
                     <div className="export-count-box">
                         <div className="export-count-label">Fuzzy Assessments</div>
-                        <span className="export-count-text">
-                            <strong>{isLoading ? '...' : filteredAssessments.length}</strong> record{filteredAssessments.length !== 1 ? 's' : ''} matched
-                        </span>
+                        <span className="export-count-text"><strong>{isLoading ? '...' : filteredAssessments.length}</strong> record{filteredAssessments.length !== 1 ? 's' : ''} matched</span>
                     </div>
                 </div>
 
@@ -640,9 +644,7 @@ export default function DataExport() {
 
                 {/* Preview Tables */}
                 {isLoading ? (
-                    <div style={{ textAlign:'center', padding:'40px', fontFamily:"'DM Mono',monospace", fontSize:12, color:'#8aaa96' }}>
-                        Loading records…
-                    </div>
+                    <div style={{ textAlign:'center', padding:'40px', fontFamily:"'DM Mono',monospace", fontSize:12, color:'#8aaa96' }}>Loading records…</div>
                 ) : (
                     <>
                         <DetectionPreviewTable detections={filteredDetections} />
@@ -650,12 +652,7 @@ export default function DataExport() {
                     </>
                 )}
 
-                {/* Export options */}
-                {!xlsxReady && (
-                    <div className="xlsx-loading">
-                        <div className="xlsx-spin" /> Loading Excel library…
-                    </div>
-                )}
+                {!xlsxReady && <div className="xlsx-loading"><div className="xlsx-spin" /> Loading Excel library…</div>}
 
                 <div className="export-options-grid">
                     <div className="export-option-card green">
@@ -664,8 +661,7 @@ export default function DataExport() {
                         <p className="export-option-sub">YOLO26 · Instance Segmentation</p>
                         <p className="export-option-desc">Export all image scan records with location, severity, confidence scores, and insect counts. Green header, alternating rows.</p>
                         <div className="export-btn-row">
-                            <button className="export-dl-btn green" onClick={handleDetectionExcel}
-                                disabled={!filteredDetections.length || !xlsxReady}>
+                            <button className="export-dl-btn green" onClick={handleDetectionExcel} disabled={!filteredDetections.length || !xlsxReady}>
                                 <FileSpreadsheet style={{ width: 15, height: 15 }} />
                                 {xlsxReady ? 'Download Excel' : 'Loading…'}
                             </button>
@@ -677,8 +673,7 @@ export default function DataExport() {
                         <p className="export-option-sub">Mamdani · 81-Rule Inference</p>
                         <p className="export-option-desc">Export fuzzy logic risk assessments with environmental parameters, farm impact, and PCA intervention notes. Blue header.</p>
                         <div className="export-btn-row">
-                            <button className="export-dl-btn green" onClick={handleFuzzyExcel}
-                                disabled={!filteredAssessments.length || !xlsxReady}>
+                            <button className="export-dl-btn green" onClick={handleFuzzyExcel} disabled={!filteredAssessments.length || !xlsxReady}>
                                 <FileSpreadsheet style={{ width: 15, height: 15 }} />
                                 {xlsxReady ? 'Download Excel' : 'Loading…'}
                             </button>
@@ -690,8 +685,7 @@ export default function DataExport() {
                         <p className="export-option-sub">Integrated · Detection + Fuzzy</p>
                         <p className="export-option-desc">Single Excel file with two sheets (Sheet 1: Image Detections, Sheet 2: Fuzzy Assessments). Ready for PCA submission.</p>
                         <div className="export-btn-row">
-                            <button className="export-dl-btn purple" onClick={handleCombinedExcel}
-                                disabled={(!filteredDetections.length && !filteredAssessments.length) || !xlsxReady}>
+                            <button className="export-dl-btn purple" onClick={handleCombinedExcel} disabled={(!filteredDetections.length && !filteredAssessments.length) || !xlsxReady}>
                                 <FileSpreadsheet style={{ width: 15, height: 15 }} />
                                 {xlsxReady ? 'Download Combined Excel' : 'Loading…'}
                             </button>
@@ -699,7 +693,6 @@ export default function DataExport() {
                     </div>
                 </div>
 
-                {/* Tips */}
                 <div className="export-tips">
                     <div className="export-tips-icon"><Info style={{ width: 18, height: 18, color: '#3b82f6' }} /></div>
                     <div>
