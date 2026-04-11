@@ -40,11 +40,7 @@ const PHILIPPINE_PROVINCES = [
 const TrendTooltip = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null;
     return (
-        <div style={{
-            background: '#fff', border: '1px solid #d6e8d6', borderRadius: 10,
-            padding: '10px 14px', boxShadow: '0 4px 16px rgba(0,0,0,0.10)',
-            fontFamily: "'Outfit',sans-serif"
-        }}>
+        <div style={{ background: '#fff', border: '1px solid #d6e8d6', borderRadius: 10, padding: '10px 14px', boxShadow: '0 4px 16px rgba(0,0,0,0.10)', fontFamily: "'Outfit',sans-serif" }}>
             <p style={{ margin: '0 0 4px', fontSize: 11, fontFamily: "'DM Mono',monospace", color: '#8aaa96', textTransform: 'uppercase', letterSpacing: '.1em' }}>{label}</p>
             <p style={{ margin: 0, fontSize: 18, fontFamily: "'DM Serif Display',serif", color: '#2e8b4a' }}>
                 {payload[0].value} <span style={{ fontSize: 12, color: '#8aaa96', fontFamily: "'DM Mono',monospace" }}>detections</span>
@@ -56,11 +52,7 @@ const TrendTooltip = ({ active, payload, label }) => {
 const DonutTooltip = ({ active, payload }) => {
     if (!active || !payload?.length) return null;
     return (
-        <div style={{
-            background: '#fff', border: '1px solid #d6e8d6', borderRadius: 10,
-            padding: '10px 14px', boxShadow: '0 4px 16px rgba(0,0,0,0.10)',
-            fontFamily: "'Outfit',sans-serif"
-        }}>
+        <div style={{ background: '#fff', border: '1px solid #d6e8d6', borderRadius: 10, padding: '10px 14px', boxShadow: '0 4px 16px rgba(0,0,0,0.10)', fontFamily: "'Outfit',sans-serif" }}>
             <p style={{ margin: '0 0 2px', fontSize: 12, fontWeight: 600, color: '#1a3326', textTransform: 'capitalize' }}>{payload[0].name}</p>
             <p style={{ margin: 0, fontSize: 16, fontFamily: "'DM Serif Display',serif", color: payload[0].payload.color }}>
                 {payload[0].value} <span style={{ fontSize: 11, color: '#8aaa96', fontFamily: "'DM Mono',monospace" }}>cases ({payload[0].payload.pct}%)</span>
@@ -171,13 +163,6 @@ const mapStyles = `
     .fade-in { animation: fadeIn .35s ease both; }
     .map-container-wrap { height:480px; min-height:480px; position:relative; overflow:hidden; flex-shrink:0; }
     .map-card-flex { display:flex; flex-direction:column; min-height:0; }
-
-    /* Cache indicator */
-    .cache-badge { display:inline-flex; align-items:center; gap:5px; background:rgba(46,139,74,0.08); border:1px solid rgba(46,139,74,0.20); border-radius:100px; padding:2px 8px; font-family:'DM Mono',monospace; font-size:10px; color:#2e8b4a; }
-    .cache-dot { width:6px; height:6px; border-radius:50%; background:#2e8b4a; animation: pulse 2s infinite; }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-
-    /* How To Use — FIXED for mobile 2-column grid */
     .how-to-wrap { background:#fff; border:1px solid #d6e8d6; border-radius:16px; margin-bottom:24px; position:relative; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,0.05); }
     .how-to-wrap::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,#2e8b4a,transparent); }
     .how-to-header { padding:18px 24px 0; display:flex; align-items:center; gap:10px; }
@@ -204,33 +189,12 @@ const mapStyles = `
 
 function HowToUse() {
     const steps = [
-        {
-            num: 1,
-            title: 'Check the Metric Cards',
-            desc: 'Review the 5 summary cards at the top: Total Detections, Severe, Moderate, Low cases, and the average insect count per farm.',
-        },
-        {
-            num: 2,
-            title: 'Apply Filters',
-            desc: 'Use the Filters panel to narrow results by Severity Level, Date Range, or Province. You can also set a Custom Date Range.',
-        },
-        {
-            num: 3,
-            title: 'Explore the Map',
-            desc: 'Colored dots show detection locations. Red = Severe, Orange = Moderate, Green = Low. Click any dot to view full details.',
-        },
-        {
-            num: 4,
-            title: 'Analyze the Charts',
-            desc: 'The Detection Trend line chart shows monthly counts over 6 months. The Severity Breakdown donut shows the proportion of each level.',
-        },
-        {
-            num: 5,
-            title: 'Review Affected Areas',
-            desc: 'Check Top Affected Provinces and Recent Detections in the sidebar to identify which areas need priority attention.',
-        },
+        { num: 1, title: 'Check the Metric Cards', desc: 'Review the 5 summary cards at the top: Total Detections, Severe, Moderate, Low cases, and the average insect count per farm.' },
+        { num: 2, title: 'Apply Filters', desc: 'Use the Filters panel to narrow results by Severity Level, Date Range, or Province. You can also set a Custom Date Range.' },
+        { num: 3, title: 'Explore the Map', desc: 'Colored dots show detection locations. Red = Severe, Orange = Moderate, Green = Low. Click any dot to view full details.' },
+        { num: 4, title: 'Analyze the Charts', desc: 'The Detection Trend line chart shows monthly counts over 6 months. The Severity Breakdown donut shows the proportion of each level.' },
+        { num: 5, title: 'Review Affected Areas', desc: 'Check Top Affected Provinces and Recent Detections in the sidebar to identify which areas need priority attention.' },
     ];
-
     return (
         <div className="how-to-wrap">
             <div className="how-to-header">
@@ -264,20 +228,12 @@ function DetectionTrendChart({ detections }) {
     const trendData = useMemo(() => {
         const months = Array.from({ length: 6 }, (_, i) => {
             const d = subMonths(new Date(), 5 - i);
-            return {
-                label: format(d, 'MMM yyyy'),
-                short: format(d, 'MMM'),
-                start: startOfMonth(d),
-                end: endOfMonth(d),
-                count: 0,
-            };
+            return { label: format(d, 'MMM yyyy'), short: format(d, 'MMM'), start: startOfMonth(d), end: endOfMonth(d), count: 0 };
         });
         detections.forEach(d => {
             if (!d.created_date) return;
             const dt = new Date(d.created_date);
-            months.forEach(m => {
-                if (isWithinInterval(dt, { start: m.start, end: m.end })) m.count++;
-            });
+            months.forEach(m => { if (isWithinInterval(dt, { start: m.start, end: m.end })) m.count++; });
         });
         return months.map(m => ({ name: m.short, full: m.label, count: m.count }));
     }, [detections]);
@@ -293,33 +249,18 @@ function DetectionTrendChart({ detections }) {
     return (
         <div className="map-card">
             <div className="map-card-header">
-                <span className="map-card-title">
-                    <Activity style={{ width:15, height:15, color:'#2e8b4a' }} />
-                    Detection Trend
-                </span>
+                <span className="map-card-title"><Activity style={{ width:15, height:15, color:'#2e8b4a' }} />Detection Trend</span>
                 <span className={`trend-badge ${trendDir}`}>{trendLabel}</span>
             </div>
             <div style={{ padding:'20px 20px 12px' }}>
-                <p style={{ margin:'0 0 16px', fontSize:12, color:'#8aaa96', fontFamily:"'DM Mono',monospace" }}>
-                    Monthly cocolisap detection count — last 6 months
-                </p>
+                <p style={{ margin:'0 0 16px', fontSize:12, color:'#8aaa96', fontFamily:"'DM Mono',monospace" }}>Monthly cocolisap detection count — last 6 months</p>
                 <ResponsiveContainer width="100%" height={200}>
                     <LineChart data={trendData} margin={{ top:4, right:8, left:-20, bottom:0 }}>
-                        <defs>
-                            <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#2e8b4a" stopOpacity={0.15}/>
-                                <stop offset="100%" stopColor="#2e8b4a" stopOpacity={0}/>
-                            </linearGradient>
-                        </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="#eaf2ea" vertical={false} />
                         <XAxis dataKey="name" tick={{ fontFamily:"'DM Mono',monospace", fontSize:11, fill:'#8aaa96' }} axisLine={false} tickLine={false} />
                         <YAxis tick={{ fontFamily:"'DM Mono',monospace", fontSize:11, fill:'#8aaa96' }} axisLine={false} tickLine={false} allowDecimals={false} />
                         <Tooltip content={<TrendTooltip />} />
-                        <Line
-                            type="monotone" dataKey="count" stroke="#2e8b4a" strokeWidth={2.5}
-                            dot={{ fill:'#2e8b4a', r:4, strokeWidth:2, stroke:'#fff' }}
-                            activeDot={{ r:6, fill:'#2e8b4a', stroke:'#fff', strokeWidth:2 }}
-                        />
+                        <Line type="monotone" dataKey="count" stroke="#2e8b4a" strokeWidth={2.5} dot={{ fill:'#2e8b4a', r:4, strokeWidth:2, stroke:'#fff' }} activeDot={{ r:6, fill:'#2e8b4a', stroke:'#fff', strokeWidth:2 }} />
                     </LineChart>
                 </ResponsiveContainer>
             </div>
@@ -329,67 +270,43 @@ function DetectionTrendChart({ detections }) {
 
 function SeverityDonutChart({ stats }) {
     const total = stats.total;
-
     const allData = useMemo(() => [
         { name: 'Severe',   value: stats.severe,   color: '#dc2626', pct: total > 0 ? Math.round((stats.severe   / total) * 100) : 0 },
         { name: 'Moderate', value: stats.moderate, color: '#d97706', pct: total > 0 ? Math.round((stats.moderate / total) * 100) : 0 },
         { name: 'Low',      value: stats.low,      color: '#4caf72', pct: total > 0 ? Math.round((stats.low      / total) * 100) : 0 },
     ], [stats, total]);
-
     const chartData = useMemo(() => allData.filter(d => d.value > 0), [allData]);
-    const hasData = total > 0;
 
-    if (!hasData) return (
+    if (total === 0) return (
         <div className="map-card">
-            <div className="map-card-header">
-                <span className="map-card-title"><BarChart3 style={{ width:15, height:15, color:'#2e8b4a' }} />Severity Breakdown</span>
-            </div>
-            <div className="map-empty-state" style={{ padding:'40px 24px' }}>
-                <p style={{ fontSize:13, color:'#8aaa96' }}>No data available</p>
-            </div>
+            <div className="map-card-header"><span className="map-card-title"><BarChart3 style={{ width:15, height:15, color:'#2e8b4a' }} />Severity Breakdown</span></div>
+            <div className="map-empty-state" style={{ padding:'40px 24px' }}><p style={{ fontSize:13, color:'#8aaa96' }}>No data available</p></div>
         </div>
     );
 
     return (
         <div className="map-card">
-            <div className="map-card-header">
-                <span className="map-card-title">
-                    <BarChart3 style={{ width:15, height:15, color:'#2e8b4a' }} />
-                    Severity Breakdown
-                </span>
-            </div>
+            <div className="map-card-header"><span className="map-card-title"><BarChart3 style={{ width:15, height:15, color:'#2e8b4a' }} />Severity Breakdown</span></div>
             <div style={{ padding:'16px 20px 20px' }}>
-                <p style={{ margin:'0 0 12px', fontSize:12, color:'#8aaa96', fontFamily:"'DM Mono',monospace" }}>
-                    Distribution of infestation severity levels
-                </p>
+                <p style={{ margin:'0 0 12px', fontSize:12, color:'#8aaa96', fontFamily:"'DM Mono',monospace" }}>Distribution of infestation severity levels</p>
                 <ResponsiveContainer width="100%" height={200}>
                     <PieChart>
-                        <Pie
-                            data={chartData} cx="50%" cy="50%" innerRadius={60} outerRadius={85}
-                            paddingAngle={3} dataKey="value" strokeWidth={0}
-                        >
-                            {chartData.map((entry, index) => (
-                                <Cell key={index} fill={entry.color} />
-                            ))}
+                        <Pie data={chartData} cx="50%" cy="50%" innerRadius={60} outerRadius={85} paddingAngle={3} dataKey="value" strokeWidth={0}>
+                            {chartData.map((entry, index) => (<Cell key={index} fill={entry.color} />))}
                             <DonutCenterLabel total={total} />
                         </Pie>
                         <Tooltip content={<DonutTooltip />} />
                     </PieChart>
                 </ResponsiveContainer>
-
                 <div style={{ display:'flex', flexDirection:'column', gap:8, marginTop:4 }}>
                     {allData.map(d => (
                         <div key={d.name} style={{ display:'flex', alignItems:'center', gap:8 }}>
                             <div style={{ width:10, height:10, borderRadius:'50%', background:d.color, flexShrink:0, opacity: d.value === 0 ? 0.35 : 1 }} />
-                            <span style={{ fontSize:12, color: d.value === 0 ? '#aaa' : '#1a3326', fontWeight:500, flex:1, textTransform:'capitalize' }}>
-                                {d.name}
-                            </span>
+                            <span style={{ fontSize:12, color: d.value === 0 ? '#aaa' : '#1a3326', fontWeight:500, flex:1, textTransform:'capitalize' }}>{d.name}</span>
                             <div style={{ flex:2, height:5, background:'#eaf2ea', borderRadius:99, overflow:'hidden' }}>
                                 <div style={{ width:`${d.pct}%`, height:'100%', background:d.color, borderRadius:99, transition:'width .6s ease', opacity: d.value === 0 ? 0.35 : 1 }} />
                             </div>
-                            <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color: d.value === 0 ? '#aaa' : '#8aaa96', minWidth:52, textAlign:'right' }}>
-                                {d.value} ({d.pct}%)
-                            </span>
+                            <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color: d.value === 0 ? '#aaa' : '#8aaa96', minWidth:52, textAlign:'right' }}>{d.value} ({d.pct}%)</span>
                         </div>
                     ))}
                 </div>
@@ -420,9 +337,7 @@ function MobileDetailCard({ detection, onClose }) {
             <div style={{ padding: '14px 16px', borderBottom: '1px solid #eaf2ea', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#f8fbf8' }}>
                 <div>
                     <div style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: '#8aaa96', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 4 }}>Detection Details</div>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: cfg.bg, border: `1px solid ${cfg.border}`, borderRadius: 100, padding: '3px 10px', fontSize: 11, fontWeight: 600, color: cfg.color, textTransform: 'uppercase' }}>
-                        {detection.severity}
-                    </span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: cfg.bg, border: `1px solid ${cfg.border}`, borderRadius: 100, padding: '3px 10px', fontSize: 11, fontWeight: 600, color: cfg.color, textTransform: 'uppercase' }}>{detection.severity}</span>
                 </div>
                 <button onClick={onClose} style={{ background: 'none', border: '1px solid #d6e8d6', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', color: '#8aaa96', fontSize: 12, fontFamily: "'Outfit',sans-serif" }}>✕ Close</button>
             </div>
@@ -459,7 +374,6 @@ function MobileDetailCard({ detection, onClose }) {
 export default function MapDashboard() {
     const [allDetections, setAllDetections] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [fromCache, setFromCache] = useState(false);
     const [severityFilter, setSeverityFilter] = useState('all');
     const [dateFilter, setDateFilter] = useState('all');
     const [provinceFilter, setProvinceFilter] = useState('all');
@@ -471,7 +385,6 @@ export default function MapDashboard() {
     useEffect(() => {
         const CACHE_KEY = 'cocolisap_detections_cache';
         const CACHE_TTL = 5 * 60 * 1000;
-
         const fetchDetections = async () => {
             try {
                 const cached = sessionStorage.getItem(CACHE_KEY);
@@ -479,29 +392,23 @@ export default function MapDashboard() {
                     const { data, timestamp } = JSON.parse(cached);
                     if (Date.now() - timestamp < CACHE_TTL) {
                         setAllDetections(data);
-                        setFromCache(true);
                         setIsLoading(false);
                         return;
                     }
                 }
             } catch (_) {}
-
             try {
                 const q = query(collection(db, 'detections'), orderBy('created_date', 'desc'), limit(200));
                 const snapshot = await getDocs(q);
                 const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 setAllDetections(data);
-                setFromCache(false);
-                try {
-                    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
-                } catch (_) {}
+                try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() })); } catch (_) {}
             } catch (e) {
                 console.error('Error fetching detections:', e);
             } finally {
                 setIsLoading(false);
             }
         };
-
         fetchDetections();
     }, []);
 
@@ -549,11 +456,7 @@ export default function MapDashboard() {
         return Object.entries(pc).sort((a, b) => b[1] - a[1]);
     }, [filteredDetections]);
 
-    const topProvinces = useMemo(() =>
-        showAllProvinces ? allTopProvinces : allTopProvinces.slice(0, 5),
-        [allTopProvinces, showAllProvinces]
-    );
-
+    const topProvinces = useMemo(() => showAllProvinces ? allTopProvinces : allTopProvinces.slice(0, 5), [allTopProvinces, showAllProvinces]);
     const maxProvinceCount = allTopProvinces[0]?.[1] || 1;
     const recentDetections = useMemo(() => filteredDetections.slice(0, 6), [filteredDetections]);
     const detectionsWithGPS = useMemo(() => filteredDetections.filter(d => d.latitude && d.longitude), [filteredDetections]);
@@ -602,15 +505,7 @@ export default function MapDashboard() {
                             <p className="map-sub">Cocolisap infestation monitoring across Philippine coconut farms</p>
                         </div>
                         <div style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#8aaa96', background:'#fff', border:'1px solid #d6e8d6', borderRadius:10, padding:'8px 14px', lineHeight:1.6 }}>
-                            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, marginBottom:4 }}>
-                                <span>Last updated</span>
-                                {fromCache && (
-                                    <span className="cache-badge">
-                                        <span className="cache-dot" />
-                                        cached
-                                    </span>
-                                )}
-                            </div>
+                            <div style={{ marginBottom:4 }}>Last updated</div>
                             <div style={{ color:'#1a3326', fontWeight:600 }}>{format(new Date(), 'MMM d, yyyy · h:mm a')}</div>
                         </div>
                     </div>
@@ -651,9 +546,7 @@ export default function MapDashboard() {
                             <button
                                 onClick={() => { setSeverityFilter('all'); setDateFilter('all'); setProvinceFilter('all'); setCustomStartDate(''); setCustomEndDate(''); }}
                                 style={{ fontSize:11, fontFamily:"'DM Mono',monospace", color:'#dc2626', background:'rgba(220,38,38,0.06)', border:'1px solid rgba(220,38,38,0.2)', borderRadius:8, padding:'4px 10px', cursor:'pointer' }}
-                            >
-                                ✕ Clear filters
-                            </button>
+                            >✕ Clear filters</button>
                         )}
                     </div>
                     <div className="map-card-body">
@@ -713,26 +606,14 @@ export default function MapDashboard() {
                                     />
                                     <MarkerClusterGroup chunkedLoading>
                                         {detectionsWithGPS.map(d => (
-                                            <Marker
-                                                key={d.id}
-                                                position={[d.latitude, d.longitude]}
-                                                icon={createCustomIcon(d.severity, d.id === selectedDetectionId)}
-                                                eventHandlers={{ click: () => setSelectedDetectionId(d.id) }}
-                                            >
+                                            <Marker key={d.id} position={[d.latitude, d.longitude]} icon={createCustomIcon(d.severity, d.id === selectedDetectionId)} eventHandlers={{ click: () => setSelectedDetectionId(d.id) }}>
                                                 <Popup>
                                                     <div style={{ padding: '6px 2px', minWidth: 180, fontFamily: "'Outfit',sans-serif" }}>
                                                         <span className={`map-severity-pill ${d.severity}`}>{d.severity?.toUpperCase()}</span>
-                                                        <p style={{ fontWeight: 600, color: '#1a3326', margin: '8px 0 2px', fontSize: 13 }}>
-                                                            {[d.barangay, d.municipality].filter(Boolean).join(', ') || d.province || 'Unknown'}
-                                                        </p>
+                                                        <p style={{ fontWeight: 600, color: '#1a3326', margin: '8px 0 2px', fontSize: 13 }}>{[d.barangay, d.municipality].filter(Boolean).join(', ') || d.province || 'Unknown'}</p>
                                                         {d.province && <p style={{ fontSize: 12, color: '#8aaa96', margin: '0 0 4px', fontFamily: "'DM Mono',monospace" }}>{d.province}</p>}
                                                         <p style={{ fontSize: 13, color: '#1a3326', margin: 0 }}><strong style={{ color: '#2e8b4a' }}>{d.total_detections}</strong> insects detected</p>
-                                                        <button
-                                                            onClick={() => setSelectedDetectionId(d.id)}
-                                                            style={{ marginTop: 8, fontSize: 11, color: '#2e8b4a', background: 'rgba(46,139,74,0.08)', border: '1px solid rgba(46,139,74,0.25)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontFamily: "'Outfit',sans-serif" }}
-                                                        >
-                                                            View Details ↓
-                                                        </button>
+                                                        <button onClick={() => setSelectedDetectionId(d.id)} style={{ marginTop: 8, fontSize: 11, color: '#2e8b4a', background: 'rgba(46,139,74,0.08)', border: '1px solid rgba(46,139,74,0.25)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontFamily: "'Outfit',sans-serif" }}>View Details ↓</button>
                                                     </div>
                                                 </Popup>
                                             </Marker>
@@ -748,7 +629,6 @@ export default function MapDashboard() {
                                 </div>
                             )}
                         </div>
-
                         {selectedDetection && (
                             <div className="desktop-detail-panel">
                                 <DetectionDetailPanel detection={selectedDetection} onClose={() => setSelectedDetectionId(null)} />
@@ -761,7 +641,6 @@ export default function MapDashboard() {
                                 </div>
                             </div>
                         )}
-
                         <div className="map-legend">
                             {[{ color: '#e05555', label: 'Severe (10+)' }, { color: '#e8a440', label: 'Moderate (5–9)' }, { color: '#4caf72', label: 'Low (1–4)' }].map(l => (
                                 <div key={l.label} className="map-legend-item"><div className="map-legend-dot" style={{ background: l.color, boxShadow: `0 0 6px ${l.color}88` }} />{l.label}</div>
@@ -830,7 +709,7 @@ export default function MapDashboard() {
                 {/* Footer */}
                 <div style={{ borderTop:'1px solid #d6e8d6', paddingTop:24, marginTop:40, fontSize:11, color:'#8aaa96', fontFamily:"'DM Mono',monospace", display:'flex', justifyContent:'space-between', flexWrap:'wrap', gap:8 }}>
                     <span>CocolisapScan · Infestation Monitoring</span>
-                    <span>{filteredDetections.length} record{filteredDetections.length !== 1 ? 's' : ''} loaded · {fromCache ? 'from cache' : 'live from Firebase'}</span>
+                    <span>{filteredDetections.length} record{filteredDetections.length !== 1 ? 's' : ''} loaded</span>
                 </div>
             </div>
         </div>
