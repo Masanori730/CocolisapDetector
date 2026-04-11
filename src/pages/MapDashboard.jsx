@@ -115,6 +115,7 @@ const mapStyles = `
     .map-date-input:focus { border-color:#2e8b4a; }
     .map-main-grid { display:grid; grid-template-columns:1fr 320px; gap:20px; }
     @media(max-width:1000px){ .map-main-grid{grid-template-columns:1fr;} }
+    .map-left-col { display:flex; flex-direction:column; gap:20px; min-width:0; }
     .map-side-grid { display:flex; flex-direction:column; gap:20px; }
     .map-legend { padding:16px 20px; border-top:1px solid #eaf2ea; background:#f8fbf8; display:flex; gap:20px; flex-wrap:wrap; flex-shrink:0; }
     .map-legend-item { display:flex; align-items:center; gap:8px; font-size:12px; color:#5a8068; font-family:'DM Mono',monospace; }
@@ -185,6 +186,12 @@ const mapStyles = `
     .how-to-tip-icon { font-size:14px; flex-shrink:0; margin-top:1px; }
     .how-to-tip-text { font-size:12px; color:#5a8068; font-family:'DM Mono',monospace; line-height:1.6; }
     .how-to-tip-text strong { color:#2e8b4a; }
+    /* Compact filters card */
+    .map-filters-compact .map-card-header { padding:14px 18px; }
+    .map-filters-compact .map-card-body { padding:14px 18px; }
+    .map-filters-compact .map-filters-grid { gap:12px; }
+    .map-filters-compact .map-select { font-size:12px; padding:8px 12px; }
+    .map-filters-compact .map-filter-label { font-size:9px; margin-bottom:5px; }
 `;
 
 function HowToUse() {
@@ -469,6 +476,7 @@ export default function MapDashboard() {
     }, [detectionsWithGPS]);
 
     const selectedDetection = useMemo(() => allDetections.find(d => d.id === selectedDetectionId), [allDetections, selectedDetectionId]);
+    const hasActiveFilters = severityFilter !== 'all' || dateFilter !== 'all' || provinceFilter !== 'all';
 
     const getLocation = (d) => {
         const parts = [d.barangay, d.municipality, d.province].filter(Boolean);
@@ -532,62 +540,117 @@ export default function MapDashboard() {
                     <SeverityDonutChart stats={stats} />
                 </div>
 
-                {/* ── Map + Sidebar (now ABOVE filters) ── */}
-                <div className="map-main-grid" style={{ marginBottom: 20, alignItems: 'start' }}>
-                    <div className="map-card map-card-flex">
-                        <div className="map-card-header">
-                            <span className="map-card-title"><MapPin style={{ width: 15, height: 15, color: '#2e8b4a' }} />Interactive Map View</span>
-                            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: '#8aaa96' }}>{detectionsWithGPS.length} locations</span>
-                        </div>
-                        <div className="map-container-wrap">
-                            {detectionsWithGPS.length > 0 ? (
-                                <MapContainer center={mapCenter} zoom={6} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
-                                    <TileLayer
-                                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>'
-                                        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-                                        subdomains="abcd"
-                                    />
-                                    <MarkerClusterGroup chunkedLoading>
-                                        {detectionsWithGPS.map(d => (
-                                            <Marker key={d.id} position={[d.latitude, d.longitude]} icon={createCustomIcon(d.severity, d.id === selectedDetectionId)} eventHandlers={{ click: () => setSelectedDetectionId(d.id) }}>
-                                                <Popup>
-                                                    <div style={{ padding: '6px 2px', minWidth: 180, fontFamily: "'Outfit',sans-serif" }}>
-                                                        <span className={`map-severity-pill ${d.severity}`}>{d.severity?.toUpperCase()}</span>
-                                                        <p style={{ fontWeight: 600, color: '#1a3326', margin: '8px 0 2px', fontSize: 13 }}>{[d.barangay, d.municipality].filter(Boolean).join(', ') || d.province || 'Unknown'}</p>
-                                                        {d.province && <p style={{ fontSize: 12, color: '#8aaa96', margin: '0 0 4px', fontFamily: "'DM Mono',monospace" }}>{d.province}</p>}
-                                                        <p style={{ fontSize: 13, color: '#1a3326', margin: 0 }}><strong style={{ color: '#2e8b4a' }}>{d.total_detections}</strong> insects detected</p>
-                                                        <button onClick={() => setSelectedDetectionId(d.id)} style={{ marginTop: 8, fontSize: 11, color: '#2e8b4a', background: 'rgba(46,139,74,0.08)', border: '1px solid rgba(46,139,74,0.25)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontFamily: "'Outfit',sans-serif" }}>View Details ↓</button>
-                                                    </div>
-                                                </Popup>
-                                            </Marker>
-                                        ))}
-                                    </MarkerClusterGroup>
-                                    <MapSearch detections={detectionsWithGPS} onSelect={d => setSelectedDetectionId(d.id)} selectedId={selectedDetectionId} />
-                                </MapContainer>
-                            ) : (
-                                <div className="map-empty-state">
-                                    <div className="map-empty-icon"><Map style={{ width: 24, height: 24, color: '#2e8b4a' }} /></div>
-                                    <p style={{ fontWeight: 600, color: '#1a3326', marginBottom: 6 }}>No GPS Data Available</p>
-                                    <p style={{ fontSize: 13, color: '#5a8068', maxWidth: 320 }}>No detections with GPS coordinates found. Adjust filters or capture location during detection.</p>
+                {/* ── Map + Sidebar ── */}
+                <div className="map-main-grid" style={{ alignItems: 'start' }}>
+
+                    {/* Left col: map card + filters card stacked */}
+                    <div className="map-left-col">
+                        <div className="map-card map-card-flex">
+                            <div className="map-card-header">
+                                <span className="map-card-title"><MapPin style={{ width: 15, height: 15, color: '#2e8b4a' }} />Interactive Map View</span>
+                                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: '#8aaa96' }}>{detectionsWithGPS.length} locations</span>
+                            </div>
+                            <div className="map-container-wrap">
+                                {detectionsWithGPS.length > 0 ? (
+                                    <MapContainer center={mapCenter} zoom={6} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
+                                        <TileLayer
+                                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>'
+                                            url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                                            subdomains="abcd"
+                                        />
+                                        <MarkerClusterGroup chunkedLoading>
+                                            {detectionsWithGPS.map(d => (
+                                                <Marker key={d.id} position={[d.latitude, d.longitude]} icon={createCustomIcon(d.severity, d.id === selectedDetectionId)} eventHandlers={{ click: () => setSelectedDetectionId(d.id) }}>
+                                                    <Popup>
+                                                        <div style={{ padding: '6px 2px', minWidth: 180, fontFamily: "'Outfit',sans-serif" }}>
+                                                            <span className={`map-severity-pill ${d.severity}`}>{d.severity?.toUpperCase()}</span>
+                                                            <p style={{ fontWeight: 600, color: '#1a3326', margin: '8px 0 2px', fontSize: 13 }}>{[d.barangay, d.municipality].filter(Boolean).join(', ') || d.province || 'Unknown'}</p>
+                                                            {d.province && <p style={{ fontSize: 12, color: '#8aaa96', margin: '0 0 4px', fontFamily: "'DM Mono',monospace" }}>{d.province}</p>}
+                                                            <p style={{ fontSize: 13, color: '#1a3326', margin: 0 }}><strong style={{ color: '#2e8b4a' }}>{d.total_detections}</strong> insects detected</p>
+                                                            <button onClick={() => setSelectedDetectionId(d.id)} style={{ marginTop: 8, fontSize: 11, color: '#2e8b4a', background: 'rgba(46,139,74,0.08)', border: '1px solid rgba(46,139,74,0.25)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontFamily: "'Outfit',sans-serif" }}>View Details ↓</button>
+                                                        </div>
+                                                    </Popup>
+                                                </Marker>
+                                            ))}
+                                        </MarkerClusterGroup>
+                                        <MapSearch detections={detectionsWithGPS} onSelect={d => setSelectedDetectionId(d.id)} selectedId={selectedDetectionId} />
+                                    </MapContainer>
+                                ) : (
+                                    <div className="map-empty-state">
+                                        <div className="map-empty-icon"><Map style={{ width: 24, height: 24, color: '#2e8b4a' }} /></div>
+                                        <p style={{ fontWeight: 600, color: '#1a3326', marginBottom: 6 }}>No GPS Data Available</p>
+                                        <p style={{ fontSize: 13, color: '#5a8068', maxWidth: 320 }}>No detections with GPS coordinates found. Adjust filters or capture location during detection.</p>
+                                    </div>
+                                )}
+                            </div>
+                            {selectedDetection && (
+                                <div className="desktop-detail-panel">
+                                    <DetectionDetailPanel detection={selectedDetection} onClose={() => setSelectedDetectionId(null)} />
                                 </div>
                             )}
-                        </div>
-                        {selectedDetection && (
-                            <div className="desktop-detail-panel">
-                                <DetectionDetailPanel detection={selectedDetection} onClose={() => setSelectedDetectionId(null)} />
-                            </div>
-                        )}
-                        {selectedDetection && (
-                            <div className="mobile-detail-panel">
-                                <div style={{ padding: '0 16px 16px' }}>
-                                    <MobileDetailCard detection={selectedDetection} onClose={() => setSelectedDetectionId(null)} />
+                            {selectedDetection && (
+                                <div className="mobile-detail-panel">
+                                    <div style={{ padding: '0 16px 16px' }}>
+                                        <MobileDetailCard detection={selectedDetection} onClose={() => setSelectedDetectionId(null)} />
+                                    </div>
                                 </div>
+                            )}
+                            <div className="map-legend">
+                                {[{ color: '#e05555', label: 'Severe (10+)' }, { color: '#e8a440', label: 'Moderate (5–9)' }, { color: '#4caf72', label: 'Low (1–4)' }].map(l => (
+                                    <div key={l.label} className="map-legend-item"><div className="map-legend-dot" style={{ background: l.color, boxShadow: `0 0 6px ${l.color}88` }} />{l.label}</div>
+                                ))}
                             </div>
-                        )}
-                        <div className="map-legend">
-                            {[{ color: '#e05555', label: 'Severe (10+)' }, { color: '#e8a440', label: 'Moderate (5–9)' }, { color: '#4caf72', label: 'Low (1–4)' }].map(l => (
-                                <div key={l.label} className="map-legend-item"><div className="map-legend-dot" style={{ background: l.color, boxShadow: `0 0 6px ${l.color}88` }} />{l.label}</div>
-                            ))}
+                        </div>
+
+                        {/* Filters — tucked right below the map */}
+                        <div className="map-card map-filters-compact">
+                            <div className="map-card-header">
+                                <span className="map-card-title">Filters</span>
+                                {hasActiveFilters && (
+                                    <button
+                                        onClick={() => { setSeverityFilter('all'); setDateFilter('all'); setProvinceFilter('all'); setCustomStartDate(''); setCustomEndDate(''); }}
+                                        style={{ fontSize:11, fontFamily:"'DM Mono',monospace", color:'#dc2626', background:'rgba(220,38,38,0.06)', border:'1px solid rgba(220,38,38,0.2)', borderRadius:8, padding:'4px 10px', cursor:'pointer' }}
+                                    >✕ Clear filters</button>
+                                )}
+                            </div>
+                            <div className="map-card-body">
+                                <div className="map-filters-grid">
+                                    <div>
+                                        <span className="map-filter-label">Severity Level</span>
+                                        <select className="map-select" value={severityFilter} onChange={e => setSeverityFilter(e.target.value)}>
+                                            <option value="all">All Levels</option>
+                                            <option value="severe">Severe Only</option>
+                                            <option value="moderate">Moderate Only</option>
+                                            <option value="low">Low Only</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <span className="map-filter-label">Date Range</span>
+                                        <select className="map-select" value={dateFilter} onChange={e => setDateFilter(e.target.value)}>
+                                            <option value="all">All Time</option>
+                                            <option value="today">Today</option>
+                                            <option value="week">Last 7 Days</option>
+                                            <option value="month">Last 30 Days</option>
+                                            <option value="quarter">Last 3 Months</option>
+                                            <option value="year">Last Year</option>
+                                            <option value="custom">Custom Range</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <span className="map-filter-label">Province</span>
+                                        <select className="map-select" value={provinceFilter} onChange={e => setProvinceFilter(e.target.value)}>
+                                            <option value="all">All Provinces</option>
+                                            {PHILIPPINE_PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+                                {dateFilter === 'custom' && (
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>
+                                        <div><span className="map-filter-label">Start Date</span><input type="date" className="map-date-input" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)} /></div>
+                                        <div><span className="map-filter-label">End Date</span><input type="date" className="map-date-input" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)} /></div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -646,57 +709,6 @@ export default function MapDashboard() {
                                 )}
                             </div>
                         </div>
-                    </div>
-                </div>
-
-                {/* ── Filters (now BELOW the map) ── */}
-                <div className="map-card" style={{ marginBottom: 20 }}>
-                    <div className="map-card-header">
-                        <span className="map-card-title">Filters</span>
-                        {(severityFilter !== 'all' || dateFilter !== 'all' || provinceFilter !== 'all') && (
-                            <button
-                                onClick={() => { setSeverityFilter('all'); setDateFilter('all'); setProvinceFilter('all'); setCustomStartDate(''); setCustomEndDate(''); }}
-                                style={{ fontSize:11, fontFamily:"'DM Mono',monospace", color:'#dc2626', background:'rgba(220,38,38,0.06)', border:'1px solid rgba(220,38,38,0.2)', borderRadius:8, padding:'4px 10px', cursor:'pointer' }}
-                            >✕ Clear filters</button>
-                        )}
-                    </div>
-                    <div className="map-card-body">
-                        <div className="map-filters-grid">
-                            <div>
-                                <span className="map-filter-label">Severity Level</span>
-                                <select className="map-select" value={severityFilter} onChange={e => setSeverityFilter(e.target.value)}>
-                                    <option value="all">All Levels</option>
-                                    <option value="severe">Severe Only</option>
-                                    <option value="moderate">Moderate Only</option>
-                                    <option value="low">Low Only</option>
-                                </select>
-                            </div>
-                            <div>
-                                <span className="map-filter-label">Date Range</span>
-                                <select className="map-select" value={dateFilter} onChange={e => setDateFilter(e.target.value)}>
-                                    <option value="all">All Time</option>
-                                    <option value="today">Today</option>
-                                    <option value="week">Last 7 Days</option>
-                                    <option value="month">Last 30 Days</option>
-                                    <option value="quarter">Last 3 Months</option>
-                                    <option value="year">Last Year</option>
-                                    <option value="custom">Custom Range</option>
-                                </select>
-                            </div>
-                            <div>
-                                <span className="map-filter-label">Province</span>
-                                <select className="map-select" value={provinceFilter} onChange={e => setProvinceFilter(e.target.value)}>
-                                    <option value="all">All Provinces</option>
-                                    {PHILIPPINE_PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
-                                </select>
-                            </div>
-                        </div>
-                        {dateFilter === 'custom' && (
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>
-                                <div><span className="map-filter-label">Start Date</span><input type="date" className="map-date-input" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)} /></div>
-                                <div><span className="map-filter-label">End Date</span><input type="date" className="map-date-input" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)} /></div>
-                            </div>
-                        )}
                     </div>
                 </div>
 
