@@ -499,15 +499,9 @@ export default function MapDashboard() {
                 {/* Header */}
                 <div style={{ marginBottom: 28 }}>
                     <div className="map-header-badge">Monitoring System</div>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-                        <div>
-                            <h1 className="map-h1">Detection <em>Map</em> Dashboard</h1>
-                            <p className="map-sub">Cocolisap infestation monitoring across Philippine coconut farms</p>
-                        </div>
-                        <div style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#8aaa96', background:'#fff', border:'1px solid #d6e8d6', borderRadius:10, padding:'8px 14px', lineHeight:1.6 }}>
-                            <div style={{ marginBottom:4 }}>Last updated</div>
-                            <div style={{ color:'#1a3326', fontWeight:600 }}>{format(new Date(), 'MMM d, yyyy · h:mm a')}</div>
-                        </div>
+                    <div>
+                        <h1 className="map-h1">Detection <em>Map</em> Dashboard</h1>
+                        <p className="map-sub">Cocolisap infestation monitoring across Philippine coconut farms</p>
                     </div>
                 </div>
                 <div className="map-divider" />
@@ -539,7 +533,7 @@ export default function MapDashboard() {
                 </div>
 
                 {/* ── Map + Sidebar (now ABOVE filters) ── */}
-                <div className="map-main-grid" style={{ marginBottom: 20 }}>
+                <div className="map-main-grid" style={{ marginBottom: 20, alignItems: 'start' }}>
                     <div className="map-card map-card-flex">
                         <div className="map-card-header">
                             <span className="map-card-title"><MapPin style={{ width: 15, height: 15, color: '#2e8b4a' }} />Interactive Map View</span>
