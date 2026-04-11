@@ -5,7 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import { db } from '../firebase';
 import { collection, addDoc } from 'firebase/firestore';
 
-const API = 'https://cocolisap-detector-398384683490.asia-southeast1.run.app';
+const API = 'https://cocolisap-backend-398384683490.asia-southeast1.run.app';
 
 const fuzzyStyles = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap');
