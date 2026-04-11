@@ -9,12 +9,20 @@ const PHILIPPINE_PROVINCES = [
 ];
 
 const ns = (v) => (v !== undefined && v !== null && v !== '') ? v : 'N/A';
-const avg = (arr, key) => arr.length > 0 ? (arr.reduce((s, d) => s + (d[key] || 0), 0) / arr.length) : 0;
 
+// ── FIX 1: toDate now correctly handles ISO strings saved by both pages ──
 const toDate = (val) => {
     if (!val) return null;
+    // Firestore Timestamp object
     if (typeof val.toDate === 'function') return val.toDate();
+    // Firestore Timestamp plain object { seconds, nanoseconds }
     if (val.seconds !== undefined) return new Date(val.seconds * 1000);
+    // ISO string (what your pages save: new Date().toISOString())
+    if (typeof val === 'string') {
+        const d = new Date(val);
+        return isNaN(d.getTime()) ? null : d;
+    }
+    // Fallback
     const d = new Date(val);
     return isNaN(d.getTime()) ? null : d;
 };
@@ -95,7 +103,7 @@ const exportStyles = `
     .export-tips-list li { font-size:12px; color:#6090c0; font-family:'DM Mono',monospace; }
     .export-footer { border-top:1px solid #d6e8d6; padding-top:24px; margin-top:40px; font-size:11px; color:#8aaa96; font-family:'DM Mono',monospace; display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; }
 
-    /* ── Preview Table styles ── */
+    /* Preview Table */
     .preview-section { background:#fff; border:1px solid #d6e8d6; border-radius:20px; overflow:hidden; margin-bottom:28px; box-shadow:0 1px 6px rgba(0,0,0,0.05); }
     .preview-header { padding:18px 24px; border-bottom:1px solid #e8f0e8; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
     .preview-header-left { display:flex; align-items:center; gap:10px; }
@@ -117,7 +125,7 @@ const exportStyles = `
     .preview-empty { padding:40px; text-align:center; color:#8aaa96; font-family:'DM Mono',monospace; font-size:12px; }
     .preview-footer { padding:12px 24px; border-top:1px solid #e8f0e8; background:#f8fbf8; font-family:'DM Mono',monospace; font-size:10px; color:#8aaa96; letter-spacing:.06em; }
 
-    /* ── How To Use — matches MapDashboard style ── */
+    /* How To Use */
     .exp-htu-wrap { background:#fff; border:1px solid #d6e8d6; border-radius:16px; margin-bottom:24px; position:relative; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,0.05); }
     .exp-htu-wrap::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,#2e8b4a,transparent); }
     .exp-htu-header { padding:18px 24px 0; display:flex; align-items:center; gap:10px; }
@@ -137,7 +145,28 @@ const exportStyles = `
     .exp-htu-tip-icon { font-size:14px; flex-shrink:0; margin-top:1px; }
     .exp-htu-tip-text { font-size:12px; color:#5a8068; font-family:'DM Mono',monospace; line-height:1.6; }
     .exp-htu-tip-text strong { color:#2e8b4a; }
+
+    /* XLSX loading indicator */
+    .xlsx-loading { display:inline-flex; align-items:center; gap:8px; font-family:'DM Mono',monospace; font-size:11px; color:#8aaa96; padding:8px 0; }
+    .xlsx-spin { width:12px; height:12px; border:2px solid rgba(46,139,74,0.2); border-top-color:#2e8b4a; border-radius:50%; animation:xlsx-spin .7s linear infinite; }
+    @keyframes xlsx-spin { to { transform:rotate(360deg); } }
 `;
+
+// ── FIX 2: Load XLSX from CDN dynamically instead of relying on window.XLSX ──
+function useXLSX() {
+    const [xlsxReady, setXlsxReady] = useState(!!window.XLSX);
+
+    useEffect(() => {
+        if (window.XLSX) { setXlsxReady(true); return; }
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        script.onload = () => setXlsxReady(true);
+        script.onerror = () => console.error('Failed to load XLSX library');
+        document.head.appendChild(script);
+    }, []);
+
+    return xlsxReady;
+}
 
 // ── XLSX HELPERS ──────────────────────────────────────────────────────────────
 
@@ -169,6 +198,7 @@ function buildStyledSheet(XLSX, headers, rows, headerColor = '2e8b4a') {
 
 function downloadXLSX(sheets, filename) {
     const XLSX = window.XLSX;
+    if (!XLSX) { alert('Excel library not loaded yet. Please wait a moment and try again.'); return; }
     const wb = XLSX.utils.book_new();
     sheets.forEach(({ name, headers, rows, color }) => {
         const ws = buildStyledSheet(XLSX, headers, rows, color || '2e8b4a');
@@ -255,22 +285,20 @@ function Pagination({ page, totalPages, onPage }) {
                 Page {page} of {totalPages}
             </span>
             <div style={{ display:'flex', gap:4, alignItems:'center' }}>
-                <button
-                    onClick={() => onPage(page - 1)} disabled={page === 1}
-                    style={{ padding:'5px 12px', borderRadius:8, border:'1px solid #d6e8d6', background: page === 1 ? '#f0f6f0' : '#fff', color: page === 1 ? '#b0c8b8' : '#2e8b4a', fontFamily:"'DM Mono',monospace", fontSize:11, cursor: page === 1 ? 'not-allowed' : 'pointer', fontWeight:600, transition:'all .15s' }}>
+                <button onClick={() => onPage(page - 1)} disabled={page === 1}
+                    style={{ padding:'5px 12px', borderRadius:8, border:'1px solid #d6e8d6', background: page === 1 ? '#f0f6f0' : '#fff', color: page === 1 ? '#b0c8b8' : '#2e8b4a', fontFamily:"'DM Mono',monospace", fontSize:11, cursor: page === 1 ? 'not-allowed' : 'pointer', fontWeight:600 }}>
                     ← Prev
                 </button>
                 {pages.map((p, i) =>
                     p === '...'
                         ? <span key={`ellipsis-${i}`} style={{ padding:'0 4px', fontFamily:"'DM Mono',monospace", fontSize:11, color:'#8aaa96' }}>…</span>
                         : <button key={p} onClick={() => onPage(p)}
-                            style={{ width:30, height:30, borderRadius:8, border:'1px solid', borderColor: p === page ? '#2e8b4a' : '#d6e8d6', background: p === page ? '#2e8b4a' : '#fff', color: p === page ? '#fff' : '#2e8b4a', fontFamily:"'DM Mono',monospace", fontSize:11, cursor:'pointer', fontWeight: p === page ? 700 : 400, transition:'all .15s' }}>
+                            style={{ width:30, height:30, borderRadius:8, border:'1px solid', borderColor: p === page ? '#2e8b4a' : '#d6e8d6', background: p === page ? '#2e8b4a' : '#fff', color: p === page ? '#fff' : '#2e8b4a', fontFamily:"'DM Mono',monospace", fontSize:11, cursor:'pointer', fontWeight: p === page ? 700 : 400 }}>
                             {p}
                           </button>
                 )}
-                <button
-                    onClick={() => onPage(page + 1)} disabled={page === totalPages}
-                    style={{ padding:'5px 12px', borderRadius:8, border:'1px solid #d6e8d6', background: page === totalPages ? '#f0f6f0' : '#fff', color: page === totalPages ? '#b0c8b8' : '#2e8b4a', fontFamily:"'DM Mono',monospace", fontSize:11, cursor: page === totalPages ? 'not-allowed' : 'pointer', fontWeight:600, transition:'all .15s' }}>
+                <button onClick={() => onPage(page + 1)} disabled={page === totalPages}
+                    style={{ padding:'5px 12px', borderRadius:8, border:'1px solid #d6e8d6', background: page === totalPages ? '#f0f6f0' : '#fff', color: page === totalPages ? '#b0c8b8' : '#2e8b4a', fontFamily:"'DM Mono',monospace", fontSize:11, cursor: page === totalPages ? 'not-allowed' : 'pointer', fontWeight:600 }}>
                     Next →
                 </button>
             </div>
@@ -294,11 +322,13 @@ function DetectionPreviewTable({ detections }) {
                     <div className="preview-header-icon" style={{ background: 'rgba(46,139,74,0.10)' }}>
                         <Eye style={{ width: 16, height: 16, color: '#2e8b4a' }} />
                     </div>
-                    <p className="preview-title">Image Detection - Data Preview</p>
+                    <p className="preview-title">Image Detection — Data Preview</p>
                     <span className="preview-count-pill green">{detections.length} records</span>
                 </div>
                 <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: '#8aaa96', letterSpacing: '.06em' }}>
-                    {detections.length === 0 ? '0 records' : `Showing ${globalOffset + 1}–${Math.min(globalOffset + PAGE_SIZE, detections.length)} of ${detections.length}`}
+                    {detections.length === 0
+                        ? '0 records'
+                        : `Showing ${globalOffset + 1}–${Math.min(globalOffset + PAGE_SIZE, detections.length)} of ${detections.length}`}
                 </span>
             </div>
             <div className="preview-table-wrap">
@@ -308,16 +338,9 @@ function DetectionPreviewTable({ detections }) {
                     <table className="preview-table">
                         <thead>
                             <tr>
-                                <th>#</th>
-                                <th>Date</th>
-                                <th>Time</th>
-                                <th>Province</th>
-                                <th>Municipality</th>
-                                <th>Barangay</th>
-                                <th>Farm Name</th>
-                                <th>Severity</th>
-                                <th>Insects</th>
-                                <th>Confidence</th>
+                                <th>#</th><th>Date</th><th>Time</th><th>Province</th>
+                                <th>Municipality</th><th>Barangay</th><th>Farm Name</th>
+                                <th>Severity</th><th>Insects</th><th>Confidence</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -367,11 +390,13 @@ function AssessmentPreviewTable({ assessments }) {
                     <div className="preview-header-icon" style={{ background: 'rgba(59,130,246,0.10)' }}>
                         <Eye style={{ width: 16, height: 16, color: '#3b82f6' }} />
                     </div>
-                    <p className="preview-title">Fuzzy Logic Assessment - Data Preview</p>
+                    <p className="preview-title">Fuzzy Logic Assessment — Data Preview</p>
                     <span className="preview-count-pill blue">{assessments.length} records</span>
                 </div>
                 <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: '#8aaa96', letterSpacing: '.06em' }}>
-                    {assessments.length === 0 ? '0 records' : `Showing ${globalOffset + 1}–${Math.min(globalOffset + PAGE_SIZE, assessments.length)} of ${assessments.length}`}
+                    {assessments.length === 0
+                        ? '0 records'
+                        : `Showing ${globalOffset + 1}–${Math.min(globalOffset + PAGE_SIZE, assessments.length)} of ${assessments.length}`}
                 </span>
             </div>
             <div className="preview-table-wrap">
@@ -381,17 +406,10 @@ function AssessmentPreviewTable({ assessments }) {
                     <table className="preview-table">
                         <thead>
                             <tr>
-                                <th>#</th>
-                                <th>Date</th>
-                                <th>Time</th>
-                                <th>Province</th>
-                                <th>Municipality</th>
-                                <th>Barangay</th>
-                                <th>Temp (°C)</th>
-                                <th>Humidity (%)</th>
-                                <th>Risk Score</th>
-                                <th>Risk Level</th>
-                                <th>Infestation (%)</th>
+                                <th>#</th><th>Date</th><th>Time</th><th>Province</th>
+                                <th>Municipality</th><th>Barangay</th>
+                                <th>Temp (°C)</th><th>Humidity (%)</th>
+                                <th>Risk Score</th><th>Risk Level</th><th>Infestation (%)</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -428,28 +446,11 @@ function AssessmentPreviewTable({ assessments }) {
 
 function HowToUse() {
     const steps = [
-        {
-            num: 1,
-            title: 'Set filters',
-            desc: 'Choose a date range, province, severity level, or risk level to narrow down which records appear in the export.',
-        },
-        {
-            num: 2,
-            title: 'Preview the data',
-            desc: 'The tables below show a live preview of all matching records before you download anything.',
-        },
-        {
-            num: 3,
-            title: 'Choose export type',
-            desc: 'Pick Image Detection, Fuzzy Logic Assessment, or Combined. Each downloads a formatted Excel file with styled headers.',
-        },
-        {
-            num: 4,
-            title: 'Download',
-            desc: 'Click the Download button. Exports include colored headers, auto-sized columns, and alternating row colors for easy reading.',
-        },
+        { num: 1, title: 'Set filters', desc: 'Choose a date range, province, severity level, or risk level to narrow down which records appear in the export.' },
+        { num: 2, title: 'Preview the data', desc: 'The tables below show a live preview of all matching records before you download anything.' },
+        { num: 3, title: 'Choose export type', desc: 'Pick Image Detection, Fuzzy Logic Assessment, or Combined. Each downloads a formatted Excel file with styled headers.' },
+        { num: 4, title: 'Download', desc: 'Click the Download button. Exports include colored headers, auto-sized columns, and alternating row colors for easy reading.' },
     ];
-
     return (
         <div className="exp-htu-wrap">
             <div className="exp-htu-header">
@@ -482,6 +483,8 @@ function HowToUse() {
 // ── COMPONENT ─────────────────────────────────────────────────────────────────
 
 export default function DataExport() {
+    const xlsxReady = useXLSX(); // ← FIX 2: load XLSX from CDN
+
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
     const [severityFilter, setSeverityFilter] = useState('all');
@@ -492,6 +495,8 @@ export default function DataExport() {
     const [allAssessments, setAllAssessments] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
 
+    // ── FIX 3: real-time listener would be ideal but getDocs is fine;
+    //    key fix is we now correctly parse ISO string dates in toDate()
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -510,6 +515,7 @@ export default function DataExport() {
         fetchData();
     }, []);
 
+    // ── FIX 1: date filter now works because toDate() handles ISO strings ──
     const applyDateFilter = (items) => {
         let f = items;
         if (dateFrom) {
@@ -534,19 +540,22 @@ export default function DataExport() {
     const filteredAssessments = useMemo(() => {
         let f = applyDateFilter(allAssessments);
         if (riskFilter !== 'all') f = f.filter(a => a.adjusted_risk_label === riskFilter);
-        if (provinceFilter !== 'all') f = f.filter(a => a.province?.toLowerCase().includes(provinceFilter.toLowerCase()));
+        // ── FIX 4: fuzzy manual mode has no province — filter skips if null ──
+        if (provinceFilter !== 'all') f = f.filter(a => a.province && a.province.toLowerCase().includes(provinceFilter.toLowerCase()));
         return f;
     }, [allAssessments, dateFrom, dateTo, riskFilter, provinceFilter]);
 
     const handleDetectionExcel = () => {
         if (!filteredDetections.length) { setExportMessage({ type: 'error', text: 'No image detections match current filters.' }); return; }
-        downloadXLSX([{ name: 'Detections', headers: DETECTION_HEADERS, rows: buildDetectionRows(filteredDetections), color: '2e8b4a' }], `cocolisap-image-detections-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+        downloadXLSX([{ name: 'Detections', headers: DETECTION_HEADERS, rows: buildDetectionRows(filteredDetections), color: '2e8b4a' }],
+            `cocolisap-image-detections-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
         setExportMessage({ type: 'success', text: `Exported ${filteredDetections.length} image detections to Excel.` });
     };
 
     const handleFuzzyExcel = () => {
         if (!filteredAssessments.length) { setExportMessage({ type: 'error', text: 'No fuzzy logic assessments match current filters.' }); return; }
-        downloadXLSX([{ name: 'Assessments', headers: ASSESSMENT_HEADERS, rows: buildAssessmentRows(filteredAssessments), color: '3b82f6' }], `cocolisap-fuzzy-assessments-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+        downloadXLSX([{ name: 'Assessments', headers: ASSESSMENT_HEADERS, rows: buildAssessmentRows(filteredAssessments), color: '3b82f6' }],
+            `cocolisap-fuzzy-assessments-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
         setExportMessage({ type: 'success', text: `Exported ${filteredAssessments.length} fuzzy assessments to Excel.` });
     };
 
@@ -610,11 +619,15 @@ export default function DataExport() {
                 <div className="export-count-row">
                     <div className="export-count-box">
                         <div className="export-count-label">Image Detections</div>
-                        <span className="export-count-text"><strong>{isLoading ? '...' : filteredDetections.length}</strong> record{filteredDetections.length !== 1 ? 's' : ''} matched</span>
+                        <span className="export-count-text">
+                            <strong>{isLoading ? '...' : filteredDetections.length}</strong> record{filteredDetections.length !== 1 ? 's' : ''} matched
+                        </span>
                     </div>
                     <div className="export-count-box">
                         <div className="export-count-label">Fuzzy Assessments</div>
-                        <span className="export-count-text"><strong>{isLoading ? '...' : filteredAssessments.length}</strong> record{filteredAssessments.length !== 1 ? 's' : ''} matched</span>
+                        <span className="export-count-text">
+                            <strong>{isLoading ? '...' : filteredAssessments.length}</strong> record{filteredAssessments.length !== 1 ? 's' : ''} matched
+                        </span>
                     </div>
                 </div>
 
@@ -628,7 +641,7 @@ export default function DataExport() {
                 {/* Preview Tables */}
                 {isLoading ? (
                     <div style={{ textAlign:'center', padding:'40px', fontFamily:"'DM Mono',monospace", fontSize:12, color:'#8aaa96' }}>
-                        Loading records...
+                        Loading records…
                     </div>
                 ) : (
                     <>
@@ -638,15 +651,23 @@ export default function DataExport() {
                 )}
 
                 {/* Export options */}
+                {!xlsxReady && (
+                    <div className="xlsx-loading">
+                        <div className="xlsx-spin" /> Loading Excel library…
+                    </div>
+                )}
+
                 <div className="export-options-grid">
                     <div className="export-option-card green">
                         <div className="export-option-icon green"><FileSpreadsheet style={{ width: 22, height: 22, color: '#2e8b4a' }} /></div>
                         <h3 className="export-option-title">Image Detection</h3>
-                        <p className="export-option-sub">YOLOv8 · Instance Segmentation</p>
+                        <p className="export-option-sub">YOLO26 · Instance Segmentation</p>
                         <p className="export-option-desc">Export all image scan records with location, severity, confidence scores, and insect counts. Green header, alternating rows.</p>
                         <div className="export-btn-row">
-                            <button className="export-dl-btn green" onClick={handleDetectionExcel} disabled={!filteredDetections.length}>
-                                <FileSpreadsheet style={{ width: 15, height: 15 }} />Download Excel
+                            <button className="export-dl-btn green" onClick={handleDetectionExcel}
+                                disabled={!filteredDetections.length || !xlsxReady}>
+                                <FileSpreadsheet style={{ width: 15, height: 15 }} />
+                                {xlsxReady ? 'Download Excel' : 'Loading…'}
                             </button>
                         </div>
                     </div>
@@ -656,8 +677,10 @@ export default function DataExport() {
                         <p className="export-option-sub">Mamdani · 81-Rule Inference</p>
                         <p className="export-option-desc">Export fuzzy logic risk assessments with environmental parameters, farm impact, and PCA intervention notes. Blue header.</p>
                         <div className="export-btn-row">
-                            <button className="export-dl-btn green" onClick={handleFuzzyExcel} disabled={!filteredAssessments.length}>
-                                <FileSpreadsheet style={{ width: 15, height: 15 }} />Download Excel
+                            <button className="export-dl-btn green" onClick={handleFuzzyExcel}
+                                disabled={!filteredAssessments.length || !xlsxReady}>
+                                <FileSpreadsheet style={{ width: 15, height: 15 }} />
+                                {xlsxReady ? 'Download Excel' : 'Loading…'}
                             </button>
                         </div>
                     </div>
@@ -665,10 +688,12 @@ export default function DataExport() {
                         <div className="export-option-icon purple"><Layers style={{ width: 22, height: 22, color: '#8b5cf6' }} /></div>
                         <h3 className="export-option-title">Combined Report</h3>
                         <p className="export-option-sub">Integrated · Detection + Fuzzy</p>
-                        <p className="export-option-desc">Single Excel file with two sheets ( Sheet 1: Image Detections, Sheet 2: Fuzzy Assessments ). Ready for PCA submission.</p>
+                        <p className="export-option-desc">Single Excel file with two sheets (Sheet 1: Image Detections, Sheet 2: Fuzzy Assessments). Ready for PCA submission.</p>
                         <div className="export-btn-row">
-                            <button className="export-dl-btn purple" onClick={handleCombinedExcel} disabled={!filteredDetections.length && !filteredAssessments.length}>
-                                <FileSpreadsheet style={{ width: 15, height: 15 }} />Download Combined Excel
+                            <button className="export-dl-btn purple" onClick={handleCombinedExcel}
+                                disabled={(!filteredDetections.length && !filteredAssessments.length) || !xlsxReady}>
+                                <FileSpreadsheet style={{ width: 15, height: 15 }} />
+                                {xlsxReady ? 'Download Combined Excel' : 'Loading…'}
                             </button>
                         </div>
                     </div>
@@ -680,17 +705,19 @@ export default function DataExport() {
                     <div>
                         <p className="export-tips-title">Excel Format Notes</p>
                         <ul className="export-tips-list">
-                            <li>· All exports use colored headers : green for detections, blue for assessments</li>
+                            <li>· All exports use colored headers: green for detections, blue for assessments</li>
                             <li>· Alternating row colors and auto-sized columns for easy reading</li>
-                            <li>· Header row is frozen : stays visible when scrolling down</li>
+                            <li>· Header row is frozen: stays visible when scrolling down</li>
                             <li>· Combined report contains two sheets in one file for PCA submission</li>
                             <li>· Use date and province filters to generate targeted regional reports</li>
+                            <li>· Manual mode fuzzy assessments may show N/A for location fields</li>
                         </ul>
                     </div>
                 </div>
 
                 <div className="export-footer">
                     <span>CocolisapScan · Data Export</span>
+                    <span>{!xlsxReady ? 'Loading Excel library…' : 'Excel library ready'}</span>
                 </div>
             </div>
         </div>
