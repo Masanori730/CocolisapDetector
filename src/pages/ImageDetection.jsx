@@ -51,23 +51,25 @@ const homeStyles = `
     [data-radix-tabs-trigger][data-state=active] { background:#ffffff !important; color:#2e8b4a !important; box-shadow:0 1px 4px rgba(0,0,0,.10) !important; }
     .home-grid-layout { display: grid; grid-template-columns: 1fr 340px; gap: 24px; width: 100%; }
     @media(max-width:900px) { .home-grid-layout { grid-template-columns: 1fr !important; } .home-main { padding: 0 16px 80px; } .home-hero { padding: 40px 16px 32px; } .home-card { padding: 20px; } }
+
     .htu-wrap { background:#fff; border:1px solid #d6e8d6; border-radius:16px; margin-bottom:24px; position:relative; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,0.05); }
     .htu-wrap::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,#2e8b4a,transparent); }
-    .htu-top { padding:18px 24px 0; }
+    .htu-header { padding:18px 24px 0; display:flex; align-items:center; gap:10px; }
     .htu-badge { display:inline-flex; align-items:center; gap:6px; background:rgba(46,139,74,0.10); border:1px solid rgba(46,139,74,0.25); border-radius:100px; padding:3px 10px; font-family:'DM Mono',monospace; font-size:10px; letter-spacing:.12em; color:#2e8b4a; text-transform:uppercase; }
-    .htu-title { font-family:'DM Serif Display',serif; font-size:17px; font-weight:400; color:#1a3326; margin:8px 0 2px; }
-    .htu-subtitle { font-family:'DM Mono',monospace; font-size:11px; color:#8aaa96; margin:0 0 18px; }
+    .htu-title { font-family:'DM Serif Display',serif; font-size:17px; font-weight:400; color:#1a3326; margin:6px 24px 0; }
+    .htu-subtitle { font-family:'DM Mono',monospace; font-size:11px; color:#8aaa96; margin:4px 24px 20px; }
     .htu-steps { display:grid; grid-template-columns:repeat(4,1fr); gap:0; border-top:1px solid #eaf2ea; }
     @media(max-width:800px){ .htu-steps { grid-template-columns:repeat(2,1fr); } }
     @media(max-width:420px){ .htu-steps { grid-template-columns:1fr; } }
-    .htu-step { padding:18px 20px; border-right:1px solid #eaf2ea; border-bottom:1px solid #eaf2ea; }
+    .htu-step { padding:20px; border-right:1px solid #eaf2ea; }
     .htu-step:last-child { border-right:none; }
     @media(max-width:800px){ .htu-step:nth-child(2n) { border-right:none; } }
-    .htu-num { width:26px; height:26px; border-radius:50%; background:linear-gradient(135deg,#2e8b4a,#4caf72); color:#fff; font-family:'DM Mono',monospace; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; margin-bottom:10px; box-shadow:0 2px 8px rgba(46,139,74,0.28); }
-    .htu-step-title { font-size:12.5px; font-weight:600; color:#1a3326; margin-bottom:5px; line-height:1.3; }
+    .htu-num { width:28px; height:28px; border-radius:50%; background:linear-gradient(135deg,#2e8b4a,#4caf72); color:#fff; font-family:'DM Mono',monospace; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; margin-bottom:12px; box-shadow:0 2px 8px rgba(46,139,74,0.28); }
+    .htu-step-title { font-size:13px; font-weight:600; color:#1a3326; margin-bottom:6px; line-height:1.3; }
     .htu-step-desc { font-size:11.5px; color:#5a8068; line-height:1.6; font-family:'Outfit',sans-serif; }
-    .htu-tip { margin:0 24px 18px; background:rgba(46,139,74,0.04); border:1px solid rgba(46,139,74,0.15); border-radius:10px; padding:9px 13px; display:flex; align-items:flex-start; gap:8px; }
-    .htu-tip-text { font-size:11.5px; color:#5a8068; font-family:'DM Mono',monospace; line-height:1.6; }
+    .htu-tip { margin:0 24px 20px; background:rgba(46,139,74,0.04); border:1px solid rgba(46,139,74,0.15); border-radius:10px; padding:10px 14px; display:flex; align-items:flex-start; gap:8px; }
+    .htu-tip-icon { font-size:14px; flex-shrink:0; margin-top:1px; }
+    .htu-tip-text { font-size:12px; color:#5a8068; font-family:'DM Mono',monospace; line-height:1.6; }
     .htu-tip-text strong { color:#2e8b4a; }
 `;
 
@@ -92,21 +94,38 @@ const saveToHistory = async (detection) => {
 
 function HowToUse() {
     const steps = [
-        { num: 1, title: 'Upload a photo', desc: 'Select a clear coconut leaf photo. Use Single Image for one file, or Batch Upload to process multiple images at once.' },
-        { num: 2, title: 'Add location (optional)', desc: "Capture GPS automatically or manually enter the farm's barangay, city, and province to pin the detection on the map." },
-        { num: 3, title: 'Click Detect Cocolisap', desc: 'The YOLOv26 model scans the image, counts visible scale insects, and classifies severity as Low, Moderate, or Severe.' },
-        { num: 4, title: 'Read the results', desc: 'View insect count, confidence score, and severity badge. Results are saved automatically to Detection History on the right.' },
+        {
+            num: 1,
+            title: 'Upload a photo',
+            desc: 'Select a clear coconut leaf photo. Use Single Image for one file, or Batch Upload to process multiple images at once.',
+        },
+        {
+            num: 2,
+            title: 'Add location',
+            desc: "Capture GPS automatically or manually enter the farm's barangay, city, and province to pin the detection on the map.",
+        },
+        {
+            num: 3,
+            title: 'Click Detect Cocolisap',
+            desc: 'The YOLOv8 model scans the image, counts visible scale insects, and classifies severity as Low, Moderate, or Severe.',
+        },
+        {
+            num: 4,
+            title: 'Read the results',
+            desc: 'View insect count, confidence score, and severity badge. Results are saved automatically to Detection History on the right.',
+        },
     ];
+
     return (
         <div className="htu-wrap">
-            <div className="htu-top">
+            <div className="htu-header">
                 <span className="htu-badge">
                     <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.5" stroke="#2e8b4a"/><path d="M5 4.5v3M5 3h.01" stroke="#2e8b4a" strokeWidth="1.2" strokeLinecap="round"/></svg>
                     How to Use
                 </span>
-                <div className="htu-title">Detecting Cocolisap from Photos</div>
-                <div className="htu-subtitle">Follow these steps to upload an image and analyze infestation severity.</div>
             </div>
+            <div className="htu-title">Getting Started with Image Detection</div>
+            <div className="htu-subtitle">Follow these steps to upload a photo and analyze cocolisap infestation.</div>
             <div className="htu-steps">
                 {steps.map(s => (
                     <div key={s.num} className="htu-step">
@@ -116,10 +135,11 @@ function HowToUse() {
                     </div>
                 ))}
             </div>
-            <div style={{ height: 16 }} />
             <div className="htu-tip">
-                <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>💡</span>
-                <span className="htu-tip-text"><strong>Pro tip:</strong> Use a clear, well-lit photo taken close to the leaf surface. Blurry or dark images may reduce detection accuracy.</span>
+                <span className="htu-tip-icon">💡</span>
+                <span className="htu-tip-text">
+                    <strong>Pro tip:</strong> Use a clear, well-lit photo taken close to the leaf surface. Blurry or dark images may reduce detection accuracy.
+                </span>
             </div>
         </div>
     );
@@ -201,7 +221,7 @@ export default function Home() {
             <AnimatePresence>{isProcessing && <ProcessingOverlay stage={processingStage} />}</AnimatePresence>
 
             <div className="home-hero" style={{ position: 'relative', zIndex: 1 }}>
-                <div className="home-badge"><span className="home-badge-dot" />YOLOv26 Instance Segmentation</div>
+                <div className="home-badge"><span className="home-badge-dot" />YOLOv8 Instance Segmentation</div>
                 <h1 className="home-h1">Cocolisap <em>Detection</em><br />System</h1>
                 <p className="home-subtitle">AI-powered coconut scale insect detection using deep learning. Upload an image to analyze infestation severity.</p>
                 <div className="home-divider" />
@@ -265,7 +285,7 @@ export default function Home() {
                                 </div>
                             </div>
                         </motion.div>
-                        <div className="home-footer"><span>CocolisapScan · YOLOv26 Instance Segmentation</span></div>
+                        <div className="home-footer"><span>CocolisapScan · YOLOv8 Instance Segmentation</span></div>
                     </motion.div>
 
                     <motion.div {...fadeUp} transition={{ delay: 0.2 }} style={{ minWidth: 0, overflow: 'hidden' }}>
