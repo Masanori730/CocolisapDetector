@@ -538,59 +538,8 @@ export default function MapDashboard() {
                     <SeverityDonutChart stats={stats} />
                 </div>
 
-                {/* Filters */}
-                <div className="map-card" style={{ marginBottom: 20 }}>
-                    <div className="map-card-header">
-                        <span className="map-card-title">Filters</span>
-                        {(severityFilter !== 'all' || dateFilter !== 'all' || provinceFilter !== 'all') && (
-                            <button
-                                onClick={() => { setSeverityFilter('all'); setDateFilter('all'); setProvinceFilter('all'); setCustomStartDate(''); setCustomEndDate(''); }}
-                                style={{ fontSize:11, fontFamily:"'DM Mono',monospace", color:'#dc2626', background:'rgba(220,38,38,0.06)', border:'1px solid rgba(220,38,38,0.2)', borderRadius:8, padding:'4px 10px', cursor:'pointer' }}
-                            >✕ Clear filters</button>
-                        )}
-                    </div>
-                    <div className="map-card-body">
-                        <div className="map-filters-grid">
-                            <div>
-                                <span className="map-filter-label">Severity Level</span>
-                                <select className="map-select" value={severityFilter} onChange={e => setSeverityFilter(e.target.value)}>
-                                    <option value="all">All Levels</option>
-                                    <option value="severe">Severe Only</option>
-                                    <option value="moderate">Moderate Only</option>
-                                    <option value="low">Low Only</option>
-                                </select>
-                            </div>
-                            <div>
-                                <span className="map-filter-label">Date Range</span>
-                                <select className="map-select" value={dateFilter} onChange={e => setDateFilter(e.target.value)}>
-                                    <option value="all">All Time</option>
-                                    <option value="today">Today</option>
-                                    <option value="week">Last 7 Days</option>
-                                    <option value="month">Last 30 Days</option>
-                                    <option value="quarter">Last 3 Months</option>
-                                    <option value="year">Last Year</option>
-                                    <option value="custom">Custom Range</option>
-                                </select>
-                            </div>
-                            <div>
-                                <span className="map-filter-label">Province</span>
-                                <select className="map-select" value={provinceFilter} onChange={e => setProvinceFilter(e.target.value)}>
-                                    <option value="all">All Provinces</option>
-                                    {PHILIPPINE_PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
-                                </select>
-                            </div>
-                        </div>
-                        {dateFilter === 'custom' && (
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>
-                                <div><span className="map-filter-label">Start Date</span><input type="date" className="map-date-input" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)} /></div>
-                                <div><span className="map-filter-label">End Date</span><input type="date" className="map-date-input" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)} /></div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Map + Sidebar */}
-                <div className="map-main-grid">
+                {/* ── Map + Sidebar (now ABOVE filters) ── */}
+                <div className="map-main-grid" style={{ marginBottom: 20 }}>
                     <div className="map-card map-card-flex">
                         <div className="map-card-header">
                             <span className="map-card-title"><MapPin style={{ width: 15, height: 15, color: '#2e8b4a' }} />Interactive Map View</span>
@@ -703,6 +652,57 @@ export default function MapDashboard() {
                                 )}
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                {/* ── Filters (now BELOW the map) ── */}
+                <div className="map-card" style={{ marginBottom: 20 }}>
+                    <div className="map-card-header">
+                        <span className="map-card-title">Filters</span>
+                        {(severityFilter !== 'all' || dateFilter !== 'all' || provinceFilter !== 'all') && (
+                            <button
+                                onClick={() => { setSeverityFilter('all'); setDateFilter('all'); setProvinceFilter('all'); setCustomStartDate(''); setCustomEndDate(''); }}
+                                style={{ fontSize:11, fontFamily:"'DM Mono',monospace", color:'#dc2626', background:'rgba(220,38,38,0.06)', border:'1px solid rgba(220,38,38,0.2)', borderRadius:8, padding:'4px 10px', cursor:'pointer' }}
+                            >✕ Clear filters</button>
+                        )}
+                    </div>
+                    <div className="map-card-body">
+                        <div className="map-filters-grid">
+                            <div>
+                                <span className="map-filter-label">Severity Level</span>
+                                <select className="map-select" value={severityFilter} onChange={e => setSeverityFilter(e.target.value)}>
+                                    <option value="all">All Levels</option>
+                                    <option value="severe">Severe Only</option>
+                                    <option value="moderate">Moderate Only</option>
+                                    <option value="low">Low Only</option>
+                                </select>
+                            </div>
+                            <div>
+                                <span className="map-filter-label">Date Range</span>
+                                <select className="map-select" value={dateFilter} onChange={e => setDateFilter(e.target.value)}>
+                                    <option value="all">All Time</option>
+                                    <option value="today">Today</option>
+                                    <option value="week">Last 7 Days</option>
+                                    <option value="month">Last 30 Days</option>
+                                    <option value="quarter">Last 3 Months</option>
+                                    <option value="year">Last Year</option>
+                                    <option value="custom">Custom Range</option>
+                                </select>
+                            </div>
+                            <div>
+                                <span className="map-filter-label">Province</span>
+                                <select className="map-select" value={provinceFilter} onChange={e => setProvinceFilter(e.target.value)}>
+                                    <option value="all">All Provinces</option>
+                                    {PHILIPPINE_PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+                                </select>
+                            </div>
+                        </div>
+                        {dateFilter === 'custom' && (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>
+                                <div><span className="map-filter-label">Start Date</span><input type="date" className="map-date-input" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)} /></div>
+                                <div><span className="map-filter-label">End Date</span><input type="date" className="map-date-input" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)} /></div>
+                            </div>
+                        )}
                     </div>
                 </div>
 
