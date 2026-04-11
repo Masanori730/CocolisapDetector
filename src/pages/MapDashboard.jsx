@@ -172,12 +172,12 @@ const mapStyles = `
     .map-container-wrap { height:480px; min-height:480px; position:relative; overflow:hidden; flex-shrink:0; }
     .map-card-flex { display:flex; flex-direction:column; min-height:0; }
 
-    /* ── Cache indicator ── */
+    /* Cache indicator */
     .cache-badge { display:inline-flex; align-items:center; gap:5px; background:rgba(46,139,74,0.08); border:1px solid rgba(46,139,74,0.20); border-radius:100px; padding:2px 8px; font-family:'DM Mono',monospace; font-size:10px; color:#2e8b4a; }
     .cache-dot { width:6px; height:6px; border-radius:50%; background:#2e8b4a; animation: pulse 2s infinite; }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
-    /* ── How To Use ── */
+    /* How To Use — FIXED for mobile 2-column grid */
     .how-to-wrap { background:#fff; border:1px solid #d6e8d6; border-radius:16px; margin-bottom:24px; position:relative; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,0.05); }
     .how-to-wrap::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,#2e8b4a,transparent); }
     .how-to-header { padding:18px 24px 0; display:flex; align-items:center; gap:10px; }
@@ -186,9 +186,13 @@ const mapStyles = `
     .how-to-subtitle { font-family:'DM Mono',monospace; font-size:11px; color:#8aaa96; margin:4px 24px 20px; }
     .how-to-steps { display:grid; grid-template-columns:repeat(5,1fr); gap:0; border-top:1px solid #eaf2ea; }
     @media(max-width:900px){ .how-to-steps { grid-template-columns:repeat(3,1fr); } }
-    @media(max-width:560px){ .how-to-steps { grid-template-columns:1fr 1fr; } }
+    @media(max-width:700px){ .how-to-steps { grid-template-columns:1fr 1fr; } }
+    @media(max-width:360px){ .how-to-steps { grid-template-columns:1fr; } }
     .how-to-step { padding:20px; position:relative; border-right:1px solid #eaf2ea; }
     .how-to-step:last-child { border-right:none; }
+    @media(max-width:900px){ .how-to-step:nth-child(3n) { border-right:none; } }
+    @media(max-width:700px){ .how-to-step:nth-child(3n) { border-right:1px solid #eaf2ea; } }
+    @media(max-width:700px){ .how-to-step:nth-child(2n) { border-right:none; } }
     .how-to-step-num { width:28px; height:28px; border-radius:50%; background:linear-gradient(135deg,#2e8b4a,#4caf72); color:#fff; font-family:'DM Mono',monospace; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; margin-bottom:12px; flex-shrink:0; box-shadow:0 2px 8px rgba(46,139,74,0.30); }
     .how-to-step-title { font-size:13px; font-weight:600; color:#1a3326; margin-bottom:6px; line-height:1.3; }
     .how-to-step-desc { font-size:11.5px; color:#5a8068; line-height:1.6; font-family:'Outfit',sans-serif; }
@@ -198,7 +202,6 @@ const mapStyles = `
     .how-to-tip-text strong { color:#2e8b4a; }
 `;
 
-// ── Step-by-step How To Use ──────────────────────────────────────────────────
 function HowToUse() {
     const steps = [
         {
@@ -238,7 +241,6 @@ function HowToUse() {
             </div>
             <div className="how-to-title">Getting Started with the Detection Dashboard</div>
             <div className="how-to-subtitle">Follow these steps to navigate and interpret the monitoring data.</div>
-
             <div className="how-to-steps">
                 {steps.map((step) => (
                     <div key={step.num} className="how-to-step">
@@ -248,7 +250,6 @@ function HowToUse() {
                     </div>
                 ))}
             </div>
-
             <div className="how-to-tip">
                 <span className="how-to-tip-icon">💡</span>
                 <span className="how-to-tip-text">
@@ -467,13 +468,11 @@ export default function MapDashboard() {
     const [selectedDetectionId, setSelectedDetectionId] = useState(null);
     const [showAllProvinces, setShowAllProvinces] = useState(false);
 
-    // ── Optimized fetch with session cache ──────────────────────────────────
     useEffect(() => {
         const CACHE_KEY = 'cocolisap_detections_cache';
-        const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+        const CACHE_TTL = 5 * 60 * 1000;
 
         const fetchDetections = async () => {
-            // 1. Show cached data instantly if available and fresh
             try {
                 const cached = sessionStorage.getItem(CACHE_KEY);
                 if (cached) {
@@ -482,20 +481,17 @@ export default function MapDashboard() {
                         setAllDetections(data);
                         setFromCache(true);
                         setIsLoading(false);
-                        return; // Skip Firebase fetch — use cache
+                        return;
                     }
                 }
             } catch (_) {}
 
-            // 2. Fetch from Firebase (reduced to 200 records)
             try {
                 const q = query(collection(db, 'detections'), orderBy('created_date', 'desc'), limit(200));
                 const snapshot = await getDocs(q);
                 const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 setAllDetections(data);
                 setFromCache(false);
-
-                // Save to session cache
                 try {
                     sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
                 } catch (_) {}
@@ -597,7 +593,7 @@ export default function MapDashboard() {
             <style>{mapStyles}</style>
             <div className="map-page">
 
-                {/* ── Header ── */}
+                {/* Header */}
                 <div style={{ marginBottom: 28 }}>
                     <div className="map-header-badge">Monitoring System</div>
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
@@ -621,37 +617,16 @@ export default function MapDashboard() {
                 </div>
                 <div className="map-divider" />
 
-                {/* ── How To Use (Step-by-step) ── */}
                 <HowToUse />
 
-                {/* ── Metric Cards (5 cards) ── */}
+                {/* Metric Cards */}
                 <div className="map-stat-grid">
                     {[
-                        {
-                            label: 'Total Detections', value: stats.total, color: 'blue',
-                            sub: `${stats.thisMonth} this month`,
-                            icon: <BarChart3 style={{ width: 18, height: 18, color: '#3b82f6' }} />
-                        },
-                        {
-                            label: 'Severe Cases', value: stats.severe, color: 'red',
-                            sub: stats.total > 0 ? `${Math.round((stats.severe / stats.total) * 100)}% of total` : '—',
-                            icon: <AlertTriangle style={{ width: 18, height: 18, color: '#dc2626' }} />
-                        },
-                        {
-                            label: 'Moderate Cases', value: stats.moderate, color: 'amber',
-                            sub: stats.total > 0 ? `${Math.round((stats.moderate / stats.total) * 100)}% of total` : '—',
-                            icon: <TrendingUp style={{ width: 18, height: 18, color: '#d97706' }} />
-                        },
-                        {
-                            label: 'Low Cases', value: stats.low, color: 'lime',
-                            sub: stats.total > 0 ? `${Math.round((stats.low / stats.total) * 100)}% of total` : '—',
-                            icon: <Activity style={{ width: 18, height: 18, color: '#4caf72' }} />
-                        },
-                        {
-                            label: 'Avg Insects / Farm', value: stats.avgInsects, color: 'green',
-                            sub: `across ${stats.total} submission${stats.total !== 1 ? 's' : ''}`,
-                            icon: <BarChart3 style={{ width: 18, height: 18, color: '#2e8b4a' }} />
-                        },
+                        { label: 'Total Detections', value: stats.total, color: 'blue', sub: `${stats.thisMonth} this month`, icon: <BarChart3 style={{ width: 18, height: 18, color: '#3b82f6' }} /> },
+                        { label: 'Severe Cases', value: stats.severe, color: 'red', sub: stats.total > 0 ? `${Math.round((stats.severe / stats.total) * 100)}% of total` : '—', icon: <AlertTriangle style={{ width: 18, height: 18, color: '#dc2626' }} /> },
+                        { label: 'Moderate Cases', value: stats.moderate, color: 'amber', sub: stats.total > 0 ? `${Math.round((stats.moderate / stats.total) * 100)}% of total` : '—', icon: <TrendingUp style={{ width: 18, height: 18, color: '#d97706' }} /> },
+                        { label: 'Low Cases', value: stats.low, color: 'lime', sub: stats.total > 0 ? `${Math.round((stats.low / stats.total) * 100)}% of total` : '—', icon: <Activity style={{ width: 18, height: 18, color: '#4caf72' }} /> },
+                        { label: 'Avg Insects / Farm', value: stats.avgInsects, color: 'green', sub: `across ${stats.total} submission${stats.total !== 1 ? 's' : ''}`, icon: <BarChart3 style={{ width: 18, height: 18, color: '#2e8b4a' }} /> },
                     ].map(s => (
                         <div key={s.label} className={`map-stat ${s.color}`}>
                             <div className={`map-stat-icon ${s.color}`}>{s.icon}</div>
@@ -662,13 +637,13 @@ export default function MapDashboard() {
                     ))}
                 </div>
 
-                {/* ── Charts Row ── */}
+                {/* Charts Row */}
                 <div className="chart-row">
                     <DetectionTrendChart detections={filteredDetections} />
                     <SeverityDonutChart stats={stats} />
                 </div>
 
-                {/* ── Filters ── */}
+                {/* Filters */}
                 <div className="map-card" style={{ marginBottom: 20 }}>
                     <div className="map-card-header">
                         <span className="map-card-title">Filters</span>
@@ -721,15 +696,13 @@ export default function MapDashboard() {
                     </div>
                 </div>
 
-                {/* ── Map + Sidebar ── */}
+                {/* Map + Sidebar */}
                 <div className="map-main-grid">
-
                     <div className="map-card map-card-flex">
                         <div className="map-card-header">
                             <span className="map-card-title"><MapPin style={{ width: 15, height: 15, color: '#2e8b4a' }} />Interactive Map View</span>
                             <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: '#8aaa96' }}>{detectionsWithGPS.length} locations</span>
                         </div>
-
                         <div className="map-container-wrap">
                             {detectionsWithGPS.length > 0 ? (
                                 <MapContainer center={mapCenter} zoom={6} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
@@ -776,14 +749,11 @@ export default function MapDashboard() {
                             )}
                         </div>
 
-                        {/* Desktop detail panel */}
                         {selectedDetection && (
                             <div className="desktop-detail-panel">
                                 <DetectionDetailPanel detection={selectedDetection} onClose={() => setSelectedDetectionId(null)} />
                             </div>
                         )}
-
-                        {/* Mobile detail panel */}
                         {selectedDetection && (
                             <div className="mobile-detail-panel">
                                 <div style={{ padding: '0 16px 16px' }}>
@@ -799,10 +769,8 @@ export default function MapDashboard() {
                         </div>
                     </div>
 
-                    {/* ── Sidebar ── */}
+                    {/* Sidebar */}
                     <div className="map-side-grid">
-
-                        {/* Top Provinces */}
                         <div className="map-card">
                             <div className="map-card-header">
                                 <span className="map-card-title">Top Affected Provinces</span>
@@ -833,7 +801,6 @@ export default function MapDashboard() {
                             </div>
                         </div>
 
-                        {/* Recent Detections */}
                         <div className="map-card">
                             <div className="map-card-header">
                                 <span className="map-card-title">Recent Detections</span>
@@ -846,19 +813,10 @@ export default function MapDashboard() {
                                             <span className={`map-severity-pill ${d.severity}`}>{d.severity}</span>
                                             <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: '#8aaa96' }}>{timeAgo(d.created_date)}</span>
                                         </div>
-                                        <p style={{ fontSize: 13, color: '#1a3326', margin: '0 0 2px', fontWeight: 500 }}>
-                                            {getLocation(d)}
-                                        </p>
+                                        <p style={{ fontSize: 13, color: '#1a3326', margin: '0 0 2px', fontWeight: 500 }}>{getLocation(d)}</p>
                                         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                                            <span style={{ fontSize: 11, color: '#8aaa96', fontFamily: "'DM Mono',monospace" }}>
-                                                {d.total_detections ?? 0} insects
-                                            </span>
-                                            {d.farmName && (
-                                                <>
-                                                    <span style={{ fontSize:11, color:'#d6e8d6' }}>·</span>
-                                                    <span style={{ fontSize: 11, color: '#8aaa96', fontFamily: "'DM Mono',monospace" }}>{d.farmName}</span>
-                                                </>
-                                            )}
+                                            <span style={{ fontSize: 11, color: '#8aaa96', fontFamily: "'DM Mono',monospace" }}>{d.total_detections ?? 0} insects</span>
+                                            {d.farmName && (<><span style={{ fontSize:11, color:'#d6e8d6' }}>·</span><span style={{ fontSize: 11, color: '#8aaa96', fontFamily: "'DM Mono',monospace" }}>{d.farmName}</span></>)}
                                         </div>
                                     </div>
                                 )) : (
@@ -866,11 +824,10 @@ export default function MapDashboard() {
                                 )}
                             </div>
                         </div>
-
                     </div>
                 </div>
 
-                {/* ── Footer ── */}
+                {/* Footer */}
                 <div style={{ borderTop:'1px solid #d6e8d6', paddingTop:24, marginTop:40, fontSize:11, color:'#8aaa96', fontFamily:"'DM Mono',monospace", display:'flex', justifyContent:'space-between', flexWrap:'wrap', gap:8 }}>
                     <span>CocolisapScan · Infestation Monitoring</span>
                     <span>{filteredDetections.length} record{filteredDetections.length !== 1 ? 's' : ''} loaded · {fromCache ? 'from cache' : 'live from Firebase'}</span>
