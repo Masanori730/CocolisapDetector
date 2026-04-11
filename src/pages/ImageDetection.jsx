@@ -107,7 +107,7 @@ function HowToUse() {
         {
             num: 3,
             title: 'Click Detect Cocolisap',
-            desc: 'The YOLOv8 model scans the image, counts visible scale insects, and classifies severity as Low, Moderate, or Severe.',
+            desc: 'The YOLOv26 model scans the image, counts visible scale insects, and classifies severity as Low, Moderate, or Severe.',
         },
         {
             num: 4,
@@ -221,9 +221,9 @@ export default function Home() {
             <AnimatePresence>{isProcessing && <ProcessingOverlay stage={processingStage} />}</AnimatePresence>
 
             <div className="home-hero" style={{ position: 'relative', zIndex: 1 }}>
-                <div className="home-badge"><span className="home-badge-dot" />YOLOv8 Instance Segmentation</div>
+                <div className="home-badge"><span className="home-badge-dot" />YOLOv26 Instance Segmentation</div>
                 <h1 className="home-h1">Cocolisap <em>Detection</em><br />System</h1>
-                <p className="home-subtitle">AI-powered coconut scale insect detection using deep learning. Upload an image to analyze infestation severity.</p>
+                <p className="home-subtitle">Coconut scale insect detection powered by deep learning. Upload an image to analyze infestation severity.</p>
                 <div className="home-divider" />
                 <button className="home-cta" onClick={scrollToUpload}>Start Detection <ChevronDown style={{ width: 16, height: 16 }} /></button>
             </div>
@@ -285,7 +285,7 @@ export default function Home() {
                                 </div>
                             </div>
                         </motion.div>
-                        <div className="home-footer"><span>CocolisapScan · YOLOv8 Instance Segmentation</span></div>
+                        <div className="home-footer"><span>CocolisapScan · YOLOv26 Instance Segmentation</span></div>
                     </motion.div>
 
                     <motion.div {...fadeUp} transition={{ delay: 0.2 }} style={{ minWidth: 0, overflow: 'hidden' }}>

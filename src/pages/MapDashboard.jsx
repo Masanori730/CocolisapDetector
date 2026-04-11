@@ -204,7 +204,7 @@ function HowToUse() {
         {
             num: 1,
             title: 'Check the Metric Cards',
-            desc: 'Review the 5 summary cards at the top — Total Detections, Severe, Moderate, Low cases, and the average insect count per farm.',
+            desc: 'Review the 5 summary cards at the top: Total Detections, Severe, Moderate, Low cases, and the average insect count per farm.',
         },
         {
             num: 2,
@@ -252,7 +252,7 @@ function HowToUse() {
             <div className="how-to-tip">
                 <span className="how-to-tip-icon">💡</span>
                 <span className="how-to-tip-text">
-                    <strong>Pro tip:</strong> Click any marker on the map or any row in Recent Detections to open the full detection detail panel — including the captured image, farm info, insect count, and exact GPS coordinates.
+                    <strong>Pro tip:</strong> Click any marker on the map or any row in Recent Detections to open the full detection detail panel, including the captured image, farm info, insect count, and exact GPS coordinates.
                 </span>
             </div>
         </div>

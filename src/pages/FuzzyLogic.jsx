@@ -455,7 +455,7 @@ function HowToUse() {
       <div className="fl-htu-tip">
         <span className="fl-htu-tip-icon">💡</span>
         <span className="fl-htu-tip-text">
-          <strong>Pro tip:</strong> Use Smart Location mode for the most accurate results — it pulls live temperature, humidity, and wind data directly from your farm's coordinates.
+          <strong>Pro tip:</strong> Use Smart Location mode for the most accurate results. It pulls live temperature, humidity, and wind data directly from your farm's coordinates.
         </span>
       </div>
     </div>
@@ -761,7 +761,6 @@ export default function FuzzyLogic() {
           </span>
           <h1 className="fl-h1">Cocolisap <em>Infestation</em><br />Severity Analyzer</h1>
           <p className="fl-subtitle">
-            Mamdani inference system for <em>Aspidiotus rigidus</em> (CSI) in Philippine coconut farms.
             Input your farm's environmental and structural data to estimate the degree of infestation.
           </p>
         </header>

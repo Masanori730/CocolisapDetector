@@ -294,7 +294,7 @@ function DetectionPreviewTable({ detections }) {
                     <div className="preview-header-icon" style={{ background: 'rgba(46,139,74,0.10)' }}>
                         <Eye style={{ width: 16, height: 16, color: '#2e8b4a' }} />
                     </div>
-                    <p className="preview-title">Image Detection — Data Preview</p>
+                    <p className="preview-title">Image Detection - Data Preview</p>
                     <span className="preview-count-pill green">{detections.length} records</span>
                 </div>
                 <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: '#8aaa96', letterSpacing: '.06em' }}>
@@ -367,7 +367,7 @@ function AssessmentPreviewTable({ assessments }) {
                     <div className="preview-header-icon" style={{ background: 'rgba(59,130,246,0.10)' }}>
                         <Eye style={{ width: 16, height: 16, color: '#3b82f6' }} />
                     </div>
-                    <p className="preview-title">Fuzzy Logic Assessment — Data Preview</p>
+                    <p className="preview-title">Fuzzy Logic Assessment - Data Preview</p>
                     <span className="preview-count-pill blue">{assessments.length} records</span>
                 </div>
                 <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: '#8aaa96', letterSpacing: '.06em' }}>
@@ -441,7 +441,7 @@ function HowToUse() {
         {
             num: 3,
             title: 'Choose export type',
-            desc: 'Pick Image Detection, Fuzzy Logic Assessment, or Combined — each downloads a formatted Excel file with styled headers.',
+            desc: 'Pick Image Detection, Fuzzy Logic Assessment, or Combined. Each downloads a formatted Excel file with styled headers.',
         },
         {
             num: 4,
@@ -472,7 +472,7 @@ function HowToUse() {
             <div className="exp-htu-tip">
                 <span className="exp-htu-tip-icon">💡</span>
                 <span className="exp-htu-tip-text">
-                    <strong>Pro tip:</strong> Use the Combined export for PCA submissions — it packages both Image Detection and Fuzzy Logic data into a single two-sheet Excel file.
+                    <strong>Pro tip:</strong> Use the Combined export for complete data. It packages both Image Detection and Fuzzy Logic data into a single two-sheet Excel file.
                 </span>
             </div>
         </div>
@@ -572,7 +572,7 @@ export default function DataExport() {
 
                 {/* Filters */}
                 <div className="export-card">
-                    <span className="export-sec-label">Filter Criteria — applied to all exports</span>
+                    <span className="export-sec-label">Filter Criteria</span>
                     <div className="export-grid2">
                         <div><span className="export-field-label">Date From</span><input type="date" className="export-input" value={dateFrom} onChange={e => setDateFrom(e.target.value)} /></div>
                         <div><span className="export-field-label">Date To</span><input type="date" className="export-input" value={dateTo} onChange={e => setDateTo(e.target.value)} /></div>
@@ -665,7 +665,7 @@ export default function DataExport() {
                         <div className="export-option-icon purple"><Layers style={{ width: 22, height: 22, color: '#8b5cf6' }} /></div>
                         <h3 className="export-option-title">Combined Report</h3>
                         <p className="export-option-sub">Integrated · Detection + Fuzzy</p>
-                        <p className="export-option-desc">Single Excel file with two sheets — Sheet 1: Image Detections, Sheet 2: Fuzzy Assessments. Ready for PCA submission.</p>
+                        <p className="export-option-desc">Single Excel file with two sheets ( Sheet 1: Image Detections, Sheet 2: Fuzzy Assessments ). Ready for PCA submission.</p>
                         <div className="export-btn-row">
                             <button className="export-dl-btn purple" onClick={handleCombinedExcel} disabled={!filteredDetections.length && !filteredAssessments.length}>
                                 <FileSpreadsheet style={{ width: 15, height: 15 }} />Download Combined Excel
@@ -680,9 +680,9 @@ export default function DataExport() {
                     <div>
                         <p className="export-tips-title">Excel Format Notes</p>
                         <ul className="export-tips-list">
-                            <li>· All exports use colored headers — green for detections, blue for assessments</li>
+                            <li>· All exports use colored headers : green for detections, blue for assessments</li>
                             <li>· Alternating row colors and auto-sized columns for easy reading</li>
-                            <li>· Header row is frozen — stays visible when scrolling down</li>
+                            <li>· Header row is frozen : stays visible when scrolling down</li>
                             <li>· Combined report contains two sheets in one file for PCA submission</li>
                             <li>· Use date and province filters to generate targeted regional reports</li>
                         </ul>
