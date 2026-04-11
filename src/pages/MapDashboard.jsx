@@ -172,6 +172,11 @@ const mapStyles = `
     .map-container-wrap { height:480px; min-height:480px; position:relative; overflow:hidden; flex-shrink:0; }
     .map-card-flex { display:flex; flex-direction:column; min-height:0; }
 
+    /* ── Cache indicator ── */
+    .cache-badge { display:inline-flex; align-items:center; gap:5px; background:rgba(46,139,74,0.08); border:1px solid rgba(46,139,74,0.20); border-radius:100px; padding:2px 8px; font-family:'DM Mono',monospace; font-size:10px; color:#2e8b4a; }
+    .cache-dot { width:6px; height:6px; border-radius:50%; background:#2e8b4a; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
     /* ── How To Use ── */
     .how-to-wrap { background:#fff; border:1px solid #d6e8d6; border-radius:16px; margin-bottom:24px; position:relative; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,0.05); }
     .how-to-wrap::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,#2e8b4a,transparent); }
@@ -187,7 +192,6 @@ const mapStyles = `
     .how-to-step-num { width:28px; height:28px; border-radius:50%; background:linear-gradient(135deg,#2e8b4a,#4caf72); color:#fff; font-family:'DM Mono',monospace; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; margin-bottom:12px; flex-shrink:0; box-shadow:0 2px 8px rgba(46,139,74,0.30); }
     .how-to-step-title { font-size:13px; font-weight:600; color:#1a3326; margin-bottom:6px; line-height:1.3; }
     .how-to-step-desc { font-size:11.5px; color:#5a8068; line-height:1.6; font-family:'Outfit',sans-serif; }
-    .how-to-step-connector { position:absolute; top:34px; right:-1px; width:1px; height:0; }
     .how-to-tip { margin:0 24px 20px; background:rgba(46,139,74,0.04); border:1px solid rgba(46,139,74,0.15); border-radius:10px; padding:10px 14px; display:flex; align-items:flex-start; gap:8px; }
     .how-to-tip-icon { font-size:14px; flex-shrink:0; margin-top:1px; }
     .how-to-tip-text { font-size:12px; color:#5a8068; font-family:'DM Mono',monospace; line-height:1.6; }
@@ -236,7 +240,7 @@ function HowToUse() {
             <div className="how-to-subtitle">Follow these steps to navigate and interpret the monitoring data.</div>
 
             <div className="how-to-steps">
-                {steps.map((step, i) => (
+                {steps.map((step) => (
                     <div key={step.num} className="how-to-step">
                         <div className="how-to-step-num">{step.num}</div>
                         <div className="how-to-step-title">{step.title}</div>
@@ -454,6 +458,7 @@ function MobileDetailCard({ detection, onClose }) {
 export default function MapDashboard() {
     const [allDetections, setAllDetections] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [fromCache, setFromCache] = useState(false);
     const [severityFilter, setSeverityFilter] = useState('all');
     const [dateFilter, setDateFilter] = useState('all');
     const [provinceFilter, setProvinceFilter] = useState('all');
@@ -462,19 +467,45 @@ export default function MapDashboard() {
     const [selectedDetectionId, setSelectedDetectionId] = useState(null);
     const [showAllProvinces, setShowAllProvinces] = useState(false);
 
+    // ── Optimized fetch with session cache ──────────────────────────────────
     useEffect(() => {
+        const CACHE_KEY = 'cocolisap_detections_cache';
+        const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
         const fetchDetections = async () => {
+            // 1. Show cached data instantly if available and fresh
             try {
-                const q = query(collection(db, 'detections'), orderBy('created_date', 'desc'), limit(500));
+                const cached = sessionStorage.getItem(CACHE_KEY);
+                if (cached) {
+                    const { data, timestamp } = JSON.parse(cached);
+                    if (Date.now() - timestamp < CACHE_TTL) {
+                        setAllDetections(data);
+                        setFromCache(true);
+                        setIsLoading(false);
+                        return; // Skip Firebase fetch — use cache
+                    }
+                }
+            } catch (_) {}
+
+            // 2. Fetch from Firebase (reduced to 200 records)
+            try {
+                const q = query(collection(db, 'detections'), orderBy('created_date', 'desc'), limit(200));
                 const snapshot = await getDocs(q);
                 const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 setAllDetections(data);
+                setFromCache(false);
+
+                // Save to session cache
+                try {
+                    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
+                } catch (_) {}
             } catch (e) {
                 console.error('Error fetching detections:', e);
             } finally {
                 setIsLoading(false);
             }
         };
+
         fetchDetections();
     }, []);
 
@@ -575,7 +606,15 @@ export default function MapDashboard() {
                             <p className="map-sub">Cocolisap infestation monitoring across Philippine coconut farms</p>
                         </div>
                         <div style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#8aaa96', background:'#fff', border:'1px solid #d6e8d6', borderRadius:10, padding:'8px 14px', lineHeight:1.6 }}>
-                            <div>Last updated</div>
+                            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, marginBottom:4 }}>
+                                <span>Last updated</span>
+                                {fromCache && (
+                                    <span className="cache-badge">
+                                        <span className="cache-dot" />
+                                        cached
+                                    </span>
+                                )}
+                            </div>
                             <div style={{ color:'#1a3326', fontWeight:600 }}>{format(new Date(), 'MMM d, yyyy · h:mm a')}</div>
                         </div>
                     </div>
@@ -834,7 +873,7 @@ export default function MapDashboard() {
                 {/* ── Footer ── */}
                 <div style={{ borderTop:'1px solid #d6e8d6', paddingTop:24, marginTop:40, fontSize:11, color:'#8aaa96', fontFamily:"'DM Mono',monospace", display:'flex', justifyContent:'space-between', flexWrap:'wrap', gap:8 }}>
                     <span>CocolisapScan · Infestation Monitoring</span>
-                    <span>{filteredDetections.length} record{filteredDetections.length !== 1 ? 's' : ''} loaded</span>
+                    <span>{filteredDetections.length} record{filteredDetections.length !== 1 ? 's' : ''} loaded · {fromCache ? 'from cache' : 'live from Firebase'}</span>
                 </div>
             </div>
         </div>
