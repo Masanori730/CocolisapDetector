@@ -183,10 +183,10 @@
           <p className="landing-section-sub" style={{ marginBottom: 32 }}>Trained on 8,658 annotated images across 85 epochs using instance segmentation.</p>
           <div className="lm-metrics-grid">
             {[
-              { val: '90.0%', label: 'mAP@50', sub: 'Mean Avg. Precision' },
-              { val: '95.9%', label: 'Precision', sub: 'Positive predictive value' },
-              { val: '86.4%', label: 'Recall', sub: 'True positive rate' },
-              { val: '91.0%', label: 'F1 Score', sub: 'Harmonic mean P & R' },
+              { val: '90.3%', label: 'mAP@50', sub: 'Mean Avg. Precision' },
+              { val: '97.7%', label: 'Precision', sub: 'Positive predictive value' },
+              { val: '89.5%', label: 'Recall', sub: 'True positive rate' },
+              { val: '93.4%', label: 'F1 Score', sub: 'Harmonic mean P & R' },
             ].map(m => (
               <div key={m.label} className="lm-metric-card">
                 <div className="lm-metric-val">{m.val}</div>
