@@ -180,7 +180,7 @@
         <motion.div className="landing-section" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.5 }}>
           <p className="landing-section-label">Model Performance</p>
           <h2 className="landing-section-title">YOLOv26 <em>Detection</em> Metrics</h2>
-          <p className="landing-section-sub" style={{ marginBottom: 32 }}>Trained on 8,658 annotated images across 85 epochs using instance segmentation.</p>
+          <p className="landing-section-sub" style={{ marginBottom: 32 }}>Trained on 8,658 annotated images across 105 epochs using instance segmentation.</p>
           <div className="lm-metrics-grid">
             {[
               { val: '90.3%', label: 'mAP@50', sub: 'Mean Avg. Precision' },
